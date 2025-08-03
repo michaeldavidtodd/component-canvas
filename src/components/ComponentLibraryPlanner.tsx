@@ -79,6 +79,68 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [selectedNode, setNodes, setEdges]);
 
+  const smartLayout = useCallback(() => {
+    if (!selectedNode) return;
+
+    // Find all nodes connected below the selected node
+    const connectedNodes = new Set<string>();
+    const visited = new Set<string>();
+    
+    const findConnectedBelow = (nodeId: string, level: number = 0) => {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+      
+      const outgoingEdges = edges.filter(edge => edge.source === nodeId);
+      outgoingEdges.forEach(edge => {
+        if (!connectedNodes.has(edge.target)) {
+          connectedNodes.add(edge.target);
+          findConnectedBelow(edge.target, level + 1);
+        }
+      });
+    };
+
+    findConnectedBelow(selectedNode.id);
+
+    if (connectedNodes.size === 0) return;
+
+    // Arrange nodes in a tree-like layout below the selected node
+    setNodes((nds) => {
+      return nds.map((node) => {
+        if (connectedNodes.has(node.id)) {
+          // Calculate depth from selected node
+          const getDepth = (nodeId: string, depth: number = 1): number => {
+            const parentEdge = edges.find(edge => edge.target === nodeId);
+            if (!parentEdge || parentEdge.source === selectedNode.id) return depth;
+            return getDepth(parentEdge.source, depth + 1);
+          };
+
+          const depth = getDepth(node.id);
+          const nodesAtSameDepth = Array.from(connectedNodes).filter(id => {
+            return getDepth(id) === depth;
+          });
+          const indexAtDepth = nodesAtSameDepth.indexOf(node.id);
+          const totalAtDepth = nodesAtSameDepth.length;
+
+          // Calculate position
+          const baseX = selectedNode.position.x;
+          const baseY = selectedNode.position.y + (depth * 150);
+          const spacing = 200;
+          const totalWidth = (totalAtDepth - 1) * spacing;
+          const startX = baseX - (totalWidth / 2);
+          
+          return {
+            ...node,
+            position: {
+              x: startX + (indexAtDepth * spacing),
+              y: baseY
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [selectedNode, edges, setNodes]);
+
   return (
     <div className="flex h-screen bg-canvas">
       <Toolbar onAddNode={addNode} />
@@ -119,6 +181,7 @@ export const ComponentLibraryPlanner = () => {
         selectedNode={selectedNode}
         onUpdateNode={updateNodeData}
         onDeleteNode={deleteSelectedNode}
+        onSmartLayout={smartLayout}
       />
     </div>
   );
