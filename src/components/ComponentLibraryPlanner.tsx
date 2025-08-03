@@ -433,44 +433,36 @@ export const ComponentLibraryPlanner = () => {
     const isInitialized = initializationRef.current;
     console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
     
-    // Only run initialization once when user is authenticated, not loading, not initialized
+    // Always run for authenticated users when not loading and we have projects data
     if (user && !isAnonymous && !loading && !isInitialized) {
-      // Mark as initialized immediately to prevent re-runs
+      console.log('🚀 Starting project initialization...');
       initializationRef.current = true;
       
-      const initializeProject = async () => {
-        console.log('🚀 Starting project initialization...');
+      if (projects.length > 0) {
+        // Load the most recent project
+        const mostRecentProject = projects[0];
+        console.log('📁 Loading existing project:', { id: mostRecentProject.id, name: mostRecentProject.name });
+        setCurrentProject(mostRecentProject);
         
-        if (projects.length > 0) {
-          // Load the most recent project
-          const mostRecentProject = projects[0];
-          console.log('📁 Loading existing project:', { id: mostRecentProject.id, name: mostRecentProject.name });
-          setCurrentProject(mostRecentProject);
-          
-          // Load versions for this project - the version loading effect will handle setting nodes/edges
-          console.log('📚 Loading versions for project:', { id: mostRecentProject.id, loadVersionsFunction: typeof loadVersions });
-          await loadVersions(mostRecentProject.id);
-        } else {
-          console.log('🆕 Creating new project...');
-          // Create default project with initial elements
-          const newProject = await createProject('My Component Library', 'A visual library of design components');
+        // Load versions for this project
+        console.log('📚 Loading versions for project:', { id: mostRecentProject.id });
+        loadVersions(mostRecentProject.id);
+      } else {
+        console.log('🆕 Creating new project...');
+        // Create default project with initial elements
+        createProject('My Component Library', 'A visual library of design components').then(newProject => {
           if (newProject) {
-            await saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version', false);
-            setNodes(initialNodes);
-            setEdges(initialEdges);
+            saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version', false);
           }
-        }
-      };
-
-      initializeProject();
+        });
+      }
     } else if ((isAnonymous || !user) && !isInitialized) {
       console.log('👤 Anonymous user - using default elements');
       initializationRef.current = true;
-      // Use default initial elements for anonymous users
       setNodes(initialNodes);
       setEdges(initialEdges);
     }
-  }, [user, isAnonymous, loading, projects]);
+  }, [user, isAnonymous, loading, projects, setCurrentProject, createProject, saveVersion, loadVersions, setNodes, setEdges]);
 
   // Load latest version when versions change and we have a current project
   useEffect(() => {
