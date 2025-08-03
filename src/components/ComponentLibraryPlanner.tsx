@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -12,7 +13,6 @@ import {
   Node,
   NodeChange,
   EdgeChange,
-  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -21,6 +21,7 @@ import { Toolbar } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ConnectionLegend } from './ConnectionLegend';
 import { VersionHistory } from './VersionHistory';
+import { AutoSaveHandler } from './AutoSaveHandler';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,7 +42,6 @@ export const ComponentLibraryPlanner = () => {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
-  const { getViewport } = useReactFlow();
   
   const {
     currentProject,
@@ -427,19 +427,6 @@ export const ComponentLibraryPlanner = () => {
     });
   }, [setNodes]);
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!user || !currentProject || !isInitialized) return;
-
-    const timeoutId = setTimeout(() => {
-      if (autoSaveEnabled) {
-        autoSave(currentProject.id, nodes, edges, getViewport());
-      }
-    }, 2000); // Auto-save after 2 seconds of inactivity
-
-    return () => clearTimeout(timeoutId);
-  }, [nodes, edges, currentProject, autoSaveEnabled, autoSave, getViewport, user, isInitialized]);
-
   // Initialize with default project for authenticated users
   useEffect(() => {
     if (user && !isAnonymous && !loading && !currentProject && !isInitialized) {
@@ -475,8 +462,8 @@ export const ComponentLibraryPlanner = () => {
     if (!currentProject) return;
     
     const versionName = `Version ${new Date().toLocaleString()}`;
-    await saveVersion(currentProject.id, nodes, edges, getViewport(), versionName);
-  }, [currentProject, nodes, edges, saveVersion, getViewport]);
+    await saveVersion(currentProject.id, nodes, edges, undefined, versionName);
+  }, [currentProject, nodes, edges, saveVersion]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -484,72 +471,83 @@ export const ComponentLibraryPlanner = () => {
   };
 
   return (
-    <div className="flex h-screen bg-canvas">
-      <Toolbar 
-        onAddNode={addNode}
-        user={user}
-        isAnonymous={isAnonymous}
-        onSignOut={handleSignOut}
-        onNavigateToAuth={() => navigate('/auth')}
-        onSave={handleManualSave}
-        onShowVersions={() => setShowVersionHistory(true)}
-        currentProject={currentProject}
-        autoSaveEnabled={autoSaveEnabled}
-        onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
-      />
-      
-      <VersionHistory
-        open={showVersionHistory}
-        onOpenChange={setShowVersionHistory}
-        versions={versions}
-        onLoadVersion={loadVersion}
-        onVersionLoaded={(version) => {
-          setNodes(version.nodes as any);
-          setEdges(version.edges as any);
-        }}
-      />
-      
-      <div className="flex-1 relative">
+    <ReactFlowProvider>
+      <div className="flex h-screen bg-canvas">
+        <Toolbar 
+          onAddNode={addNode}
+          user={user}
+          isAnonymous={isAnonymous}
+          onSignOut={handleSignOut}
+          onNavigateToAuth={() => navigate('/auth')}
+          onSave={handleManualSave}
+          onShowVersions={() => setShowVersionHistory(true)}
+          currentProject={currentProject}
+          autoSaveEnabled={autoSaveEnabled}
+          onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+        />
+        
+        <VersionHistory
+          open={showVersionHistory}
+          onOpenChange={setShowVersionHistory}
+          versions={versions}
+          onLoadVersion={loadVersion}
+          onVersionLoaded={(version) => {
+            setNodes(version.nodes as any);
+            setEdges(version.edges as any);
+          }}
+        />
+        
+        <div className="flex-1 relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            onNodeClick={(_, node) => handleNodeSelect(node)}
+            onPaneClick={() => handleNodeSelect(null)}
+            fitView
+            className="bg-canvas"
+          >
+            <Background color="#e1e5e9" gap={16} />
+            <Controls className="bg-workspace border border-border" />
+            <MiniMap 
+              className="bg-workspace border border-border"
+              nodeColor={(node) => {
+                const data = node.data as ComponentNodeData;
+                switch (data.componentType) {
+                  case 'main-component': return 'hsl(var(--component-main))';
+                  case 'variant': return 'hsl(var(--component-variant))';
+                  case 'sub-component': return 'hsl(var(--component-sub))';
+                  case 'token': return 'hsl(var(--component-token))';
+                  case 'instance': return 'hsl(var(--component-instance))';
+                  default: return 'hsl(var(--muted))';
+                }
+              }}
+            />
+            
+            {/* Auto-save handler that needs ReactFlow context */}
+            <AutoSaveHandler
+              currentProject={currentProject}
+              autoSaveEnabled={autoSaveEnabled}
+              isInitialized={isInitialized}
+              nodes={nodes}
+              edges={edges}
+              onAutoSave={autoSave}
+            />
+          </ReactFlow>
+          <ConnectionLegend />
+        </div>
 
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          onNodeClick={(_, node) => handleNodeSelect(node)}
-          onPaneClick={() => handleNodeSelect(null)}
-          fitView
-          className="bg-canvas"
-        >
-          <Background color="#e1e5e9" gap={16} />
-          <Controls className="bg-workspace border border-border" />
-          <MiniMap 
-            className="bg-workspace border border-border"
-            nodeColor={(node) => {
-              const data = node.data as ComponentNodeData;
-              switch (data.componentType) {
-                case 'main-component': return 'hsl(var(--component-main))';
-                case 'variant': return 'hsl(var(--component-variant))';
-                case 'sub-component': return 'hsl(var(--component-sub))';
-                case 'token': return 'hsl(var(--component-token))';
-                case 'instance': return 'hsl(var(--component-instance))';
-                default: return 'hsl(var(--muted))';
-              }
-            }}
-          />
-        </ReactFlow>
-        <ConnectionLegend />
+        <PropertiesPanel
+          selectedNode={selectedNode}
+          onUpdateNode={updateNodeData}
+          onDeleteNode={deleteSelectedNode}
+          onSmartLayout={smartLayout}
+          onCleanupLayout={cleanupLayout}
+        />
       </div>
-
-      <PropertiesPanel
-        selectedNode={selectedNode}
-        onUpdateNode={updateNodeData}
-        onDeleteNode={deleteSelectedNode}
-        onSmartLayout={smartLayout}
-        onCleanupLayout={cleanupLayout}
-      />
-    </div>
+    </ReactFlowProvider>
   );
 };
