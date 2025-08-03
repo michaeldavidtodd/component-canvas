@@ -21,6 +21,10 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { ConnectionLegend } from './ConnectionLegend';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const nodeTypes = {
   component: ComponentNode,
@@ -30,6 +34,8 @@ export const ComponentLibraryPlanner = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const { user, isAnonymous, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -401,11 +407,45 @@ export const ComponentLibraryPlanner = () => {
     });
   }, [setNodes]);
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   return (
     <div className="flex h-screen bg-canvas">
       <Toolbar onAddNode={addNode} />
       
       <div className="flex-1 relative">
+        {/* Auth status bar */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          {isAnonymous ? (
+            <div className="flex items-center gap-2 bg-workspace border border-border rounded-lg px-3 py-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Guest mode (no saving)</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/auth')}
+              >
+                Sign In
+              </Button>
+            </div>
+          ) : user ? (
+            <div className="flex items-center gap-2 bg-workspace border border-border rounded-lg px-3 py-2 text-sm">
+              <User className="h-4 w-4 text-primary" />
+              <span className="text-foreground">{user.email}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
