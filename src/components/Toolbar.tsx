@@ -121,7 +121,7 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
                   <User className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col flex-1 text-left">
-                  <span className="text-xs font-medium text-foreground truncate">
+                  <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
                     {user.email?.split('@')[0] || 'User'}
                   </span>
                   <span className="text-xs text-muted-foreground">Signed in</span>
@@ -135,7 +135,7 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
                     <User className="h-5 w-5" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground truncate">
+                    <span className="text-sm font-medium text-foreground truncate max-w-[160px]">
                       {user.email?.split('@')[0] || 'User'}
                     </span>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
