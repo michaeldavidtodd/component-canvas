@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, FileText, Layout } from 'lucide-react';
+import { Trash2, FileText, Layout, Sparkles } from 'lucide-react';
 
 interface PropertiesPanelProps {
   selectedNode: any;
   onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
   onDeleteNode: () => void;
   onSmartLayout: () => void;
+  onCleanupLayout: () => void;
 }
 
 const componentTypeOptions: { value: ComponentType; label: string }[] = [
@@ -26,7 +27,8 @@ export const PropertiesPanel = ({
   selectedNode, 
   onUpdateNode, 
   onDeleteNode,
-  onSmartLayout 
+  onSmartLayout,
+  onCleanupLayout 
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
@@ -124,8 +126,17 @@ export const PropertiesPanel = ({
           }}
           className="w-full gap-2"
         >
-          <Layout className="w-4 h-4" />
+          <Sparkles className="w-4 h-4" />
           Smart Layout
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCleanupLayout}
+          className="w-full gap-2"
+        >
+          <Layout className="w-4 h-4" />
+          Clean Up
         </Button>
         <Button
           variant="destructive"

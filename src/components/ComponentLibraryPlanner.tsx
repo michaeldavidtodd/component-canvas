@@ -79,6 +79,105 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [selectedNode, setNodes, setEdges]);
 
+  const smartLayout = useCallback(() => {
+    const rowSpacing = 250; // Vertical spacing between rows
+    const minNodeSpacing = 200; // Minimum horizontal spacing between nodes
+    const baseY = 100; // Starting Y position
+    
+    // Define hierarchy order
+    const hierarchy: ComponentType[] = ['main-component', 'variant', 'sub-component', 'instance', 'token'];
+    
+    setNodes((nds) => {
+      // Step 1: Group nodes by type and sort by hierarchy
+      const groupedNodes = new Map<ComponentType, typeof nds>();
+      hierarchy.forEach(type => groupedNodes.set(type, []));
+      
+      nds.forEach(node => {
+        const nodeType = (node.data as ComponentNodeData).componentType;
+        if (groupedNodes.has(nodeType)) {
+          groupedNodes.get(nodeType)!.push(node);
+        }
+      });
+      
+      // Step 2: Calculate positions for each row
+      const rows: { type: ComponentType; nodes: typeof nds; y: number }[] = [];
+      let currentY = baseY;
+      
+      hierarchy.forEach(type => {
+        const nodesOfType = groupedNodes.get(type)!;
+        if (nodesOfType.length > 0) {
+          rows.push({ type, nodes: nodesOfType, y: currentY });
+          currentY += rowSpacing;
+        }
+      });
+      
+      // Step 3: Position nodes within each row and center-align
+      const updatedNodes = new Map<string, { x: number; y: number }>();
+      
+      rows.forEach((row, rowIndex) => {
+        const totalWidth = (row.nodes.length - 1) * minNodeSpacing;
+        const startX = -totalWidth / 2; // Center around 0
+        
+        // Step 4: For rows after the first, reorder based on relationships
+        let orderedNodes = [...row.nodes];
+        if (rowIndex > 0) {
+          const prevRow = rows[rowIndex - 1];
+          const prevNodePositions = prevRow.nodes.map(n => ({
+            id: n.id,
+            x: updatedNodes.get(n.id)?.x || 0
+          }));
+          
+          // Sort current row nodes by their relationship to previous row
+          orderedNodes.sort((a, b) => {
+            const aConnections = edges.filter(e => e.target === a.id).map(e => e.source);
+            const bConnections = edges.filter(e => e.target === b.id).map(e => e.source);
+            
+            const aParentX = aConnections.length > 0 
+              ? Math.min(...aConnections.map(id => prevNodePositions.find(p => p.id === id)?.x || 0))
+              : 0;
+            const bParentX = bConnections.length > 0 
+              ? Math.min(...bConnections.map(id => prevNodePositions.find(p => p.id === id)?.x || 0))
+              : 0;
+            
+            return aParentX - bParentX;
+          });
+        }
+        
+        // Step 5: Position nodes with optimization for connected nodes
+        orderedNodes.forEach((node, index) => {
+          let x = startX + (index * minNodeSpacing);
+          
+          // Optimize position based on parent connections
+          if (rowIndex > 0) {
+            const connections = edges.filter(e => e.target === node.id);
+            if (connections.length > 0) {
+              const parentPositions = connections
+                .map(e => updatedNodes.get(e.source)?.x)
+                .filter(x => x !== undefined) as number[];
+              
+              if (parentPositions.length > 0) {
+                const avgParentX = parentPositions.reduce((sum, x) => sum + x, 0) / parentPositions.length;
+                // Adjust position to be closer to parent average, but maintain minimum spacing
+                const minX = index > 0 ? (updatedNodes.get(orderedNodes[index - 1].id)?.x || 0) + minNodeSpacing : startX;
+                const maxX = index < orderedNodes.length - 1 ? startX + ((index + 1) * minNodeSpacing) - minNodeSpacing : Infinity;
+                
+                x = Math.max(minX, Math.min(maxX, avgParentX));
+              }
+            }
+          }
+          
+          updatedNodes.set(node.id, { x, y: row.y });
+        });
+      });
+      
+      // Apply the new positions
+      return nds.map(node => {
+        const newPos = updatedNodes.get(node.id);
+        return newPos ? { ...node, position: newPos } : node;
+      });
+    });
+  }, [setNodes, edges]);
+
   const cleanupLayout = useCallback(() => {
     const gridSize = 50; // Grid snap size
     const minSpacing = 200; // Minimum spacing between nodes
@@ -169,7 +268,8 @@ export const ComponentLibraryPlanner = () => {
         selectedNode={selectedNode}
         onUpdateNode={updateNodeData}
         onDeleteNode={deleteSelectedNode}
-        onSmartLayout={cleanupLayout}
+        onSmartLayout={smartLayout}
+        onCleanupLayout={cleanupLayout}
       />
     </div>
   );
