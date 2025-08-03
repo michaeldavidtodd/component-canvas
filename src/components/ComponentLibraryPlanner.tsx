@@ -86,91 +86,103 @@ export const ComponentLibraryPlanner = () => {
       return;
     }
 
-    // Build hierarchy levels and track parent relationships
+    // Build hierarchy and track relationships
     const nodeLevels = new Map<string, number>();
-    const nodeParents = new Map<string, string>();
-    const nodesByLevel = new Map<number, string[]>();
+    const nodeChildren = new Map<string, string[]>();
+    const nodeParents = new Map<string, string[]>();
     
-    const buildHierarchy = (nodeId: string, level: number, parentId?: string) => {
+    const buildHierarchy = (nodeId: string, level: number) => {
       if (nodeLevels.has(nodeId) && nodeLevels.get(nodeId)! <= level) {
-        return; // Already processed at a higher or equal level
+        return;
       }
       
       nodeLevels.set(nodeId, level);
-      if (parentId) {
-        nodeParents.set(nodeId, parentId);
-      }
       
-      if (!nodesByLevel.has(level)) {
-        nodesByLevel.set(level, []);
-      }
-      const levelNodes = nodesByLevel.get(level)!;
-      if (!levelNodes.includes(nodeId)) {
-        levelNodes.push(nodeId);
-      }
-      
-      // Find direct children and place them at the next level
       const outgoingEdges = edges.filter(edge => edge.source === nodeId);
-      outgoingEdges.forEach(edge => {
-        buildHierarchy(edge.target, level + 1, nodeId);
+      const children = outgoingEdges.map(edge => edge.target);
+      nodeChildren.set(nodeId, children);
+      
+      // Track parents for each child
+      children.forEach(childId => {
+        if (!nodeParents.has(childId)) {
+          nodeParents.set(childId, []);
+        }
+        nodeParents.get(childId)!.push(nodeId);
+      });
+      
+      // Recurse to children
+      children.forEach(childId => {
+        buildHierarchy(childId, level + 1);
       });
     };
 
-    // Start hierarchy from selected node
     buildHierarchy(selectedNode.id, 0);
 
-    console.log('Node levels:', Object.fromEntries(nodeLevels));
-    console.log('Node parents:', Object.fromEntries(nodeParents));
+    // Group nodes by level
+    const nodesByLevel = new Map<number, string[]>();
+    for (const [nodeId, level] of nodeLevels) {
+      if (!nodesByLevel.has(level)) {
+        nodesByLevel.set(level, []);
+      }
+      nodesByLevel.get(level)!.push(nodeId);
+    }
+
+    console.log('Node hierarchy built:', Object.fromEntries(nodeLevels));
 
     if (nodesByLevel.size <= 1) {
-      console.log('No hierarchy found, returning early');
+      console.log('No hierarchy found');
       return;
     }
 
-    console.log('Starting hierarchical layout...');
-    
     setNodes((nds) => {
       return nds.map((node) => {
         const level = nodeLevels.get(node.id);
         if (level !== undefined && level > 0) {
           const levelSpacing = 200;
+          const nodeSpacing = 350; // Increased spacing to avoid overlaps
           const newY = selectedNode.position.y + (level * levelSpacing);
           
-          let newX = selectedNode.position.x; // Default to center under selected node
+          let newX = selectedNode.position.x;
           
-          // If this node has a direct parent, position it below that parent
-          const parentId = nodeParents.get(node.id);
-          if (parentId) {
+          const parents = nodeParents.get(node.id) || [];
+          
+          if (parents.length === 1) {
+            // Single parent - position based on parent's position and siblings
+            const parentId = parents[0];
             const parentNode = nds.find(n => n.id === parentId);
+            const siblings = (nodeChildren.get(parentId) || []).filter(id => id !== node.id);
+            
             if (parentNode) {
-              // Check if parent has multiple children at this level
-              const siblingNodes = Array.from(nodesByLevel.get(level) || [])
-                .filter(siblingId => nodeParents.get(siblingId) === parentId);
-              
-              if (siblingNodes.length === 1) {
-                // Single child - position directly below parent
+              if (siblings.length === 0) {
+                // Only child - position directly below parent
                 newX = parentNode.position.x;
               } else {
-                // Multiple children - spread them around parent
-                const siblingIndex = siblingNodes.indexOf(node.id);
-                const siblingSpacing = 250;
-                const totalSiblingWidth = (siblingNodes.length - 1) * siblingSpacing;
-                const siblingStartX = parentNode.position.x - (totalSiblingWidth / 2);
-                newX = siblingStartX + (siblingIndex * siblingSpacing);
+                // Has siblings - spread around parent
+                const allSiblings = [node.id, ...siblings];
+                const nodeIndex = allSiblings.indexOf(node.id);
+                const totalWidth = (allSiblings.length - 1) * nodeSpacing;
+                const startX = parentNode.position.x - (totalWidth / 2);
+                newX = startX + (nodeIndex * nodeSpacing);
               }
             }
+          } else if (parents.length > 1) {
+            // Multiple parents - position between them
+            const parentNodes = parents.map(pid => nds.find(n => n.id === pid)).filter(Boolean);
+            if (parentNodes.length > 0) {
+              const avgX = parentNodes.reduce((sum, p) => sum + (p?.position.x || 0), 0) / parentNodes.length;
+              newX = avgX;
+            }
           } else {
-            // No direct parent found, use level-based positioning
-            const levelNodes = nodesByLevel.get(level)!;
+            // No direct parent in current hierarchy - use level-based positioning
+            const levelNodes = nodesByLevel.get(level) || [];
             const indexInLevel = levelNodes.indexOf(node.id);
-            const nodeSpacing = 300;
-            const totalLevelWidth = (levelNodes.length - 1) * nodeSpacing;
-            const startX = selectedNode.position.x - (totalLevelWidth / 2);
+            const totalWidth = (levelNodes.length - 1) * nodeSpacing;
+            const startX = selectedNode.position.x - (totalWidth / 2);
             newX = startX + (indexInLevel * nodeSpacing);
           }
           
           const newPosition = { x: newX, y: newY };
-          console.log(`Moving node ${node.id} (level ${level}, parent: ${parentId}) from`, node.position, 'to', newPosition);
+          console.log(`Moving node ${node.id} (level ${level}) to`, newPosition);
           
           return {
             ...node,
@@ -181,7 +193,7 @@ export const ComponentLibraryPlanner = () => {
       });
     });
     
-    console.log('Hierarchical layout applied');
+    console.log('Smart layout applied');
   }, [selectedNode, edges, setNodes]);
 
   return (
