@@ -80,7 +80,11 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    if (!selectedNode) return;
+    console.log('Smart Layout clicked, selectedNode:', selectedNode);
+    if (!selectedNode) {
+      console.log('No selected node, returning early');
+      return;
+    }
 
     // Find all nodes connected below the selected node
     const connectedNodes = new Set<string>();
@@ -101,7 +105,13 @@ export const ComponentLibraryPlanner = () => {
 
     findConnectedBelow(selectedNode.id);
 
-    if (connectedNodes.size === 0) return;
+    console.log('Connected nodes found:', Array.from(connectedNodes));
+    console.log('Total edges:', edges.length);
+
+    if (connectedNodes.size === 0) {
+      console.log('No connected nodes found, returning early');
+      return;
+    }
 
     // Group nodes by depth level
     const getNodeDepth = (nodeId: string): number => {
