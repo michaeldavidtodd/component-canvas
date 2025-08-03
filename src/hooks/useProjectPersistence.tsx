@@ -224,15 +224,11 @@ export const useProjectPersistence = () => {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', projectId);
 
-      if (!isAutoSave) {
+      // Only show toasts for manual saves, not during initialization or auto-saves
+      if (!isAutoSave && versionName !== 'Initial version') {
         toast({
           title: "Success",
           description: "Version saved successfully"
-        });
-      } else {
-        toast({
-          title: "Auto-saved",
-          description: "Changes saved automatically"
         });
       }
 
