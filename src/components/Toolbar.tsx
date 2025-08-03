@@ -135,12 +135,12 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
                     <User className="h-5 w-5" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {user.email?.split('@')[0] || 'User'}
                     </span>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Mail className="h-3 w-3" />
-                      <span className="truncate">{user.email}</span>
+                      <span className="truncate max-w-[180px]">{user.email}</span>
                     </div>
                   </div>
                 </div>
