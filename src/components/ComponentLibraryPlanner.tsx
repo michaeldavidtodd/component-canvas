@@ -183,7 +183,18 @@ export const ComponentLibraryPlanner = () => {
           return aX - bX;
         });
         
-        // Step 6: Calculate positions for each group
+        // Step 6: First, identify and position shared child nodes (nodes with multiple parents)
+        const sharedChildren = new Map<string, string[]>(); // nodeId -> parentIds
+        allGroupsNodes.forEach(group => {
+          group.nodes.forEach(node => {
+            const nodeParents = edges.filter(edge => edge.target === node.id).map(edge => edge.source);
+            if (nodeParents.length > 1) {
+              sharedChildren.set(node.id, nodeParents);
+            }
+          });
+        });
+
+        // Step 7: Calculate positions for each group
         let currentX = 0;
         const totalGroups = allGroupsNodes.length;
         const totalWidth = Math.max(0, (totalGroups - 1) * minNodeSpacing * 2); // Extra spacing between groups
@@ -198,8 +209,20 @@ export const ComponentLibraryPlanner = () => {
           groupNodes.forEach((node, nodeIndex) => {
             let nodeX = groupStartX + (nodeIndex * minNodeSpacing);
             
+            // Special handling for shared children - center them below their parents
+            if (sharedChildren.has(node.id)) {
+              const parentIds = sharedChildren.get(node.id)!;
+              const parentPositions = parentIds
+                .map(parentId => updatedNodes.get(parentId))
+                .filter(pos => pos !== undefined);
+              
+              if (parentPositions.length > 0) {
+                const avgParentX = parentPositions.reduce((sum, pos) => sum + pos!.x, 0) / parentPositions.length;
+                nodeX = avgParentX;
+              }
+            }
             // If this group has a parent, try to center it around the parent
-            if (group.parentX !== undefined) {
+            else if (group.parentX !== undefined) {
               const groupCenterX = groupStartX + (groupWidth / 2);
               const offsetToParent = group.parentX - groupCenterX;
               nodeX += offsetToParent;
@@ -207,6 +230,26 @@ export const ComponentLibraryPlanner = () => {
             
             updatedNodes.set(node.id, { x: nodeX, y });
           });
+          
+          // Step 8: Adjust spacing within row to avoid overlaps while maintaining shared child centering
+          const rowNodeIds = groupNodes.map(n => n.id);
+          const sortedRowNodes = rowNodeIds
+            .map(id => ({ id, x: updatedNodes.get(id)!.x }))
+            .sort((a, b) => a.x - b.x);
+          
+          // Ensure minimum spacing between adjacent nodes
+          for (let i = 1; i < sortedRowNodes.length; i++) {
+            const prevNode = sortedRowNodes[i - 1];
+            const currentNode = sortedRowNodes[i];
+            
+            if (currentNode.x - prevNode.x < minNodeSpacing) {
+              // Only adjust if it's not a shared child (preserve their centering)
+              if (!sharedChildren.has(currentNode.id)) {
+                currentNode.x = prevNode.x + minNodeSpacing;
+                updatedNodes.set(currentNode.id, { x: currentNode.x, y });
+              }
+            }
+          }
         });
       }
       
