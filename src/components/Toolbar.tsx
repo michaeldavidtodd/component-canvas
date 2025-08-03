@@ -140,7 +140,7 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
                     </span>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Mail className="h-3 w-3" />
-                      <span className="truncate max-w-[180px]">{user.email}</span>
+                      <span className="truncate max-w-[140px]">{user.email}</span>
                     </div>
                   </div>
                 </div>
