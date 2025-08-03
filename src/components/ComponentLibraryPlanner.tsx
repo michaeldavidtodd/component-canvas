@@ -84,52 +84,46 @@ export const ComponentLibraryPlanner = () => {
     const minSpacing = 200; // Minimum spacing between nodes
     
     setNodes((nds) => {
-      return nds.map((node) => {
-        // Snap to grid
-        const snappedX = Math.round(node.position.x / gridSize) * gridSize;
-        const snappedY = Math.round(node.position.y / gridSize) * gridSize;
-        
-        // Check for overlaps and adjust spacing
-        let finalX = snappedX;
-        let finalY = snappedY;
-        
-        // Find if any other node is too close
-        const otherNodes = nds.filter(n => n.id !== node.id);
-        let hasOverlap = true;
-        let attempts = 0;
-        
-        while (hasOverlap && attempts < 20) {
-          hasOverlap = false;
-          
-          for (const otherNode of otherNodes) {
-            const otherX = otherNode.position.x;
-            const otherY = otherNode.position.y;
-            
-            const distanceX = Math.abs(finalX - otherX);
-            const distanceY = Math.abs(finalY - otherY);
-            
-            // If nodes are too close, adjust position
-            if (distanceX < minSpacing && distanceY < minSpacing) {
-              hasOverlap = true;
-              
-              // Move in the direction that creates more space
-              if (finalX >= otherX) {
-                finalX = otherX + minSpacing;
-              } else {
-                finalX = otherX - minSpacing;
-              }
-              
-              // Snap to grid again
-              finalX = Math.round(finalX / gridSize) * gridSize;
-              break;
-            }
-          }
-          attempts++;
+      // Group nodes by approximate Y position (rows)
+      const tolerance = 100; // Y position tolerance for same row
+      const rows: { y: number; nodes: typeof nds }[] = [];
+      
+      nds.forEach((node) => {
+        const existingRow = rows.find(row => Math.abs(row.y - node.position.y) <= tolerance);
+        if (existingRow) {
+          existingRow.nodes.push(node);
+        } else {
+          rows.push({ y: node.position.y, nodes: [node] });
         }
+      });
+      
+      // Process each row separately
+      return nds.map((node) => {
+        const currentRow = rows.find(row => row.nodes.includes(node))!;
+        const rowNodes = currentRow.nodes.sort((a, b) => a.position.x - b.position.x);
+        const nodeIndex = rowNodes.findIndex(n => n.id === node.id);
+        
+        // Snap Y to grid and use row average
+        const avgY = currentRow.nodes.reduce((sum, n) => sum + n.position.y, 0) / currentRow.nodes.length;
+        const snappedY = Math.round(avgY / gridSize) * gridSize;
+        
+        // For X position, maintain order but ensure minimum spacing
+        let newX = node.position.x;
+        
+        if (nodeIndex > 0) {
+          const prevNode = rowNodes[nodeIndex - 1];
+          const minX = prevNode.position.x + minSpacing;
+          if (newX < minX) {
+            newX = minX;
+          }
+        }
+        
+        // Snap X to grid
+        newX = Math.round(newX / gridSize) * gridSize;
         
         return {
           ...node,
-          position: { x: finalX, y: finalY }
+          position: { x: newX, y: snappedY }
         };
       });
     });
