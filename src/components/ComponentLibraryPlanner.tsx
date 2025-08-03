@@ -430,16 +430,23 @@ export const ComponentLibraryPlanner = () => {
 
   // Initialize with default project for authenticated users
   useEffect(() => {
+    console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
+    
     if (user && !isAnonymous && !loading && !isInitialized) {
       const initializeProject = async () => {
+        console.log('🚀 Starting project initialization...');
+        
         if (projects.length > 0) {
           // Load the most recent project
           const mostRecentProject = projects[0];
+          console.log('📁 Loading existing project:', mostRecentProject.name);
           setCurrentProject(mostRecentProject);
           
           // Load versions for this project - the version loading effect will handle setting nodes/edges
+          console.log('📚 Loading versions for project:', mostRecentProject.id);
           await loadVersions(mostRecentProject.id);
         } else {
+          console.log('🆕 Creating new project...');
           // Create default project with initial elements
           const newProject = await createProject('My Component Library', 'A visual library of design components');
           if (newProject) {
@@ -453,6 +460,7 @@ export const ComponentLibraryPlanner = () => {
 
       initializeProject();
     } else if (isAnonymous || !user) {
+      console.log('👤 Anonymous user - using default elements');
       // Use default initial elements for anonymous users
       setNodes(initialNodes);
       setEdges(initialEdges);
@@ -462,12 +470,30 @@ export const ComponentLibraryPlanner = () => {
 
   // Load latest version when versions change and we have a current project, but only on first load
   useEffect(() => {
+    console.log('📦 Version loading effect:', { 
+      currentProject: !!currentProject, 
+      versionsCount: versions.length, 
+      isInitialized,
+      latestVersion: versions[0] ? {
+        id: versions[0].id,
+        name: versions[0].name,
+        nodesCount: versions[0].nodes?.length,
+        edgesCount: versions[0].edges?.length
+      } : null
+    });
+    
     if (currentProject && versions.length > 0 && !isInitialized) {
       const latestVersion = versions[0];
       if (latestVersion) {
+        console.log('🎯 Loading version data:', {
+          versionId: latestVersion.id,
+          nodesCount: latestVersion.nodes?.length,
+          edgesCount: latestVersion.edges?.length
+        });
         setNodes(latestVersion.nodes as any);
         setEdges(latestVersion.edges as any);
       }
+      console.log('✅ Setting initialized to true');
       setIsInitialized(true);
     }
   }, [versions, currentProject, isInitialized, setNodes, setEdges]);

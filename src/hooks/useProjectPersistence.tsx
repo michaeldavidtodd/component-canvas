@@ -66,6 +66,8 @@ export const useProjectPersistence = () => {
   const loadVersions = useCallback(async (projectId: string) => {
     if (!projectId) return;
 
+    console.log('🔍 Loading versions for project:', projectId);
+
     try {
       const { data, error } = await supabase
         .from('project_versions')
@@ -74,6 +76,8 @@ export const useProjectPersistence = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📋 Raw versions data from DB:', data);
       
       const transformedData: ProjectVersion[] = (data || []).map(row => ({
         id: row.id,
@@ -87,9 +91,17 @@ export const useProjectPersistence = () => {
         created_at: row.created_at
       }));
       
+      console.log('🔄 Transformed versions:', transformedData.map(v => ({
+        id: v.id,
+        name: v.name,
+        nodesCount: v.nodes?.length,
+        edgesCount: v.edges?.length,
+        isAutoSave: v.is_auto_save
+      })));
+      
       setVersions(transformedData);
     } catch (error) {
-      console.error('Error loading versions:', error);
+      console.error('❌ Error loading versions:', error);
       toast({
         title: "Error",
         description: "Failed to load project versions",
@@ -147,6 +159,14 @@ export const useProjectPersistence = () => {
   ) => {
     if (!user || !projectId) return null;
 
+    console.log('💾 Saving version:', {
+      projectId,
+      nodesCount: nodes.length,
+      edgesCount: edges.length,
+      versionName,
+      isAutoSave
+    });
+
     try {
       // Get next version number
       const { data: versionData } = await supabase
@@ -169,6 +189,13 @@ export const useProjectPersistence = () => {
         .single();
 
       if (error) throw error;
+
+      console.log('✅ Version saved successfully:', {
+        versionId: data.id,
+        versionNumber: data.version_number,
+        savedNodesCount: Array.isArray(data.nodes) ? data.nodes.length : 0,
+        savedEdgesCount: Array.isArray(data.edges) ? data.edges.length : 0
+      });
 
       const newVersion: ProjectVersion = {
         id: data.id,
@@ -203,7 +230,7 @@ export const useProjectPersistence = () => {
 
       return newVersion;
     } catch (error) {
-      console.error('Error saving version:', error);
+      console.error('❌ Error saving version:', error);
       if (!isAutoSave) {
         toast({
           title: "Error",
