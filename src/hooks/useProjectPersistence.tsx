@@ -39,8 +39,12 @@ export const useProjectPersistence = () => {
 
   // Load projects for current user
   const loadProjects = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🚫 LoadProjects: No user');
+      return;
+    }
 
+    console.log('🔍 LoadProjects: Starting to load projects for user:', user.id);
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -49,9 +53,13 @@ export const useProjectPersistence = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📋 LoadProjects: Raw projects from DB:', data);
+      console.log('📊 LoadProjects: Found', data?.length || 0, 'projects');
+      
       setProjects(data || []);
     } catch (error) {
-      console.error('Error loading projects:', error);
+      console.error('❌ LoadProjects: Error loading projects:', error);
       toast({
         title: "Error",
         description: "Failed to load projects",
