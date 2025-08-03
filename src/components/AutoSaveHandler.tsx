@@ -22,11 +22,16 @@ export const AutoSaveHandler = ({
 
   // Auto-save functionality
   useEffect(() => {
-    if (!currentProject || !isInitialized) return;
+    if (!currentProject || !isInitialized || !autoSaveEnabled) return;
 
     const timeoutId = setTimeout(() => {
-      if (autoSaveEnabled) {
-        onAutoSave(currentProject.id, nodes, edges, getViewport());
+      try {
+        const viewport = getViewport();
+        onAutoSave(currentProject.id, nodes, edges, viewport);
+      } catch (error) {
+        // Fallback if viewport is not available
+        console.warn('Viewport not available for auto-save, saving without viewport');
+        onAutoSave(currentProject.id, nodes, edges, undefined);
       }
     }, 2000); // Auto-save after 2 seconds of inactivity
 

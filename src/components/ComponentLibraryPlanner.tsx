@@ -527,15 +527,17 @@ export const ComponentLibraryPlanner = () => {
               }}
             />
             
-            {/* Auto-save handler that needs ReactFlow context */}
-            <AutoSaveHandler
-              currentProject={currentProject}
-              autoSaveEnabled={autoSaveEnabled}
-              isInitialized={isInitialized}
-              nodes={nodes}
-              edges={edges}
-              onAutoSave={autoSave}
-            />
+            {/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
+            {user && !isAnonymous && currentProject && (
+              <AutoSaveHandler
+                currentProject={currentProject}
+                autoSaveEnabled={autoSaveEnabled}
+                isInitialized={isInitialized}
+                nodes={nodes}
+                edges={edges}
+                onAutoSave={autoSave}
+              />
+            )}
           </ReactFlow>
           <ConnectionLegend />
         </div>
