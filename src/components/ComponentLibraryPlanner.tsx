@@ -468,7 +468,7 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [user, isAnonymous, loading, isInitialized, projects, setCurrentProject, createProject, saveVersion, setNodes, setEdges, loadVersions]);
 
-  // Load latest version when versions change and we have a current project, but only on first load
+  // Load latest version when versions change and we have a current project
   useEffect(() => {
     console.log('📦 Version loading effect:', { 
       currentProject: !!currentProject, 
@@ -482,7 +482,7 @@ export const ComponentLibraryPlanner = () => {
       } : null
     });
     
-    if (currentProject && versions.length > 0 && !isInitialized) {
+    if (currentProject && versions.length > 0) {
       const latestVersion = versions[0];
       if (latestVersion) {
         console.log('🎯 Loading version data:', {
@@ -492,11 +492,15 @@ export const ComponentLibraryPlanner = () => {
         });
         setNodes(latestVersion.nodes as any);
         setEdges(latestVersion.edges as any);
+        
+        // Only set initialized to true if it wasn't already
+        if (!isInitialized) {
+          console.log('✅ Setting initialized to true');
+          setIsInitialized(true);
+        }
       }
-      console.log('✅ Setting initialized to true');
-      setIsInitialized(true);
     }
-  }, [versions, currentProject, isInitialized, setNodes, setEdges]);
+  }, [versions, currentProject, setNodes, setEdges]);
 
   const handleManualSave = useCallback(async () => {
     if (!currentProject) return;
