@@ -73,6 +73,7 @@ export const ComponentLibraryPlanner = () => {
       id: `node-${Date.now()}`,
       type: 'component',
       position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+      selected: true,
       data: {
         label: 'New Component',
         componentType: type,
@@ -80,7 +81,7 @@ export const ComponentLibraryPlanner = () => {
       },
     };
     
-    setNodes((nds) => [...nds, newNode]);
+    setNodes((nds) => [...nds.map(n => ({ ...n, selected: false })), newNode]);
     setSelectedNode(newNode);
   }, [setNodes]);
 
