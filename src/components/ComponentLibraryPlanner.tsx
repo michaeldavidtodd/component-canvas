@@ -432,8 +432,11 @@ export const ComponentLibraryPlanner = () => {
   useEffect(() => {
     console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
     
-    // Only run initialization once when user is authenticated, not loading, not initialized, and projects have been loaded
-    if (user && !isAnonymous && !loading && !isInitialized && projects.length >= 0) {
+    // Only run initialization once when user is authenticated, not loading, not initialized
+    if (user && !isAnonymous && !loading && !isInitialized) {
+      // Mark as initialized immediately to prevent re-runs
+      setIsInitialized(true);
+      
       const initializeProject = async () => {
         console.log('🚀 Starting project initialization...');
         
@@ -454,13 +457,10 @@ export const ComponentLibraryPlanner = () => {
             await saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version', false);
             setNodes(initialNodes);
             setEdges(initialEdges);
-            setIsInitialized(true);
           }
         }
       };
 
-      // Mark as initialized immediately to prevent re-runs
-      setIsInitialized(true);
       initializeProject();
     } else if ((isAnonymous || !user) && !isInitialized) {
       console.log('👤 Anonymous user - using default elements');
@@ -469,7 +469,7 @@ export const ComponentLibraryPlanner = () => {
       setEdges(initialEdges);
       setIsInitialized(true);
     }
-  }, [user, isAnonymous, loading, isInitialized, projects, setCurrentProject, createProject, saveVersion, setNodes, setEdges, loadVersions]);
+  }, [user, isAnonymous, loading, projects]);
 
   // Load latest version when versions change and we have a current project
   useEffect(() => {
