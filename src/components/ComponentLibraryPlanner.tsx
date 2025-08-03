@@ -86,7 +86,7 @@ export const ComponentLibraryPlanner = () => {
     const connectedNodes = new Set<string>();
     const visited = new Set<string>();
     
-    const findConnectedBelow = (nodeId: string, level: number = 0) => {
+    const findConnectedBelow = (nodeId: string) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
       
@@ -94,7 +94,7 @@ export const ComponentLibraryPlanner = () => {
       outgoingEdges.forEach(edge => {
         if (!connectedNodes.has(edge.target)) {
           connectedNodes.add(edge.target);
-          findConnectedBelow(edge.target, level + 1);
+          findConnectedBelow(edge.target);
         }
       });
     };
@@ -103,41 +103,135 @@ export const ComponentLibraryPlanner = () => {
 
     if (connectedNodes.size === 0) return;
 
-    // Arrange nodes in a tree-like layout below the selected node
+    // Group nodes by depth level
+    const getNodeDepth = (nodeId: string): number => {
+      const parentEdge = edges.find(edge => edge.target === nodeId);
+      if (!parentEdge || parentEdge.source === selectedNode.id) return 1;
+      return getNodeDepth(parentEdge.source) + 1;
+    };
+
+    const nodesByDepth = new Map<number, string[]>();
+    connectedNodes.forEach(nodeId => {
+      const depth = getNodeDepth(nodeId);
+      if (!nodesByDepth.has(depth)) {
+        nodesByDepth.set(depth, []);
+      }
+      nodesByDepth.get(depth)!.push(nodeId);
+    });
+
+    // Calculate node dimensions (approximate based on content)
+    const getNodeDimensions = (node: Node) => {
+      const baseWidth = 160; // min-w-[160px] from ComponentNode
+      const baseHeight = 80;
+      const nodeData = node.data as ComponentNodeData;
+      const labelLength = (nodeData.label as string)?.length || 0;
+      const descriptionLength = (nodeData.description as string)?.length || 0;
+      
+      // Adjust width based on content
+      const width = Math.max(baseWidth, Math.min(labelLength * 8 + 40, 250));
+      // Adjust height based on description
+      const height = baseHeight + (descriptionLength > 0 ? Math.ceil(descriptionLength / 30) * 20 : 0);
+      
+      return { width, height };
+    };
+
+    // Check if two nodes overlap
+    const nodesOverlap = (node1: any, node2: any) => {
+      const dim1 = getNodeDimensions(node1);
+      const dim2 = getNodeDimensions(node2);
+      
+      const left1 = node1.position.x;
+      const right1 = node1.position.x + dim1.width;
+      const top1 = node1.position.y;
+      const bottom1 = node1.position.y + dim1.height;
+      
+      const left2 = node2.position.x;
+      const right2 = node2.position.x + dim2.width;
+      const top2 = node2.position.y;
+      const bottom2 = node2.position.y + dim2.height;
+      
+      return !(right1 < left2 || left1 > right2 || bottom1 < top2 || top1 > bottom2);
+    };
+
     setNodes((nds) => {
-      return nds.map((node) => {
-        if (connectedNodes.has(node.id)) {
-          // Calculate depth from selected node
-          const getDepth = (nodeId: string, depth: number = 1): number => {
-            const parentEdge = edges.find(edge => edge.target === nodeId);
-            if (!parentEdge || parentEdge.source === selectedNode.id) return depth;
-            return getDepth(parentEdge.source, depth + 1);
-          };
-
-          const depth = getDepth(node.id);
-          const nodesAtSameDepth = Array.from(connectedNodes).filter(id => {
-            return getDepth(id) === depth;
-          });
-          const indexAtDepth = nodesAtSameDepth.indexOf(node.id);
-          const totalAtDepth = nodesAtSameDepth.length;
-
-          // Calculate position
-          const baseX = selectedNode.position.x;
-          const baseY = selectedNode.position.y + (depth * 150);
-          const spacing = 200;
-          const totalWidth = (totalAtDepth - 1) * spacing;
-          const startX = baseX - (totalWidth / 2);
+      const updatedNodes = [...nds];
+      const nodeMap = new Map(updatedNodes.map(node => [node.id, node]));
+      
+      // Layout nodes level by level
+      Array.from(nodesByDepth.keys()).sort().forEach(depth => {
+        const nodesAtDepth = nodesByDepth.get(depth)!;
+        const baseY = selectedNode.position.y + (depth * 150);
+        
+        if (nodesAtDepth.length === 1) {
+          // Single node - center it below parent
+          const nodeId = nodesAtDepth[0];
+          const node = nodeMap.get(nodeId)!;
+          const parentEdge = edges.find(edge => edge.target === nodeId);
+          const parentNode = parentEdge ? nodeMap.get(parentEdge.source) : selectedNode;
           
-          return {
-            ...node,
-            position: {
-              x: startX + (indexAtDepth * spacing),
-              y: baseY
-            }
+          node.position = {
+            x: parentNode.position.x,
+            y: baseY
           };
+        } else {
+          // Multiple nodes - spread them out and check for overlaps
+          const minSpacing = 50; // Minimum gap between nodes
+          let positions: { nodeId: string; x: number; width: number }[] = [];
+          
+          // Calculate initial positions
+          nodesAtDepth.forEach((nodeId, index) => {
+            const node = nodeMap.get(nodeId)!;
+            const dimensions = getNodeDimensions(node);
+            const spacing = 200;
+            const totalWidth = (nodesAtDepth.length - 1) * spacing;
+            const startX = selectedNode.position.x - (totalWidth / 2);
+            
+            positions.push({
+              nodeId,
+              x: startX + (index * spacing),
+              width: dimensions.width
+            });
+          });
+          
+          // Resolve overlaps by adjusting positions
+          let hasOverlaps = true;
+          let iterations = 0;
+          const maxIterations = 20;
+          
+          while (hasOverlaps && iterations < maxIterations) {
+            hasOverlaps = false;
+            iterations++;
+            
+            for (let i = 0; i < positions.length - 1; i++) {
+              const current = positions[i];
+              const next = positions[i + 1];
+              
+              const currentRight = current.x + current.width;
+              const nextLeft = next.x;
+              
+              if (currentRight + minSpacing > nextLeft) {
+                // Overlap detected - push the next node to the right
+                const overlap = (currentRight + minSpacing) - nextLeft;
+                next.x += overlap;
+                hasOverlaps = true;
+                
+                // Also push subsequent nodes
+                for (let j = i + 2; j < positions.length; j++) {
+                  positions[j].x += overlap;
+                }
+              }
+            }
+          }
+          
+          // Apply the calculated positions
+          positions.forEach(({ nodeId, x }) => {
+            const node = nodeMap.get(nodeId)!;
+            node.position = { x, y: baseY };
+          });
         }
-        return node;
       });
+      
+      return updatedNodes;
     });
   }, [selectedNode, edges, setNodes]);
 
