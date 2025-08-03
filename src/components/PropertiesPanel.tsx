@@ -118,7 +118,10 @@ export const PropertiesPanel = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={onSmartLayout}
+          onClick={() => {
+            console.log('Smart Layout button clicked!');
+            onSmartLayout();
+          }}
           className="w-full gap-2"
         >
           <Layout className="w-4 h-4" />
