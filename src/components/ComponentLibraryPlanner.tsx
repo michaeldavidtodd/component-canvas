@@ -251,6 +251,52 @@ export const ComponentLibraryPlanner = () => {
             }
           }
         });
+        
+        // Step 9: Final pass to ensure no overlaps in any row after shared children positioning
+        for (let level = 0; level <= maxLevel; level++) {
+          const nodesAtLevel = levelNodes.get(level) || [];
+          if (nodesAtLevel.length <= 1) continue;
+          
+          const levelNodePositions = nodesAtLevel
+            .map(node => ({ 
+              id: node.id, 
+              x: updatedNodes.get(node.id)!.x,
+              isShared: sharedChildren.has(node.id)
+            }))
+            .sort((a, b) => a.x - b.x);
+          
+          // Adjust overlapping nodes, prioritizing shared children positions
+          for (let i = 1; i < levelNodePositions.length; i++) {
+            const prevNode = levelNodePositions[i - 1];
+            const currentNode = levelNodePositions[i];
+            
+            if (currentNode.x - prevNode.x < minNodeSpacing) {
+              if (currentNode.isShared && !prevNode.isShared) {
+                // If current is shared and previous isn't, move previous left
+                const newX = currentNode.x - minNodeSpacing;
+                prevNode.x = newX;
+                updatedNodes.set(prevNode.id, { x: newX, y: baseY + (level * rowSpacing) });
+                
+                // Cascade adjustment to earlier nodes if needed
+                let currentPrevNode = prevNode;
+                for (let j = i - 2; j >= 0; j--) {
+                  const earlierNode = levelNodePositions[j];
+                  if (currentPrevNode.x - earlierNode.x < minNodeSpacing) {
+                    earlierNode.x = currentPrevNode.x - minNodeSpacing;
+                    updatedNodes.set(earlierNode.id, { x: earlierNode.x, y: baseY + (level * rowSpacing) });
+                    currentPrevNode = earlierNode;
+                  } else {
+                    break;
+                  }
+                }
+              } else if (!currentNode.isShared) {
+                // If current is not shared, move it right
+                currentNode.x = prevNode.x + minNodeSpacing;
+                updatedNodes.set(currentNode.id, { x: currentNode.x, y: baseY + (level * rowSpacing) });
+              }
+            }
+          }
+        }
       }
       
       // Apply the new positions
