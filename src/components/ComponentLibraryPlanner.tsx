@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -38,8 +38,8 @@ export const ComponentLibraryPlanner = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const initializationRef = useRef(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -430,12 +430,13 @@ export const ComponentLibraryPlanner = () => {
 
   // Initialize with default project for authenticated users
   useEffect(() => {
+    const isInitialized = initializationRef.current;
     console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
     
     // Only run initialization once when user is authenticated, not loading, not initialized
     if (user && !isAnonymous && !loading && !isInitialized) {
       // Mark as initialized immediately to prevent re-runs
-      setIsInitialized(true);
+      initializationRef.current = true;
       
       const initializeProject = async () => {
         console.log('🚀 Starting project initialization...');
@@ -464,15 +465,16 @@ export const ComponentLibraryPlanner = () => {
       initializeProject();
     } else if ((isAnonymous || !user) && !isInitialized) {
       console.log('👤 Anonymous user - using default elements');
+      initializationRef.current = true;
       // Use default initial elements for anonymous users
       setNodes(initialNodes);
       setEdges(initialEdges);
-      setIsInitialized(true);
     }
   }, [user, isAnonymous, loading, projects]);
 
   // Load latest version when versions change and we have a current project
   useEffect(() => {
+    const isInitialized = initializationRef.current;
     console.log('📦 Version loading effect:', { 
       currentProject: !!currentProject, 
       versionsCount: versions.length, 
@@ -495,12 +497,6 @@ export const ComponentLibraryPlanner = () => {
         });
         setNodes(latestVersion.nodes as any);
         setEdges(latestVersion.edges as any);
-        
-        // Only set initialized to true if it wasn't already
-        if (!isInitialized) {
-          console.log('✅ Setting initialized to true');
-          setIsInitialized(true);
-        }
       }
     }
   }, [versions, currentProject, setNodes, setEdges]);
@@ -579,7 +575,7 @@ export const ComponentLibraryPlanner = () => {
               <AutoSaveHandler
                 currentProject={currentProject}
                 autoSaveEnabled={autoSaveEnabled}
-                isInitialized={isInitialized}
+                isInitialized={initializationRef.current}
                 nodes={nodes}
                 edges={edges}
                 onAutoSave={autoSave}
