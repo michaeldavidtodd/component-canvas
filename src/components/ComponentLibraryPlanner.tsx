@@ -50,11 +50,20 @@ export const ComponentLibraryPlanner = () => {
     versions,
     loading,
     autoSaveEnabled,
+    setCurrentProject,
     setAutoSaveEnabled,
     saveVersion,
     autoSave,
     loadVersion,
   } = useProjectPersistence();
+
+  // Force set currentProject if we have projects but no currentProject
+  useEffect(() => {
+    if (!currentProject && projects.length > 0 && user && !isAnonymous) {
+      console.log('🔧 ComponentLibraryPlanner: Force setting currentProject to:', projects[0]);
+      setCurrentProject(projects[0]);
+    }
+  }, [projects, currentProject, user, isAnonymous, setCurrentProject]);
 
   // Debug logging
   console.log('🔍 ComponentLibraryPlanner state:', {
