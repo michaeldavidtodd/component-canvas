@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
@@ -20,12 +20,14 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
     loadVersions 
   } = useProjectPersistence();
   const [isInitialized, setIsInitialized] = useState(false);
+  const initializingRef = useRef(false);
 
   // Step 1: Initialize project when user is ready
   useEffect(() => {
-    if (!user || isAnonymous || loading || isInitialized) return;
+    if (!user || isAnonymous || loading || isInitialized || initializingRef.current) return;
 
     console.log('🚀 ProjectManager: Initializing with', projects.length, 'projects');
+    initializingRef.current = true;
 
     const initializeProject = async () => {
       if (projects.length > 0) {
