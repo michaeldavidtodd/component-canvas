@@ -150,16 +150,16 @@ export const ComponentLibraryPlanner = () => {
             // Single parent - position based on parent's position and siblings
             const parentId = parents[0];
             const parentNode = nds.find(n => n.id === parentId);
-            const siblings = (nodeChildren.get(parentId) || []).filter(id => id !== node.id);
+            const allSiblings = nodeChildren.get(parentId) || [];
             
-            if (parentNode) {
-              if (siblings.length === 0) {
+            if (parentNode && allSiblings.length > 0) {
+              const nodeIndex = allSiblings.indexOf(node.id);
+              
+              if (allSiblings.length === 1) {
                 // Only child - position directly below parent
                 newX = parentNode.position.x;
               } else {
                 // Has siblings - spread around parent
-                const allSiblings = [node.id, ...siblings];
-                const nodeIndex = allSiblings.indexOf(node.id);
                 const totalWidth = (allSiblings.length - 1) * nodeSpacing;
                 const startX = parentNode.position.x - (totalWidth / 2);
                 newX = startX + (nodeIndex * nodeSpacing);
