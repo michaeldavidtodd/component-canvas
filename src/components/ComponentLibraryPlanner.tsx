@@ -86,53 +86,65 @@ export const ComponentLibraryPlanner = () => {
       return;
     }
 
-    // Find all nodes connected below the selected node
-    const connectedNodes = new Set<string>();
-    const visited = new Set<string>();
+    // Build hierarchy levels based on connections
+    const nodeLevels = new Map<string, number>();
+    const nodesByLevel = new Map<number, string[]>();
     
-    const findConnectedBelow = (nodeId: string) => {
-      if (visited.has(nodeId)) return;
-      visited.add(nodeId);
+    const buildHierarchy = (nodeId: string, level: number) => {
+      if (nodeLevels.has(nodeId) && nodeLevels.get(nodeId)! <= level) {
+        return; // Already processed at a higher or equal level
+      }
       
+      nodeLevels.set(nodeId, level);
+      
+      if (!nodesByLevel.has(level)) {
+        nodesByLevel.set(level, []);
+      }
+      const levelNodes = nodesByLevel.get(level)!;
+      if (!levelNodes.includes(nodeId)) {
+        levelNodes.push(nodeId);
+      }
+      
+      // Find direct children and place them at the next level
       const outgoingEdges = edges.filter(edge => edge.source === nodeId);
       outgoingEdges.forEach(edge => {
-        if (!connectedNodes.has(edge.target)) {
-          connectedNodes.add(edge.target);
-          findConnectedBelow(edge.target);
-        }
+        buildHierarchy(edge.target, level + 1);
       });
     };
 
-    findConnectedBelow(selectedNode.id);
+    // Start hierarchy from selected node
+    buildHierarchy(selectedNode.id, 0);
 
-    console.log('Connected nodes found:', Array.from(connectedNodes));
-    console.log('Total edges:', edges.length);
+    console.log('Node levels:', Object.fromEntries(nodeLevels));
+    console.log('Nodes by level:', Object.fromEntries(nodesByLevel));
 
-    if (connectedNodes.size === 0) {
-      console.log('No connected nodes found, returning early');
+    if (nodesByLevel.size <= 1) {
+      console.log('No hierarchy found, returning early');
       return;
     }
 
-    // Use setNodes to directly update positions - this was working in the logs
-    console.log('Starting layout update...');
-    
-    const connectedNodeArray = Array.from(connectedNodes);
-    const baseY = selectedNode.position.y + 200;
-    const nodeSpacing = 300;
-    const totalWidth = (connectedNodeArray.length - 1) * nodeSpacing;
-    const startX = selectedNode.position.x - (totalWidth / 2);
-    
-    console.log(`Layout: baseY=${baseY}, nodeSpacing=${nodeSpacing}, startX=${startX}`);
+    console.log('Starting hierarchical layout...');
     
     setNodes((nds) => {
       return nds.map((node) => {
-        if (connectedNodes.has(node.id)) {
-          const index = connectedNodeArray.indexOf(node.id);
-          const newPosition = {
-            x: startX + (index * nodeSpacing),
-            y: baseY
-          };
-          console.log(`Moving node ${node.id} from`, node.position, 'to', newPosition);
+        const level = nodeLevels.get(node.id);
+        if (level !== undefined && level > 0) {
+          const levelNodes = nodesByLevel.get(level)!;
+          const indexInLevel = levelNodes.indexOf(node.id);
+          
+          // Vertical spacing between levels
+          const levelSpacing = 200;
+          const newY = selectedNode.position.y + (level * levelSpacing);
+          
+          // Horizontal spacing within level
+          const nodeSpacing = 300;
+          const totalLevelWidth = (levelNodes.length - 1) * nodeSpacing;
+          const startX = selectedNode.position.x - (totalLevelWidth / 2);
+          const newX = startX + (indexInLevel * nodeSpacing);
+          
+          const newPosition = { x: newX, y: newY };
+          console.log(`Moving node ${node.id} (level ${level}) from`, node.position, 'to', newPosition);
+          
           return {
             ...node,
             position: newPosition
@@ -142,7 +154,7 @@ export const ComponentLibraryPlanner = () => {
       });
     });
     
-    console.log('Layout applied via setNodes');
+    console.log('Hierarchical layout applied');
   }, [selectedNode, edges, setNodes]);
 
   return (
