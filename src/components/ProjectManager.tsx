@@ -28,10 +28,26 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
 
   // Step 1: Initialize project when user is ready AND projects are loaded
   useEffect(() => {
-    if (!user || isAnonymous || loading || isInitialized || initializingRef.current) return;
+    console.log('🔄 ProjectManager: Effect triggered', {
+      user: !!user,
+      isAnonymous,
+      loading,
+      isInitialized,
+      initializingRef: initializingRef.current,
+      projectsLoaded: projectsLoaded.current,
+      projectsCount: projects.length
+    });
+
+    if (!user || isAnonymous || loading || isInitialized || initializingRef.current) {
+      console.log('🚫 ProjectManager: Early return');
+      return;
+    }
     
     // Wait for the initial project load to complete
-    if (!projectsLoaded.current) return;
+    if (!projectsLoaded.current) {
+      console.log('🚫 ProjectManager: Projects not loaded yet');
+      return;
+    }
 
     console.log('🚀 ProjectManager: Initializing with', projects.length, 'projects');
     initializingRef.current = true;
@@ -40,8 +56,9 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
       if (projects.length > 0) {
         // Use existing project
         const project = projects[0];
-        console.log('📁 Using existing project:', project.name);
+        console.log('📁 Using existing project:', project.name, 'ID:', project.id);
         setCurrentProject(project);
+        console.log('✅ setCurrentProject called with:', project);
         await loadVersions(project.id);
       } else {
         // Create new project
@@ -56,7 +73,7 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
     };
 
     initializeProject();
-  }, [user, isAnonymous, loading, isInitialized, projectsLoaded.current]);
+  }, [user, isAnonymous, loading, isInitialized, projects, setCurrentProject, loadVersions, createProject, saveVersion, onInitialized]);
 
   // Track when projects have been loaded
   useEffect(() => {

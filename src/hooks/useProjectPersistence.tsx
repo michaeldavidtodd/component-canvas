@@ -346,6 +346,11 @@ export const useProjectPersistence = () => {
     }
   }, [currentProject, loadVersions]);
 
+  // Debug current project state
+  useEffect(() => {
+    console.log('🎯 useProjectPersistence: currentProject changed:', currentProject);
+  }, [currentProject]);
+
   return {
     // State
     currentProject,
@@ -355,7 +360,10 @@ export const useProjectPersistence = () => {
     autoSaveEnabled,
 
     // Actions
-    setCurrentProject,
+    setCurrentProject: (project: Project | null) => {
+      console.log('🔧 setCurrentProject called with:', project);
+      setCurrentProject(project);
+    },
     setAutoSaveEnabled,
     createProject,
     saveVersion,
