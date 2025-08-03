@@ -22,6 +22,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { ConnectionLegend } from './ConnectionLegend';
 import { VersionHistory } from './VersionHistory';
 import { AutoSaveHandler } from './AutoSaveHandler';
+import { ProjectManager } from './ProjectManager';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,7 +40,6 @@ export const ComponentLibraryPlanner = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const initializationRef = useRef(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -49,13 +49,10 @@ export const ComponentLibraryPlanner = () => {
     versions,
     loading,
     autoSaveEnabled,
-    setCurrentProject,
     setAutoSaveEnabled,
-    createProject,
     saveVersion,
     autoSave,
     loadVersion,
-    loadVersions,
   } = useProjectPersistence();
 
   const onConnect = useCallback(
@@ -428,70 +425,13 @@ export const ComponentLibraryPlanner = () => {
     });
   }, [setNodes]);
 
-  // Initialize with default project for authenticated users
-  useEffect(() => {
-    const isInitialized = initializationRef.current;
-    console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
-    
-    // Always run for authenticated users when not loading and we have projects data
-    if (user && !isAnonymous && !loading && !isInitialized) {
-      console.log('🚀 Starting project initialization...');
-      initializationRef.current = true;
-      
-      if (projects.length > 0) {
-        // Load the most recent project
-        const mostRecentProject = projects[0];
-        console.log('📁 Loading existing project:', { id: mostRecentProject.id, name: mostRecentProject.name });
-        setCurrentProject(mostRecentProject);
-        
-        // Load versions for this project
-        console.log('📚 Loading versions for project:', { id: mostRecentProject.id });
-        loadVersions(mostRecentProject.id);
-      } else {
-        console.log('🆕 Creating new project...');
-        // Create default project with initial elements
-        createProject('My Component Library', 'A visual library of design components').then(newProject => {
-          if (newProject) {
-            saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version', false);
-          }
-        });
-      }
-    } else if ((isAnonymous || !user) && !isInitialized) {
-      console.log('👤 Anonymous user - using default elements');
-      initializationRef.current = true;
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-    }
-  }, [user, isAnonymous, loading, projects, setCurrentProject, createProject, saveVersion, loadVersions, setNodes, setEdges]);
+  // Handle project data loading
+  const handleProjectLoaded = useCallback((loadedNodes: Node[], loadedEdges: Edge[]) => {
+    console.log('📋 Loading project data:', { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
+    setNodes(loadedNodes as any);
+    setEdges(loadedEdges as any);
+  }, [setNodes, setEdges]);
 
-  // Load latest version when versions change and we have a current project
-  useEffect(() => {
-    const isInitialized = initializationRef.current;
-    console.log('📦 Version loading effect:', { 
-      currentProject: !!currentProject, 
-      versionsCount: versions.length, 
-      isInitialized,
-      latestVersion: versions[0] ? {
-        id: versions[0].id,
-        name: versions[0].name,
-        nodesCount: versions[0].nodes?.length,
-        edgesCount: versions[0].edges?.length
-      } : null
-    });
-    
-    if (currentProject && versions.length > 0) {
-      const latestVersion = versions[0];
-      if (latestVersion) {
-        console.log('🎯 Loading version data:', {
-          versionId: latestVersion.id,
-          nodesCount: latestVersion.nodes?.length,
-          edgesCount: latestVersion.edges?.length
-        });
-        setNodes(latestVersion.nodes as any);
-        setEdges(latestVersion.edges as any);
-      }
-    }
-  }, [versions, currentProject, setNodes, setEdges]);
 
   const handleManualSave = useCallback(async () => {
     if (!currentProject) return;
@@ -507,6 +447,7 @@ export const ComponentLibraryPlanner = () => {
 
   return (
     <ReactFlowProvider>
+      <ProjectManager onProjectLoaded={handleProjectLoaded} />
       <div className="flex h-screen bg-canvas">
         <Toolbar 
           onAddNode={addNode}
@@ -567,7 +508,7 @@ export const ComponentLibraryPlanner = () => {
               <AutoSaveHandler
                 currentProject={currentProject}
                 autoSaveEnabled={autoSaveEnabled}
-                isInitialized={initializationRef.current}
+                isInitialized={true}
                 nodes={nodes}
                 edges={edges}
                 onAutoSave={autoSave}
