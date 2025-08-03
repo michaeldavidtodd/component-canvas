@@ -43,8 +43,8 @@ export const ComponentLibraryPlanner = () => {
         const targetType = targetNode.data.componentType;
         
         // Component to Variant connection
-        if ((sourceType === 'main' && targetType === 'variant') || 
-            (sourceType === 'variant' && targetType === 'main')) {
+        if ((sourceType === 'main-component' && targetType === 'variant') || 
+            (sourceType === 'variant' && targetType === 'main-component')) {
           strokeColor = 'hsl(258 100% 68%)'; // primary
         }
         // Token usage connections
