@@ -79,82 +79,61 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [selectedNode, setNodes, setEdges]);
 
-  const smartLayout = useCallback(() => {
-    console.log('Smart Layout clicked, selectedNode:', selectedNode);
-    if (!selectedNode) {
-      return;
-    }
-
-    // Simple level-based layout
-    const levels = new Map<string, number>();
-    const queue = [{ id: selectedNode.id, level: 0 }];
-    const processed = new Set<string>();
-
-    // Build levels using BFS
-    while (queue.length > 0) {
-      const { id, level } = queue.shift()!;
-      
-      if (processed.has(id)) continue;
-      processed.add(id);
-      levels.set(id, level);
-
-      // Add children to next level
-      const children = edges
-        .filter(edge => edge.source === id)
-        .map(edge => edge.target);
-      
-      children.forEach(childId => {
-        if (!processed.has(childId)) {
-          queue.push({ id: childId, level: level + 1 });
-        }
-      });
-    }
-
-    // Group nodes by level
-    const nodesByLevel = new Map<number, string[]>();
-    levels.forEach((level, nodeId) => {
-      if (!nodesByLevel.has(level)) {
-        nodesByLevel.set(level, []);
-      }
-      nodesByLevel.get(level)!.push(nodeId);
-    });
-
-    console.log('Levels:', Object.fromEntries(levels));
-    console.log('Nodes by level:', Object.fromEntries(nodesByLevel));
-
-    // Apply layout
+  const cleanupLayout = useCallback(() => {
+    const gridSize = 50; // Grid snap size
+    const minSpacing = 200; // Minimum spacing between nodes
+    
     setNodes((nds) => {
       return nds.map((node) => {
-        const level = levels.get(node.id);
-        if (level !== undefined) {
-          const levelNodes = nodesByLevel.get(level)!;
-          const nodeIndex = levelNodes.indexOf(node.id);
+        // Snap to grid
+        const snappedX = Math.round(node.position.x / gridSize) * gridSize;
+        const snappedY = Math.round(node.position.y / gridSize) * gridSize;
+        
+        // Check for overlaps and adjust spacing
+        let finalX = snappedX;
+        let finalY = snappedY;
+        
+        // Find if any other node is too close
+        const otherNodes = nds.filter(n => n.id !== node.id);
+        let hasOverlap = true;
+        let attempts = 0;
+        
+        while (hasOverlap && attempts < 20) {
+          hasOverlap = false;
           
-          const levelSpacing = 200;
-          const nodeSpacing = 350;
-          
-          const newY = selectedNode.position.y + (level * levelSpacing);
-          
-          let newX;
-          if (levelNodes.length === 1) {
-            newX = selectedNode.position.x;
-          } else {
-            const totalWidth = (levelNodes.length - 1) * nodeSpacing;
-            const startX = selectedNode.position.x - (totalWidth / 2);
-            newX = startX + (nodeIndex * nodeSpacing);
+          for (const otherNode of otherNodes) {
+            const otherX = otherNode.position.x;
+            const otherY = otherNode.position.y;
+            
+            const distanceX = Math.abs(finalX - otherX);
+            const distanceY = Math.abs(finalY - otherY);
+            
+            // If nodes are too close, adjust position
+            if (distanceX < minSpacing && distanceY < minSpacing) {
+              hasOverlap = true;
+              
+              // Move in the direction that creates more space
+              if (finalX >= otherX) {
+                finalX = otherX + minSpacing;
+              } else {
+                finalX = otherX - minSpacing;
+              }
+              
+              // Snap to grid again
+              finalX = Math.round(finalX / gridSize) * gridSize;
+              break;
+            }
           }
-          
-          return {
-            ...node,
-            position: { x: newX, y: newY }
-          };
+          attempts++;
         }
-        return node;
+        
+        return {
+          ...node,
+          position: { x: finalX, y: finalY }
+        };
       });
     });
-    
-    console.log('Simple layout applied');
-  }, [selectedNode, edges, setNodes]);
+  }, [setNodes]);
 
   return (
     <div className="flex h-screen bg-canvas">
@@ -196,7 +175,7 @@ export const ComponentLibraryPlanner = () => {
         selectedNode={selectedNode}
         onUpdateNode={updateNodeData}
         onDeleteNode={deleteSelectedNode}
-        onSmartLayout={smartLayout}
+        onSmartLayout={cleanupLayout}
       />
     </div>
   );
