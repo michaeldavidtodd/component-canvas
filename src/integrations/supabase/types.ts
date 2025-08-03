@@ -41,12 +41,86 @@ export type Database = {
         }
         Relationships: []
       }
+      project_versions: {
+        Row: {
+          created_at: string
+          edges: Json
+          id: string
+          is_auto_save: boolean
+          name: string | null
+          nodes: Json
+          project_id: string
+          version_number: number
+          viewport: Json | null
+        }
+        Insert: {
+          created_at?: string
+          edges?: Json
+          id?: string
+          is_auto_save?: boolean
+          name?: string | null
+          nodes?: Json
+          project_id: string
+          version_number: number
+          viewport?: Json | null
+        }
+        Update: {
+          created_at?: string
+          edges?: Json
+          id?: string
+          is_auto_save?: boolean
+          name?: string | null
+          nodes?: Json
+          project_id?: string
+          version_number?: number
+          viewport?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_next_version_number: {
+        Args: { project_uuid: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
