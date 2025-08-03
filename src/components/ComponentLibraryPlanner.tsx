@@ -437,16 +437,18 @@ export const ComponentLibraryPlanner = () => {
           const mostRecentProject = projects[0];
           setCurrentProject(mostRecentProject);
           
-          // Load versions for this project and get the latest one
+          // Load versions for this project - the version loading effect will handle setting nodes/edges
           await loadVersions(mostRecentProject.id);
         } else {
           // Create default project with initial elements
           const newProject = await createProject('My Component Library', 'A visual library of design components');
           if (newProject) {
-            await saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version');
+            await saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version', false);
+            setNodes(initialNodes);
+            setEdges(initialEdges);
+            setIsInitialized(true);
           }
         }
-        setIsInitialized(true);
       };
 
       initializeProject();
@@ -458,14 +460,15 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [user, isAnonymous, loading, isInitialized, projects, setCurrentProject, createProject, saveVersion, setNodes, setEdges, loadVersions]);
 
-  // Load latest version when versions change and we have a current project
+  // Load latest version when versions change and we have a current project, but only on first load
   useEffect(() => {
-    if (currentProject && versions.length > 0 && isInitialized) {
+    if (currentProject && versions.length > 0 && !isInitialized) {
       const latestVersion = versions[0];
       if (latestVersion) {
         setNodes(latestVersion.nodes as any);
         setEdges(latestVersion.edges as any);
       }
+      setIsInitialized(true);
     }
   }, [versions, currentProject, isInitialized, setNodes, setEdges]);
 
@@ -473,7 +476,7 @@ export const ComponentLibraryPlanner = () => {
     if (!currentProject) return;
     
     const versionName = `Version ${new Date().toLocaleString()}`;
-    await saveVersion(currentProject.id, nodes, edges, undefined, versionName);
+    await saveVersion(currentProject.id, nodes, edges, undefined, versionName, false);
   }, [currentProject, nodes, edges, saveVersion]);
 
   const handleSignOut = async () => {

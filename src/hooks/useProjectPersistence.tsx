@@ -194,6 +194,11 @@ export const useProjectPersistence = () => {
           title: "Success",
           description: "Version saved successfully"
         });
+      } else {
+        toast({
+          title: "Auto-saved",
+          description: "Changes saved automatically"
+        });
       }
 
       return newVersion;
