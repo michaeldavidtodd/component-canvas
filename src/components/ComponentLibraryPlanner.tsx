@@ -81,111 +81,134 @@ export const ComponentLibraryPlanner = () => {
 
   const smartLayout = useCallback(() => {
     const rowSpacing = 250; // Vertical spacing between rows
-    const minNodeSpacing = 300; // Increased minimum horizontal spacing between nodes
+    const minNodeSpacing = 300; // Minimum horizontal spacing between nodes
     const baseY = 100; // Starting Y position
     
-    // Define hierarchy order
-    const hierarchy: ComponentType[] = ['main-component', 'variant', 'sub-component', 'instance', 'token'];
-    
     setNodes((nds) => {
-      // Step 1: Group nodes by type and sort by hierarchy
-      const groupedNodes = new Map<ComponentType, typeof nds>();
-      hierarchy.forEach(type => groupedNodes.set(type, []));
+      // Step 1: Build hierarchy tree based on actual connections
+      const nodeMap = new Map(nds.map(node => [node.id, node]));
+      const children = new Map<string, string[]>();
+      const parents = new Map<string, string>();
       
+      // Build parent-child relationships from edges
+      edges.forEach(edge => {
+        if (!children.has(edge.source)) {
+          children.set(edge.source, []);
+        }
+        children.get(edge.source)!.push(edge.target);
+        parents.set(edge.target, edge.source);
+      });
+      
+      // Find root nodes (nodes with no parents)
+      const rootNodes = nds.filter(node => !parents.has(node.id));
+      
+      // Step 2: Calculate depth levels for each node
+      const nodeLevels = new Map<string, number>();
+      const levelNodes = new Map<number, typeof nds>();
+      
+      const calculateLevel = (nodeId: string, level: number = 0) => {
+        if (nodeLevels.has(nodeId)) return;
+        
+        nodeLevels.set(nodeId, level);
+        if (!levelNodes.has(level)) {
+          levelNodes.set(level, []);
+        }
+        const node = nodeMap.get(nodeId);
+        if (node) {
+          levelNodes.get(level)!.push(node);
+        }
+        
+        // Process children at next level
+        const nodeChildren = children.get(nodeId) || [];
+        nodeChildren.forEach(childId => calculateLevel(childId, level + 1));
+      };
+      
+      // Start with root nodes at level 0
+      rootNodes.forEach(node => calculateLevel(node.id, 0));
+      
+      // Handle orphaned nodes (not connected to anything)
       nds.forEach(node => {
-        const nodeType = (node.data as ComponentNodeData).componentType;
-        if (groupedNodes.has(nodeType)) {
-          groupedNodes.get(nodeType)!.push(node);
+        if (!nodeLevels.has(node.id)) {
+          calculateLevel(node.id, 0);
         }
       });
       
-      // Step 2: Calculate positions for each row
-      const rows: { type: ComponentType; nodes: typeof nds; y: number }[] = [];
-      let currentY = baseY;
-      
-      hierarchy.forEach(type => {
-        const nodesOfType = groupedNodes.get(type)!;
-        if (nodesOfType.length > 0) {
-          rows.push({ type, nodes: nodesOfType, y: currentY });
-          currentY += rowSpacing;
-        }
-      });
-      
-      // Step 3: Position nodes within each row and center-align
+      // Step 3: Position nodes level by level
       const updatedNodes = new Map<string, { x: number; y: number }>();
+      const maxLevel = Math.max(...Array.from(levelNodes.keys()));
       
-      rows.forEach((row, rowIndex) => {
-        // Step 4: For rows after the first, reorder based on relationships
-        let orderedNodes = [...row.nodes];
-        if (rowIndex > 0) {
-          const prevRow = rows[rowIndex - 1];
-          const prevNodePositions = prevRow.nodes.map(n => ({
-            id: n.id,
-            x: updatedNodes.get(n.id)?.x || 0
-          }));
-          
-          // Sort current row nodes by their relationship to previous row
-          orderedNodes.sort((a, b) => {
-            const aConnections = edges.filter(e => e.target === a.id).map(e => e.source);
-            const bConnections = edges.filter(e => e.target === b.id).map(e => e.source);
-            
-            const aParentX = aConnections.length > 0 
-              ? Math.min(...aConnections.map(id => prevNodePositions.find(p => p.id === id)?.x || 0))
-              : 0;
-            const bParentX = bConnections.length > 0 
-              ? Math.min(...bConnections.map(id => prevNodePositions.find(p => p.id === id)?.x || 0))
-              : 0;
-            
-            return aParentX - bParentX;
-          });
-        }
+      for (let level = 0; level <= maxLevel; level++) {
+        const nodesAtLevel = levelNodes.get(level) || [];
+        if (nodesAtLevel.length === 0) continue;
         
-        // Step 5: Initial positioning with proper spacing
-        const totalWidth = (orderedNodes.length - 1) * minNodeSpacing;
-        const startX = -totalWidth / 2; // Center around 0
+        const y = baseY + (level * rowSpacing);
         
-        orderedNodes.forEach((node, index) => {
-          let x = startX + (index * minNodeSpacing);
-          updatedNodes.set(node.id, { x, y: row.y });
+        // Step 4: Group nodes by their parent for better organization
+        const nodeGroups = new Map<string, typeof nds>();
+        const orphanNodes: typeof nds = [];
+        
+        nodesAtLevel.forEach(node => {
+          const parentId = parents.get(node.id);
+          if (parentId) {
+            if (!nodeGroups.has(parentId)) {
+              nodeGroups.set(parentId, []);
+            }
+            nodeGroups.get(parentId)!.push(node);
+          } else {
+            orphanNodes.push(node);
+          }
         });
         
-        // Step 6: Optimize positions to minimize line crossings
-        if (rowIndex > 0) {
-          const currentPositions = orderedNodes.map(node => ({
-            id: node.id,
-            x: updatedNodes.get(node.id)!.x,
-            connections: edges.filter(e => e.target === node.id).map(e => e.source)
-          }));
-          
-          // Try to position nodes closer to their parent connections
-          currentPositions.forEach((nodeInfo, index) => {
-            if (nodeInfo.connections.length > 0) {
-              const parentPositions = nodeInfo.connections
-                .map(parentId => updatedNodes.get(parentId)?.x)
-                .filter(x => x !== undefined) as number[];
-              
-              if (parentPositions.length > 0) {
-                const avgParentX = parentPositions.reduce((sum, x) => sum + x, 0) / parentPositions.length;
-                
-                // Calculate the optimal position while maintaining minimum spacing
-                const leftBound = index > 0 ? currentPositions[index - 1].x + minNodeSpacing : -Infinity;
-                const rightBound = index < currentPositions.length - 1 ? currentPositions[index + 1].x - minNodeSpacing : Infinity;
-                
-                const optimalX = Math.max(leftBound, Math.min(rightBound, avgParentX));
-                
-                // Update position if it's different and doesn't cause overlap
-                if (Math.abs(optimalX - nodeInfo.x) > 50) { // Only move if significant improvement
-                  updatedNodes.set(nodeInfo.id, { x: optimalX, y: row.y });
-                  currentPositions[index].x = optimalX;
-                  
-                  // Resort positions to maintain order
-                  currentPositions.sort((a, b) => a.x - b.x);
-                }
-              }
-            }
+        // Step 5: Position groups based on parent positions
+        const allGroupsNodes: { nodes: typeof nds; parentX?: number }[] = [];
+        
+        // Add groups with parents
+        Array.from(nodeGroups.entries()).forEach(([parentId, groupNodes]) => {
+          const parentPos = updatedNodes.get(parentId);
+          allGroupsNodes.push({
+            nodes: groupNodes,
+            parentX: parentPos?.x
           });
-        }
-      });
+        });
+        
+        // Add orphan nodes as individual groups
+        orphanNodes.forEach(node => {
+          allGroupsNodes.push({ nodes: [node] });
+        });
+        
+        // Sort groups by parent position (left to right)
+        allGroupsNodes.sort((a, b) => {
+          const aX = a.parentX ?? 0;
+          const bX = b.parentX ?? 0;
+          return aX - bX;
+        });
+        
+        // Step 6: Calculate positions for each group
+        let currentX = 0;
+        const totalGroups = allGroupsNodes.length;
+        const totalWidth = Math.max(0, (totalGroups - 1) * minNodeSpacing * 2); // Extra spacing between groups
+        let startX = -totalWidth / 2;
+        
+        allGroupsNodes.forEach((group, groupIndex) => {
+          const groupNodes = group.nodes;
+          const groupWidth = Math.max(0, (groupNodes.length - 1) * minNodeSpacing);
+          const groupStartX = startX + (groupIndex * minNodeSpacing * 2) - (groupWidth / 2);
+          
+          // Position nodes within the group
+          groupNodes.forEach((node, nodeIndex) => {
+            let nodeX = groupStartX + (nodeIndex * minNodeSpacing);
+            
+            // If this group has a parent, try to center it around the parent
+            if (group.parentX !== undefined) {
+              const groupCenterX = groupStartX + (groupWidth / 2);
+              const offsetToParent = group.parentX - groupCenterX;
+              nodeX += offsetToParent;
+            }
+            
+            updatedNodes.set(node.id, { x: nodeX, y });
+          });
+        });
+      }
       
       // Apply the new positions
       return nds.map(node => {
