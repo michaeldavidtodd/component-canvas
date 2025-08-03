@@ -81,7 +81,7 @@ export const ComponentLibraryPlanner = () => {
 
   const smartLayout = useCallback(() => {
     const rowSpacing = 250; // Vertical spacing between rows
-    const minNodeSpacing = 200; // Minimum horizontal spacing between nodes
+    const minNodeSpacing = 300; // Increased minimum horizontal spacing between nodes
     const baseY = 100; // Starting Y position
     
     // Define hierarchy order
@@ -115,9 +115,6 @@ export const ComponentLibraryPlanner = () => {
       const updatedNodes = new Map<string, { x: number; y: number }>();
       
       rows.forEach((row, rowIndex) => {
-        const totalWidth = (row.nodes.length - 1) * minNodeSpacing;
-        const startX = -totalWidth / 2; // Center around 0
-        
         // Step 4: For rows after the first, reorder based on relationships
         let orderedNodes = [...row.nodes];
         if (rowIndex > 0) {
@@ -143,31 +140,51 @@ export const ComponentLibraryPlanner = () => {
           });
         }
         
-        // Step 5: Position nodes with optimization for connected nodes
+        // Step 5: Initial positioning with proper spacing
+        const totalWidth = (orderedNodes.length - 1) * minNodeSpacing;
+        const startX = -totalWidth / 2; // Center around 0
+        
         orderedNodes.forEach((node, index) => {
           let x = startX + (index * minNodeSpacing);
+          updatedNodes.set(node.id, { x, y: row.y });
+        });
+        
+        // Step 6: Optimize positions to minimize line crossings
+        if (rowIndex > 0) {
+          const currentPositions = orderedNodes.map(node => ({
+            id: node.id,
+            x: updatedNodes.get(node.id)!.x,
+            connections: edges.filter(e => e.target === node.id).map(e => e.source)
+          }));
           
-          // Optimize position based on parent connections
-          if (rowIndex > 0) {
-            const connections = edges.filter(e => e.target === node.id);
-            if (connections.length > 0) {
-              const parentPositions = connections
-                .map(e => updatedNodes.get(e.source)?.x)
+          // Try to position nodes closer to their parent connections
+          currentPositions.forEach((nodeInfo, index) => {
+            if (nodeInfo.connections.length > 0) {
+              const parentPositions = nodeInfo.connections
+                .map(parentId => updatedNodes.get(parentId)?.x)
                 .filter(x => x !== undefined) as number[];
               
               if (parentPositions.length > 0) {
                 const avgParentX = parentPositions.reduce((sum, x) => sum + x, 0) / parentPositions.length;
-                // Adjust position to be closer to parent average, but maintain minimum spacing
-                const minX = index > 0 ? (updatedNodes.get(orderedNodes[index - 1].id)?.x || 0) + minNodeSpacing : startX;
-                const maxX = index < orderedNodes.length - 1 ? startX + ((index + 1) * minNodeSpacing) - minNodeSpacing : Infinity;
                 
-                x = Math.max(minX, Math.min(maxX, avgParentX));
+                // Calculate the optimal position while maintaining minimum spacing
+                const leftBound = index > 0 ? currentPositions[index - 1].x + minNodeSpacing : -Infinity;
+                const rightBound = index < currentPositions.length - 1 ? currentPositions[index + 1].x - minNodeSpacing : Infinity;
+                
+                const optimalX = Math.max(leftBound, Math.min(rightBound, avgParentX));
+                
+                // Update position if it's different and doesn't cause overlap
+                if (Math.abs(optimalX - nodeInfo.x) > 50) { // Only move if significant improvement
+                  updatedNodes.set(nodeInfo.id, { x: optimalX, y: row.y });
+                  currentPositions[index].x = optimalX;
+                  
+                  // Resort positions to maintain order
+                  currentPositions.sort((a, b) => a.x - b.x);
+                }
               }
             }
-          }
-          
-          updatedNodes.set(node.id, { x, y: row.y });
-        });
+          });
+        }
       });
       
       // Apply the new positions
