@@ -258,11 +258,24 @@ export const ComponentLibraryPlanner = () => {
           if (nodesAtLevel.length <= 1) continue;
           
           const levelNodePositions = nodesAtLevel
-            .map(node => ({ 
-              id: node.id, 
-              x: updatedNodes.get(node.id)!.x,
-              isShared: sharedChildren.has(node.id)
-            }))
+            .map(node => {
+              const position = updatedNodes.get(node.id);
+              // Ensure node has a position, if not give it a default one
+              if (!position) {
+                const defaultX = node.position.x; // Use original position as fallback
+                updatedNodes.set(node.id, { x: defaultX, y: baseY + (level * rowSpacing) });
+                return {
+                  id: node.id,
+                  x: defaultX,
+                  isShared: sharedChildren.has(node.id)
+                };
+              }
+              return {
+                id: node.id, 
+                x: position.x,
+                isShared: sharedChildren.has(node.id)
+              };
+            })
             .sort((a, b) => a.x - b.x);
           
           // Adjust overlapping nodes, prioritizing shared children positions
