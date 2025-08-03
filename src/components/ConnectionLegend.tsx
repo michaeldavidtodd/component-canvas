@@ -6,24 +6,15 @@ export const ConnectionLegend = () => {
       <h3 className="text-sm font-semibold mb-3 text-foreground">Connection Types</h3>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-0.5 rounded"
-            style={{ backgroundColor: 'hsl(var(--primary))' }}
-          />
+          <div className="w-6 h-0.5 rounded bg-primary" />
           <span className="text-xs text-muted-foreground">Component to Variant</span>
         </div>
         <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-0.5 rounded"
-            style={{ backgroundColor: 'hsl(var(--muted-foreground))' }}
-          />
+          <div className="w-6 h-0.5 rounded bg-muted-foreground" />
           <span className="text-xs text-muted-foreground">Component Relationships</span>
         </div>
         <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-0.5 rounded"
-            style={{ backgroundColor: 'hsl(var(--component-token))' }}
-          />
+          <div className="w-6 h-0.5 rounded bg-component-token" />
           <span className="text-xs text-muted-foreground">Token Usage</span>
         </div>
       </div>
