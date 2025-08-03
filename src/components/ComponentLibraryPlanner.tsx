@@ -432,7 +432,8 @@ export const ComponentLibraryPlanner = () => {
   useEffect(() => {
     console.log('🔄 Initialization effect triggered:', { user: !!user, isAnonymous, loading, isInitialized, projectsCount: projects.length });
     
-    if (user && !isAnonymous && !loading && !isInitialized) {
+    // Only run initialization once when user is authenticated, not loading, not initialized, and projects have been loaded
+    if (user && !isAnonymous && !loading && !isInitialized && projects.length >= 0) {
       const initializeProject = async () => {
         console.log('🚀 Starting project initialization...');
         
@@ -458,8 +459,10 @@ export const ComponentLibraryPlanner = () => {
         }
       };
 
+      // Mark as initialized immediately to prevent re-runs
+      setIsInitialized(true);
       initializeProject();
-    } else if (isAnonymous || !user) {
+    } else if ((isAnonymous || !user) && !isInitialized) {
       console.log('👤 Anonymous user - using default elements');
       // Use default initial elements for anonymous users
       setNodes(initialNodes);
