@@ -22,9 +22,15 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const initializingRef = useRef(false);
 
-  // Step 1: Initialize project when user is ready
+  // Wait for projects to be loaded from the database
+  const projectsLoaded = useRef(false);
+
+  // Step 1: Initialize project when user is ready AND projects are loaded
   useEffect(() => {
     if (!user || isAnonymous || loading || isInitialized || initializingRef.current) return;
+    
+    // Wait for the initial project load to complete
+    if (!projectsLoaded.current) return;
 
     console.log('🚀 ProjectManager: Initializing with', projects.length, 'projects');
     initializingRef.current = true;
@@ -48,7 +54,18 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
     };
 
     initializeProject();
-  }, [user, isAnonymous, loading, isInitialized]); // Removed 'projects' from dependencies to prevent re-runs
+  }, [user, isAnonymous, loading, isInitialized, projectsLoaded.current]);
+
+  // Track when projects have been loaded
+  useEffect(() => {
+    if (!loading && user && !isAnonymous) {
+      // Set a small delay to allow projects to load
+      const timer = setTimeout(() => {
+        projectsLoaded.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isAnonymous, loading]);
 
   // Step 2: Load canvas data when versions change
   useEffect(() => {
