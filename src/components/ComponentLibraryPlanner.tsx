@@ -113,32 +113,33 @@ export const ComponentLibraryPlanner = () => {
       return;
     }
 
-    // Simple approach: arrange connected nodes in a grid below the selected node
+    // Create a proper layout with clear spacing
     console.log('Starting layout update...');
     setNodes((nds) => {
-      console.log('Inside setNodes callback, current nodes:', nds.length);
       const updatedNodes = [...nds];
       const nodeMap = new Map(updatedNodes.map(node => [node.id, node]));
       
       const connectedNodeArray = Array.from(connectedNodes);
-      const startY = selectedNode.position.y + 150; // Start 150px below selected node
-      const startX = selectedNode.position.x - (connectedNodeArray.length * 100); // Center horizontally
+      const baseY = selectedNode.position.y + 200; // More space below parent
+      const nodeSpacing = 300; // Wider spacing between nodes
+      const totalWidth = (connectedNodeArray.length - 1) * nodeSpacing;
+      const startX = selectedNode.position.x - (totalWidth / 2); // Center the row
       
-      console.log('About to update positions for:', connectedNodeArray);
+      console.log(`Layout: baseY=${baseY}, nodeSpacing=${nodeSpacing}, startX=${startX}`);
+      
       connectedNodeArray.forEach((nodeId, index) => {
         const node = nodeMap.get(nodeId);
         if (node) {
           const newPosition = {
-            x: startX + (index * 200), // 200px spacing between nodes
-            y: startY
+            x: startX + (index * nodeSpacing),
+            y: baseY
           };
           console.log(`Moving node ${nodeId} from`, node.position, 'to', newPosition);
           node.position = newPosition;
         }
       });
       
-      console.log('Layout applied to nodes:', connectedNodeArray);
-      console.log('Returning updated nodes:', updatedNodes.map(n => ({ id: n.id, position: n.position })));
+      console.log('Layout completed');
       return updatedNodes;
     });
   }, [selectedNode, edges, setNodes]);
