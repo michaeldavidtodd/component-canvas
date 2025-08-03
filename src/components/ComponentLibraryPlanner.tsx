@@ -113,35 +113,36 @@ export const ComponentLibraryPlanner = () => {
       return;
     }
 
-    // Create a proper layout with clear spacing
+    // Use setNodes to directly update positions - this was working in the logs
     console.log('Starting layout update...');
+    
+    const connectedNodeArray = Array.from(connectedNodes);
+    const baseY = selectedNode.position.y + 200;
+    const nodeSpacing = 300;
+    const totalWidth = (connectedNodeArray.length - 1) * nodeSpacing;
+    const startX = selectedNode.position.x - (totalWidth / 2);
+    
+    console.log(`Layout: baseY=${baseY}, nodeSpacing=${nodeSpacing}, startX=${startX}`);
+    
     setNodes((nds) => {
-      const updatedNodes = [...nds];
-      const nodeMap = new Map(updatedNodes.map(node => [node.id, node]));
-      
-      const connectedNodeArray = Array.from(connectedNodes);
-      const baseY = selectedNode.position.y + 200; // More space below parent
-      const nodeSpacing = 300; // Wider spacing between nodes
-      const totalWidth = (connectedNodeArray.length - 1) * nodeSpacing;
-      const startX = selectedNode.position.x - (totalWidth / 2); // Center the row
-      
-      console.log(`Layout: baseY=${baseY}, nodeSpacing=${nodeSpacing}, startX=${startX}`);
-      
-      connectedNodeArray.forEach((nodeId, index) => {
-        const node = nodeMap.get(nodeId);
-        if (node) {
+      return nds.map((node) => {
+        if (connectedNodes.has(node.id)) {
+          const index = connectedNodeArray.indexOf(node.id);
           const newPosition = {
             x: startX + (index * nodeSpacing),
             y: baseY
           };
-          console.log(`Moving node ${nodeId} from`, node.position, 'to', newPosition);
-          node.position = newPosition;
+          console.log(`Moving node ${node.id} from`, node.position, 'to', newPosition);
+          return {
+            ...node,
+            position: newPosition
+          };
         }
+        return node;
       });
-      
-      console.log('Layout completed');
-      return updatedNodes;
     });
+    
+    console.log('Layout applied via setNodes');
   }, [selectedNode, edges, setNodes]);
 
   return (
