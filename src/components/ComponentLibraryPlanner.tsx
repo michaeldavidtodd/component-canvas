@@ -414,37 +414,15 @@ export const ComponentLibraryPlanner = () => {
 
   return (
     <div className="flex h-screen bg-canvas">
-      <Toolbar onAddNode={addNode} />
+      <Toolbar 
+        onAddNode={addNode}
+        user={user}
+        isAnonymous={isAnonymous}
+        onSignOut={handleSignOut}
+        onNavigateToAuth={() => navigate('/auth')}
+      />
       
       <div className="flex-1 relative">
-        {/* Auth status bar */}
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          {isAnonymous ? (
-            <div className="flex items-center gap-2 bg-workspace border border-border rounded-lg px-3 py-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Guest mode (no saving)</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/auth')}
-              >
-                Sign In
-              </Button>
-            </div>
-          ) : user ? (
-            <div className="flex items-center gap-2 bg-workspace border border-border rounded-lg px-3 py-2 text-sm">
-              <User className="h-4 w-4 text-primary" />
-              <span className="text-foreground">{user.email}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
-        </div>
 
         <ReactFlow
           nodes={nodes}

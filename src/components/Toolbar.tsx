@@ -6,11 +6,17 @@ import {
   Palette, 
   Copy, 
   Square,
-  Plus 
+  Plus,
+  User,
+  LogOut 
 } from 'lucide-react';
 
 interface ToolbarProps {
   onAddNode: (type: ComponentType) => void;
+  user?: any;
+  isAnonymous?: boolean;
+  onSignOut?: () => void;
+  onNavigateToAuth?: () => void;
 }
 
 const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -46,7 +52,7 @@ const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; co
   },
 ];
 
-export const Toolbar = ({ onAddNode }: ToolbarProps) => {
+export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToAuth }: ToolbarProps) => {
   return (
     <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
       <div>
@@ -78,10 +84,44 @@ export const Toolbar = ({ onAddNode }: ToolbarProps) => {
         ))}
       </div>
       
-      <div className="mt-auto pt-4 border-t border-border">
+      <div className="mt-auto pt-4 border-t border-border space-y-3">
         <p className="text-xs text-muted-foreground">
           Click and drag to create connections between components
         </p>
+        
+        {/* Auth status */}
+        {isAnonymous ? (
+          <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col flex-1">
+              <span className="text-xs text-muted-foreground">Guest mode</span>
+              <span className="text-xs text-muted-foreground">(no saving)</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNavigateToAuth}
+              className="text-xs"
+            >
+              Sign In
+            </Button>
+          </div>
+        ) : user ? (
+          <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm">
+            <User className="h-4 w-4 text-primary" />
+            <div className="flex flex-col flex-1">
+              <span className="text-xs text-foreground truncate">{user.email}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSignOut}
+              className="p-1"
+            >
+              <LogOut className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
