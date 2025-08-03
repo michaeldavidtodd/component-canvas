@@ -32,8 +32,36 @@ export const ComponentLibraryPlanner = () => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      const sourceNode = nodes.find(n => n.id === params.source);
+      const targetNode = nodes.find(n => n.id === params.target);
+      
+      let strokeColor = 'hsl(216 8% 45%)'; // default muted-foreground
+      
+      if (sourceNode && targetNode) {
+        const sourceType = sourceNode.data.componentType;
+        const targetType = targetNode.data.componentType;
+        
+        // Component to Variant connection
+        if ((sourceType === 'main' && targetType === 'variant') || 
+            (sourceType === 'variant' && targetType === 'main')) {
+          strokeColor = 'hsl(258 100% 68%)'; // primary
+        }
+        // Token usage connections
+        else if (sourceType === 'token' || targetType === 'token') {
+          strokeColor = 'hsl(45 100% 68%)'; // component-token
+        }
+      }
+      
+      const newEdge = {
+        ...params,
+        type: 'smoothstep',
+        style: { stroke: strokeColor }
+      };
+      
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
+    [setEdges, nodes]
   );
 
   const handleNodeSelect = useCallback((node: any) => {
