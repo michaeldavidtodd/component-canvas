@@ -82,118 +82,78 @@ export const ComponentLibraryPlanner = () => {
   const smartLayout = useCallback(() => {
     console.log('Smart Layout clicked, selectedNode:', selectedNode);
     if (!selectedNode) {
-      console.log('No selected node, returning early');
       return;
     }
 
-    // Build hierarchy and track relationships
-    const nodeLevels = new Map<string, number>();
-    const nodeChildren = new Map<string, string[]>();
-    const nodeParents = new Map<string, string[]>();
-    
-    const buildHierarchy = (nodeId: string, level: number) => {
-      if (nodeLevels.has(nodeId) && nodeLevels.get(nodeId)! <= level) {
-        return;
-      }
-      
-      nodeLevels.set(nodeId, level);
-      
-      const outgoingEdges = edges.filter(edge => edge.source === nodeId);
-      const children = outgoingEdges.map(edge => edge.target);
-      nodeChildren.set(nodeId, children);
-      
-      // Track parents for each child
-      children.forEach(childId => {
-        if (!nodeParents.has(childId)) {
-          nodeParents.set(childId, []);
-        }
-        nodeParents.get(childId)!.push(nodeId);
-      });
-      
-      // Recurse to children
-      children.forEach(childId => {
-        buildHierarchy(childId, level + 1);
-      });
-    };
+    // Simple level-based layout
+    const levels = new Map<string, number>();
+    const queue = [{ id: selectedNode.id, level: 0 }];
+    const processed = new Set<string>();
 
-    buildHierarchy(selectedNode.id, 0);
+    // Build levels using BFS
+    while (queue.length > 0) {
+      const { id, level } = queue.shift()!;
+      
+      if (processed.has(id)) continue;
+      processed.add(id);
+      levels.set(id, level);
+
+      // Add children to next level
+      const children = edges
+        .filter(edge => edge.source === id)
+        .map(edge => edge.target);
+      
+      children.forEach(childId => {
+        if (!processed.has(childId)) {
+          queue.push({ id: childId, level: level + 1 });
+        }
+      });
+    }
 
     // Group nodes by level
     const nodesByLevel = new Map<number, string[]>();
-    for (const [nodeId, level] of nodeLevels) {
+    levels.forEach((level, nodeId) => {
       if (!nodesByLevel.has(level)) {
         nodesByLevel.set(level, []);
       }
       nodesByLevel.get(level)!.push(nodeId);
-    }
+    });
 
-    console.log('Node hierarchy built:', Object.fromEntries(nodeLevels));
+    console.log('Levels:', Object.fromEntries(levels));
+    console.log('Nodes by level:', Object.fromEntries(nodesByLevel));
 
-    if (nodesByLevel.size <= 1) {
-      console.log('No hierarchy found');
-      return;
-    }
-
+    // Apply layout
     setNodes((nds) => {
       return nds.map((node) => {
-        const level = nodeLevels.get(node.id);
-        if (level !== undefined && level > 0) {
+        const level = levels.get(node.id);
+        if (level !== undefined) {
+          const levelNodes = nodesByLevel.get(level)!;
+          const nodeIndex = levelNodes.indexOf(node.id);
+          
           const levelSpacing = 200;
-          const nodeSpacing = 350; // Increased spacing to avoid overlaps
+          const nodeSpacing = 350;
+          
           const newY = selectedNode.position.y + (level * levelSpacing);
           
-          let newX = selectedNode.position.x;
-          
-          const parents = nodeParents.get(node.id) || [];
-          
-          if (parents.length === 1) {
-            // Single parent - position based on parent's position and siblings
-            const parentId = parents[0];
-            const parentNode = nds.find(n => n.id === parentId);
-            const allSiblings = nodeChildren.get(parentId) || [];
-            
-            if (parentNode && allSiblings.length > 0) {
-              const nodeIndex = allSiblings.indexOf(node.id);
-              
-              if (allSiblings.length === 1) {
-                // Only child - position directly below parent
-                newX = parentNode.position.x;
-              } else {
-                // Has siblings - spread around parent
-                const totalWidth = (allSiblings.length - 1) * nodeSpacing;
-                const startX = parentNode.position.x - (totalWidth / 2);
-                newX = startX + (nodeIndex * nodeSpacing);
-              }
-            }
-          } else if (parents.length > 1) {
-            // Multiple parents - position between them
-            const parentNodes = parents.map(pid => nds.find(n => n.id === pid)).filter(Boolean);
-            if (parentNodes.length > 0) {
-              const avgX = parentNodes.reduce((sum, p) => sum + (p?.position.x || 0), 0) / parentNodes.length;
-              newX = avgX;
-            }
+          let newX;
+          if (levelNodes.length === 1) {
+            newX = selectedNode.position.x;
           } else {
-            // No direct parent in current hierarchy - use level-based positioning
-            const levelNodes = nodesByLevel.get(level) || [];
-            const indexInLevel = levelNodes.indexOf(node.id);
             const totalWidth = (levelNodes.length - 1) * nodeSpacing;
             const startX = selectedNode.position.x - (totalWidth / 2);
-            newX = startX + (indexInLevel * nodeSpacing);
+            newX = startX + (nodeIndex * nodeSpacing);
           }
-          
-          const newPosition = { x: newX, y: newY };
-          console.log(`Moving node ${node.id} (level ${level}) to`, newPosition);
           
           return {
             ...node,
-            position: newPosition
+            position: { x: newX, y: newY }
           };
         }
         return node;
       });
     });
     
-    console.log('Smart layout applied');
+    console.log('Simple layout applied');
   }, [selectedNode, edges, setNodes]);
 
   return (
