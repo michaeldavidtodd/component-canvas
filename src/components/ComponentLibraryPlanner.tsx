@@ -114,7 +114,9 @@ export const ComponentLibraryPlanner = () => {
     }
 
     // Simple approach: arrange connected nodes in a grid below the selected node
+    console.log('Starting layout update...');
     setNodes((nds) => {
+      console.log('Inside setNodes callback, current nodes:', nds.length);
       const updatedNodes = [...nds];
       const nodeMap = new Map(updatedNodes.map(node => [node.id, node]));
       
@@ -122,17 +124,21 @@ export const ComponentLibraryPlanner = () => {
       const startY = selectedNode.position.y + 150; // Start 150px below selected node
       const startX = selectedNode.position.x - (connectedNodeArray.length * 100); // Center horizontally
       
+      console.log('About to update positions for:', connectedNodeArray);
       connectedNodeArray.forEach((nodeId, index) => {
         const node = nodeMap.get(nodeId);
         if (node) {
-          node.position = {
+          const newPosition = {
             x: startX + (index * 200), // 200px spacing between nodes
             y: startY
           };
+          console.log(`Moving node ${nodeId} from`, node.position, 'to', newPosition);
+          node.position = newPosition;
         }
       });
       
       console.log('Layout applied to nodes:', connectedNodeArray);
+      console.log('Returning updated nodes:', updatedNodes.map(n => ({ id: n.id, position: n.position })));
       return updatedNodes;
     });
   }, [selectedNode, edges, setNodes]);
