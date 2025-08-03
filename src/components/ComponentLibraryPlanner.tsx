@@ -55,6 +55,7 @@ export const ComponentLibraryPlanner = () => {
     saveVersion,
     autoSave,
     loadVersion,
+    loadVersions,
   } = useProjectPersistence();
 
   const onConnect = useCallback(
@@ -429,16 +430,15 @@ export const ComponentLibraryPlanner = () => {
 
   // Initialize with default project for authenticated users
   useEffect(() => {
-    if (user && !isAnonymous && !loading && !currentProject && !isInitialized) {
+    if (user && !isAnonymous && !loading && !isInitialized) {
       const initializeProject = async () => {
         if (projects.length > 0) {
           // Load the most recent project
-          setCurrentProject(projects[0]);
-          const latestVersion = versions[0];
-          if (latestVersion) {
-            setNodes(latestVersion.nodes as any);
-            setEdges(latestVersion.edges as any);
-          }
+          const mostRecentProject = projects[0];
+          setCurrentProject(mostRecentProject);
+          
+          // Load versions for this project and get the latest one
+          await loadVersions(mostRecentProject.id);
         } else {
           // Create default project with initial elements
           const newProject = await createProject('My Component Library', 'A visual library of design components');
@@ -456,7 +456,18 @@ export const ComponentLibraryPlanner = () => {
       setEdges(initialEdges);
       setIsInitialized(true);
     }
-  }, [user, isAnonymous, loading, currentProject, projects, versions, isInitialized, setCurrentProject, createProject, saveVersion, setNodes, setEdges]);
+  }, [user, isAnonymous, loading, isInitialized, projects, setCurrentProject, createProject, saveVersion, setNodes, setEdges, loadVersions]);
+
+  // Load latest version when versions change and we have a current project
+  useEffect(() => {
+    if (currentProject && versions.length > 0 && isInitialized) {
+      const latestVersion = versions[0];
+      if (latestVersion) {
+        setNodes(latestVersion.nodes as any);
+        setEdges(latestVersion.edges as any);
+      }
+    }
+  }, [versions, currentProject, isInitialized, setNodes, setEdges]);
 
   const handleManualSave = useCallback(async () => {
     if (!currentProject) return;
