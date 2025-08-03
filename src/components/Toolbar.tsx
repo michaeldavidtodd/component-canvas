@@ -12,7 +12,11 @@ import {
   User,
   LogOut,
   Settings,
-  Mail
+  Mail,
+  Save,
+  History,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -21,6 +25,11 @@ interface ToolbarProps {
   isAnonymous?: boolean;
   onSignOut?: () => void;
   onNavigateToAuth?: () => void;
+  onSave?: () => void;
+  onShowVersions?: () => void;
+  currentProject?: any;
+  autoSaveEnabled?: boolean;
+  onToggleAutoSave?: () => void;
 }
 
 const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -56,7 +65,18 @@ const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; co
   },
 ];
 
-export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToAuth }: ToolbarProps) => {
+export const Toolbar = ({ 
+  onAddNode, 
+  user, 
+  isAnonymous, 
+  onSignOut, 
+  onNavigateToAuth,
+  onSave,
+  onShowVersions,
+  currentProject,
+  autoSaveEnabled,
+  onToggleAutoSave 
+}: ToolbarProps) => {
   return (
     <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
       <div>
@@ -88,6 +108,54 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
         ))}
       </div>
       
+      {/* Save functionality - only show for authenticated users */}
+      {user && !isAnonymous && currentProject && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-foreground mb-1">Project</h3>
+            <p className="text-xs text-muted-foreground truncate" title={currentProject.name}>
+              {currentProject.name}
+            </p>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSave}
+                className="flex-1 gap-2"
+              >
+                <Save className="h-3 w-3" />
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onShowVersions}
+                className="flex-1 gap-2"
+              >
+                <History className="h-3 w-3" />
+                History
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                onClick={onToggleAutoSave}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {autoSaveEnabled ? (
+                  <ToggleRight className="h-4 w-4 text-green-600" />
+                ) : (
+                  <ToggleLeft className="h-4 w-4" />
+                )}
+                Auto-save
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="mt-auto pt-4 border-t border-border space-y-3">
         <p className="text-xs text-muted-foreground">
           Click and drag to create connections between components

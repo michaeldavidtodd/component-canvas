@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -12,6 +12,7 @@ import {
   Node,
   NodeChange,
   EdgeChange,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -19,11 +20,13 @@ import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ConnectionLegend } from './ConnectionLegend';
+import { VersionHistory } from './VersionHistory';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { Button } from '@/components/ui/button';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Save, History, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const nodeTypes = {
@@ -34,8 +37,25 @@ export const ComponentLibraryPlanner = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
+  const { getViewport } = useReactFlow();
+  
+  const {
+    currentProject,
+    projects,
+    versions,
+    loading,
+    autoSaveEnabled,
+    setCurrentProject,
+    setAutoSaveEnabled,
+    createProject,
+    saveVersion,
+    autoSave,
+    loadVersion,
+  } = useProjectPersistence();
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -407,6 +427,57 @@ export const ComponentLibraryPlanner = () => {
     });
   }, [setNodes]);
 
+  // Auto-save functionality
+  useEffect(() => {
+    if (!user || !currentProject || !isInitialized) return;
+
+    const timeoutId = setTimeout(() => {
+      if (autoSaveEnabled) {
+        autoSave(currentProject.id, nodes, edges, getViewport());
+      }
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [nodes, edges, currentProject, autoSaveEnabled, autoSave, getViewport, user, isInitialized]);
+
+  // Initialize with default project for authenticated users
+  useEffect(() => {
+    if (user && !isAnonymous && !loading && !currentProject && !isInitialized) {
+      const initializeProject = async () => {
+        if (projects.length > 0) {
+          // Load the most recent project
+          setCurrentProject(projects[0]);
+          const latestVersion = versions[0];
+          if (latestVersion) {
+            setNodes(latestVersion.nodes as any);
+            setEdges(latestVersion.edges as any);
+          }
+        } else {
+          // Create default project with initial elements
+          const newProject = await createProject('My Component Library', 'A visual library of design components');
+          if (newProject) {
+            await saveVersion(newProject.id, initialNodes, initialEdges, undefined, 'Initial version');
+          }
+        }
+        setIsInitialized(true);
+      };
+
+      initializeProject();
+    } else if (isAnonymous || !user) {
+      // Use default initial elements for anonymous users
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+      setIsInitialized(true);
+    }
+  }, [user, isAnonymous, loading, currentProject, projects, versions, isInitialized, setCurrentProject, createProject, saveVersion, setNodes, setEdges]);
+
+  const handleManualSave = useCallback(async () => {
+    if (!currentProject) return;
+    
+    const versionName = `Version ${new Date().toLocaleString()}`;
+    await saveVersion(currentProject.id, nodes, edges, getViewport(), versionName);
+  }, [currentProject, nodes, edges, saveVersion, getViewport]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -420,6 +491,22 @@ export const ComponentLibraryPlanner = () => {
         isAnonymous={isAnonymous}
         onSignOut={handleSignOut}
         onNavigateToAuth={() => navigate('/auth')}
+        onSave={handleManualSave}
+        onShowVersions={() => setShowVersionHistory(true)}
+        currentProject={currentProject}
+        autoSaveEnabled={autoSaveEnabled}
+        onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+      />
+      
+      <VersionHistory
+        open={showVersionHistory}
+        onOpenChange={setShowVersionHistory}
+        versions={versions}
+        onLoadVersion={loadVersion}
+        onVersionLoaded={(version) => {
+          setNodes(version.nodes as any);
+          setEdges(version.edges as any);
+        }}
       />
       
       <div className="flex-1 relative">
