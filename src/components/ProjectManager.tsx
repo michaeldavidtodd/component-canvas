@@ -6,9 +6,10 @@ import { initialNodes, initialEdges } from '@/lib/initial-elements';
 
 interface ProjectManagerProps {
   onProjectLoaded: (nodes: Node[], edges: Edge[]) => void;
+  onInitialized: (initialized: boolean) => void;
 }
 
-export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
+export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManagerProps) => {
   const { user, isAnonymous, loading } = useAuth();
   const { 
     currentProject, 
@@ -51,6 +52,7 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
         }
       }
       setIsInitialized(true);
+      onInitialized(true);
     };
 
     initializeProject();
@@ -87,6 +89,7 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
       console.log('👤 Anonymous user - using defaults');
       onProjectLoaded(initialNodes, initialEdges);
       setIsInitialized(true);
+      onInitialized(true);
     }
   }, [user, isAnonymous, loading, isInitialized, onProjectLoaded]);
 

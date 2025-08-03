@@ -40,6 +40,7 @@ export const ComponentLibraryPlanner = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [isProjectInitialized, setIsProjectInitialized] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -447,7 +448,10 @@ export const ComponentLibraryPlanner = () => {
 
   return (
     <ReactFlowProvider>
-      <ProjectManager onProjectLoaded={handleProjectLoaded} />
+      <ProjectManager 
+        onProjectLoaded={handleProjectLoaded} 
+        onInitialized={setIsProjectInitialized}
+      />
       <div className="flex h-screen bg-canvas">
         <Toolbar 
           onAddNode={addNode}
@@ -508,7 +512,7 @@ export const ComponentLibraryPlanner = () => {
               <AutoSaveHandler
                 currentProject={currentProject}
                 autoSaveEnabled={autoSaveEnabled}
-                isInitialized={true}
+                isInitialized={isProjectInitialized}
                 nodes={nodes}
                 edges={edges}
                 onAutoSave={autoSave}
