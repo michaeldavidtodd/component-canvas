@@ -24,9 +24,12 @@ export const AutoSaveHandler = ({
 
   // Auto-save functionality
   useEffect(() => {
-    if (!currentProject || !isInitialized || !autoSaveEnabled) return;
+    if (!currentProject || !autoSaveEnabled) return;
 
-    // Don't auto-save on first initialization
+    // Don't auto-save if not fully initialized yet
+    if (!isInitialized) return;
+
+    // Don't auto-save on first initialization after loading
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
       previousStateRef.current = { nodes, edges };
