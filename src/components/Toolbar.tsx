@@ -1,5 +1,7 @@
 import { ComponentType } from '@/types/component';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { 
   Component, 
   Layers, 
@@ -8,7 +10,9 @@ import {
   Square,
   Plus,
   User,
-  LogOut 
+  LogOut,
+  Settings,
+  Mail
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -107,20 +111,56 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
             </Button>
           </div>
         ) : user ? (
-          <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm">
-            <User className="h-4 w-4 text-primary" />
-            <div className="flex flex-col flex-1">
-              <span className="text-xs text-foreground truncate">{user.email}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSignOut}
-              className="p-1"
-            >
-              <LogOut className="h-3 w-3" />
-            </Button>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 h-auto p-2 w-full justify-start hover:bg-muted/50"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col flex-1 text-left">
+                  <span className="text-xs font-medium text-foreground truncate">
+                    {user.email?.split('@')[0] || 'User'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Signed in</span>
+                </div>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0" align="start" side="right">
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      {user.email?.split('@')[0] || 'User'}
+                    </span>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      <span className="truncate">{user.email}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSignOut}
+                  className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         ) : null}
       </div>
     </div>
