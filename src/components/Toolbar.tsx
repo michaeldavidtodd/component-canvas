@@ -128,10 +128,10 @@ export const Toolbar = ({ onAddNode, user, isAnonymous, onSignOut, onNavigateToA
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-0" align="start" side="right">
+            <PopoverContent className="w-64 p-0" align="start" side="top">
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <User className="h-5 w-5" />
                   </div>
                   <div className="flex flex-col">
