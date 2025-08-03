@@ -56,6 +56,17 @@ export const ComponentLibraryPlanner = () => {
     loadVersion,
   } = useProjectPersistence();
 
+  // Debug logging
+  console.log('🔍 ComponentLibraryPlanner state:', {
+    user: !!user,
+    isAnonymous,
+    currentProject: !!currentProject,
+    projectName: currentProject?.name,
+    autoSaveEnabled,
+    isProjectInitialized,
+    versionsCount: versions.length
+  });
+
   const onConnect = useCallback(
     (params: Connection) => {
       const sourceNode = nodes.find(n => n.id === params.source);
