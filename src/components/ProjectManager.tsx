@@ -26,6 +26,15 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
   // Wait for projects to be loaded from the database
   const projectsLoaded = useRef(false);
 
+  // Reset initialization when user or projects change
+  useEffect(() => {
+    if (user && !isAnonymous && !loading) {
+      console.log('🔄 ProjectManager: Resetting initialization state');
+      setIsInitialized(false);
+      initializingRef.current = false;
+    }
+  }, [user?.id, isAnonymous]); // Reset when user changes
+
   // Step 1: Initialize project when user is ready AND projects are loaded
   useEffect(() => {
     console.log('🔄 ProjectManager: Effect triggered', {
