@@ -81,6 +81,7 @@ export const ComponentLibraryPlanner = () => {
     };
     
     setNodes((nds) => [...nds, newNode]);
+    setSelectedNode(newNode);
   }, [setNodes]);
 
   const updateNodeData = useCallback((nodeId: string, updates: Partial<ComponentNodeData>) => {
