@@ -86,16 +86,20 @@ export const ComponentLibraryPlanner = () => {
       return;
     }
 
-    // Build hierarchy levels based on connections
+    // Build hierarchy levels and track parent relationships
     const nodeLevels = new Map<string, number>();
+    const nodeParents = new Map<string, string>();
     const nodesByLevel = new Map<number, string[]>();
     
-    const buildHierarchy = (nodeId: string, level: number) => {
+    const buildHierarchy = (nodeId: string, level: number, parentId?: string) => {
       if (nodeLevels.has(nodeId) && nodeLevels.get(nodeId)! <= level) {
         return; // Already processed at a higher or equal level
       }
       
       nodeLevels.set(nodeId, level);
+      if (parentId) {
+        nodeParents.set(nodeId, parentId);
+      }
       
       if (!nodesByLevel.has(level)) {
         nodesByLevel.set(level, []);
@@ -108,7 +112,7 @@ export const ComponentLibraryPlanner = () => {
       // Find direct children and place them at the next level
       const outgoingEdges = edges.filter(edge => edge.source === nodeId);
       outgoingEdges.forEach(edge => {
-        buildHierarchy(edge.target, level + 1);
+        buildHierarchy(edge.target, level + 1, nodeId);
       });
     };
 
@@ -116,7 +120,7 @@ export const ComponentLibraryPlanner = () => {
     buildHierarchy(selectedNode.id, 0);
 
     console.log('Node levels:', Object.fromEntries(nodeLevels));
-    console.log('Nodes by level:', Object.fromEntries(nodesByLevel));
+    console.log('Node parents:', Object.fromEntries(nodeParents));
 
     if (nodesByLevel.size <= 1) {
       console.log('No hierarchy found, returning early');
@@ -129,21 +133,44 @@ export const ComponentLibraryPlanner = () => {
       return nds.map((node) => {
         const level = nodeLevels.get(node.id);
         if (level !== undefined && level > 0) {
-          const levelNodes = nodesByLevel.get(level)!;
-          const indexInLevel = levelNodes.indexOf(node.id);
-          
-          // Vertical spacing between levels
           const levelSpacing = 200;
           const newY = selectedNode.position.y + (level * levelSpacing);
           
-          // Horizontal spacing within level
-          const nodeSpacing = 300;
-          const totalLevelWidth = (levelNodes.length - 1) * nodeSpacing;
-          const startX = selectedNode.position.x - (totalLevelWidth / 2);
-          const newX = startX + (indexInLevel * nodeSpacing);
+          let newX = selectedNode.position.x; // Default to center under selected node
+          
+          // If this node has a direct parent, position it below that parent
+          const parentId = nodeParents.get(node.id);
+          if (parentId) {
+            const parentNode = nds.find(n => n.id === parentId);
+            if (parentNode) {
+              // Check if parent has multiple children at this level
+              const siblingNodes = Array.from(nodesByLevel.get(level) || [])
+                .filter(siblingId => nodeParents.get(siblingId) === parentId);
+              
+              if (siblingNodes.length === 1) {
+                // Single child - position directly below parent
+                newX = parentNode.position.x;
+              } else {
+                // Multiple children - spread them around parent
+                const siblingIndex = siblingNodes.indexOf(node.id);
+                const siblingSpacing = 250;
+                const totalSiblingWidth = (siblingNodes.length - 1) * siblingSpacing;
+                const siblingStartX = parentNode.position.x - (totalSiblingWidth / 2);
+                newX = siblingStartX + (siblingIndex * siblingSpacing);
+              }
+            }
+          } else {
+            // No direct parent found, use level-based positioning
+            const levelNodes = nodesByLevel.get(level)!;
+            const indexInLevel = levelNodes.indexOf(node.id);
+            const nodeSpacing = 300;
+            const totalLevelWidth = (levelNodes.length - 1) * nodeSpacing;
+            const startX = selectedNode.position.x - (totalLevelWidth / 2);
+            newX = startX + (indexInLevel * nodeSpacing);
+          }
           
           const newPosition = { x: newX, y: newY };
-          console.log(`Moving node ${node.id} (level ${level}) from`, node.position, 'to', newPosition);
+          console.log(`Moving node ${node.id} (level ${level}, parent: ${parentId}) from`, node.position, 'to', newPosition);
           
           return {
             ...node,
