@@ -46,7 +46,7 @@ export const ProjectManager = ({ onProjectLoaded }: ProjectManagerProps) => {
     };
 
     initializeProject();
-  }, [user, isAnonymous, loading, projects, isInitialized]);
+  }, [user, isAnonymous, loading, isInitialized]); // Removed 'projects' from dependencies to prevent re-runs
 
   // Step 2: Load canvas data when versions change
   useEffect(() => {
