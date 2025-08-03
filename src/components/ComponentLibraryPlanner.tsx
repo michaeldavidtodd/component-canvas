@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
+import { ConnectionLegend } from './ConnectionLegend';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 
@@ -404,9 +405,10 @@ export const ComponentLibraryPlanner = () => {
             }}
           />
         </ReactFlow>
+        <ConnectionLegend />
       </div>
 
-      <PropertiesPanel 
+      <PropertiesPanel
         selectedNode={selectedNode}
         onUpdateNode={updateNodeData}
         onDeleteNode={deleteSelectedNode}
