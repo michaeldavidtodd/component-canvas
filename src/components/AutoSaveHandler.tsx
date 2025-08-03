@@ -24,13 +24,29 @@ export const AutoSaveHandler = ({
 
   // Auto-save functionality
   useEffect(() => {
-    if (!currentProject || !autoSaveEnabled) return;
+    console.log('🤖 AutoSave effect triggered:', { 
+      currentProject: !!currentProject, 
+      autoSaveEnabled, 
+      isInitialized,
+      nodesCount: nodes.length,
+      edgesCount: edges.length,
+      hasInitializedRef: hasInitializedRef.current
+    });
+
+    if (!currentProject || !autoSaveEnabled) {
+      console.log('🚫 AutoSave skipped: missing project or disabled');
+      return;
+    }
 
     // Don't auto-save if not fully initialized yet
-    if (!isInitialized) return;
+    if (!isInitialized) {
+      console.log('🚫 AutoSave skipped: not initialized');
+      return;
+    }
 
     // Don't auto-save on first initialization after loading
     if (!hasInitializedRef.current) {
+      console.log('📝 AutoSave: First initialization, setting baseline');
       hasInitializedRef.current = true;
       previousStateRef.current = { nodes, edges };
       return;
@@ -42,9 +58,15 @@ export const AutoSaveHandler = ({
       JSON.stringify(previousStateRef.current.nodes) !== JSON.stringify(nodes) ||
       JSON.stringify(previousStateRef.current.edges) !== JSON.stringify(edges);
 
-    if (!hasChanges) return;
+    if (!hasChanges) {
+      console.log('🚫 AutoSave skipped: no changes detected');
+      return;
+    }
+
+    console.log('⏰ AutoSave: Changes detected, setting timeout...');
 
     const timeoutId = setTimeout(() => {
+      console.log('💾 AutoSave: Executing auto-save');
       try {
         const viewport = getViewport();
         onAutoSave(currentProject.id, nodes, edges, viewport);
