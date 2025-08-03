@@ -440,11 +440,11 @@ export const ComponentLibraryPlanner = () => {
         if (projects.length > 0) {
           // Load the most recent project
           const mostRecentProject = projects[0];
-          console.log('📁 Loading existing project:', mostRecentProject.name);
+          console.log('📁 Loading existing project:', { id: mostRecentProject.id, name: mostRecentProject.name });
           setCurrentProject(mostRecentProject);
           
           // Load versions for this project - the version loading effect will handle setting nodes/edges
-          console.log('📚 Loading versions for project:', mostRecentProject.id);
+          console.log('📚 Loading versions for project:', { id: mostRecentProject.id, loadVersionsFunction: typeof loadVersions });
           await loadVersions(mostRecentProject.id);
         } else {
           console.log('🆕 Creating new project...');
