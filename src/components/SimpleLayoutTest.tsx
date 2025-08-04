@@ -13,11 +13,11 @@ import dagre from '@dagrejs/dagre';
 import '@xyflow/react/dist/style.css';
 
 const initialNodes = [
-  { id: '1', data: { label: 'Node 1' } },
-  { id: '2', data: { label: 'Node 2' } },
-  { id: '3', data: { label: 'Node 3' } },
-  { id: '4', data: { label: 'Node 4' } },
-  { id: '5', data: { label: 'Node 5' } },
+  { id: '1', position: { x: 0, y: 0 }, data: { label: 'Node 1' } },
+  { id: '2', position: { x: 0, y: 0 }, data: { label: 'Node 2' } },
+  { id: '3', position: { x: 0, y: 0 }, data: { label: 'Node 3' } },
+  { id: '4', position: { x: 0, y: 0 }, data: { label: 'Node 4' } },
+  { id: '5', position: { x: 0, y: 0 }, data: { label: 'Node 5' } },
 ];
 
 const initialEdges = [
