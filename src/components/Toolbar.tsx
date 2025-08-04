@@ -114,6 +114,8 @@ export const Toolbar = ({
           </Button>
         ))}
       </div>
+
+      <Separator />
       
       {/* Layout Controls */}
       <div className="flex flex-col gap-2">
