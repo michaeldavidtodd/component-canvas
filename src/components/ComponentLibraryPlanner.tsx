@@ -33,12 +33,12 @@ import { Button } from '@/components/ui/button';
 import { User, LogOut, Save, History, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-
 const nodeWidth = 172;
 const nodeHeight = 36;
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  // Create a fresh graph instance each time
+  const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   const isHorizontal = direction === 'LR';
   dagreGraph.setGraph({ rankdir: direction });
 
