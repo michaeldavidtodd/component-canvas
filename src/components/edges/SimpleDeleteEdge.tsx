@@ -13,10 +13,15 @@ export default function SimpleDeleteEdge(props: any) {
   const [edgePath, labelX, labelY] = getBezierPath(props);
 
   return (
-    <>
-      <BaseEdge 
-        path={edgePath} 
-        {...props}
+    <g>
+      <BaseEdge path={edgePath} {...props} />
+      {/* Invisible wider path for hover detection */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        style={{ cursor: 'pointer' }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       />
@@ -27,7 +32,10 @@ export default function SimpleDeleteEdge(props: any) {
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: 'all',
+              zIndex: 1000,
             }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
             <button
               className="w-6 h-6 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded-full flex items-center justify-center border-2 border-background shadow-lg transition-colors"
@@ -41,6 +49,6 @@ export default function SimpleDeleteEdge(props: any) {
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </g>
   );
 }
