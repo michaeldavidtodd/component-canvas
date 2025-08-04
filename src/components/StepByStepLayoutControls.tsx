@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,8 @@ import {
   SeparatorHorizontal, 
   Move, 
   AlignCenter,
-  RotateCcw
+  RotateCcw,
+  GripVertical
 } from 'lucide-react';
 
 interface StepByStepLayoutControlsProps {
@@ -61,11 +62,64 @@ export function StepByStepLayoutControls({
   completedSteps, 
   onReset 
 }: StepByStepLayoutControlsProps) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    setPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
+
   return (
-    <Card className="w-80">
+    <Card 
+      ref={dragRef}
+      className="w-80 shadow-lg border-2"
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        cursor: isDragging ? 'grabbing' : 'default'
+      }}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Layout Steps</CardTitle>
+          <div className="flex items-center gap-2">
+            <div 
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+              onMouseDown={handleMouseDown}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-lg">Layout Steps</CardTitle>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -99,14 +153,14 @@ export function StepByStepLayoutControls({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{index + 1}. {step.title}</span>
+                      <span className="font-medium text-left break-words">{index + 1}. {step.title}</span>
                       {isCompleted && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">
                           Done
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground text-left">
+                    <p className="text-sm text-muted-foreground text-left break-words whitespace-normal">
                       {step.description}
                     </p>
                   </div>
