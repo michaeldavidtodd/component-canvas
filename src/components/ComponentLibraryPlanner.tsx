@@ -137,7 +137,7 @@ export const ComponentLibraryPlanner = () => {
       
       const newEdge = {
         ...params,
-        type: 'smoothstep',
+        type: 'straight',
         style: { stroke: strokeColor }
       };
       
