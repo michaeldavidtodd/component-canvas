@@ -194,11 +194,18 @@ export const ComponentLibraryPlanner = () => {
 
   const onLayout = useCallback(
     (direction = 'TB') => {
+      console.log('🔧 LAYOUT STARTED:', { direction, nodesCount: nodes.length, edgesCount: edges.length });
+      
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         nodes,
         edges,
         direction,
       );
+
+      console.log('🔧 LAYOUT RESULT:', { 
+        originalNodes: nodes.map(n => ({ id: n.id, pos: n.position })),
+        newNodes: layoutedNodes.map(n => ({ id: n.id, pos: n.position }))
+      });
 
       setNodes([...layoutedNodes] as any);
       setEdges([...layoutedEdges]);
