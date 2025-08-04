@@ -682,24 +682,26 @@ export const ComponentLibraryPlanner = () => {
                   if (currentPos) {
                     let adjustedX = centerX;
                     
-                    // Check for conflicts with other nodes at the same level
-                    const nodesAtSameLevel = nodesAtLevel
-                      .filter(n => n.id !== node.id)
-                      .map(n => safePositions.get(n.id))
-                      .filter(pos => pos !== undefined) as { x: number; y: number }[];
+                    // Check for conflicts with ALL other nodes (not just same level)
+                    const allOtherNodes = Array.from(safePositions.entries())
+                      .filter(([id]) => id !== node.id)
+                      .map(([id, pos]) => pos);
                     
                     // Ensure minimum distance from other nodes
                     let conflicts = true;
                     let iterations = 0;
-                    const maxIterations = 10;
+                    const maxIterations = 20;
                     
                     while (conflicts && iterations < maxIterations) {
                       conflicts = false;
                       iterations++;
                       
-                      for (const otherPos of nodesAtSameLevel) {
-                        const distance = Math.abs(adjustedX - otherPos.x);
-                        if (distance < minNodeDistance) {
+                      for (const otherPos of allOtherNodes) {
+                        const horizontalDistance = Math.abs(adjustedX - otherPos.x);
+                        const verticalDistance = Math.abs(currentPos.y - otherPos.y);
+                        
+                        // Only check for conflicts if nodes are close vertically (within 2 levels)
+                        if (verticalDistance < 200 && horizontalDistance < minNodeDistance) {
                           // Only move away (spread apart), never closer
                           if (adjustedX >= otherPos.x) {
                             adjustedX = otherPos.x + minNodeDistance;
