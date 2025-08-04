@@ -95,13 +95,29 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       },
     };
 
+    // Calculate edge color based on node types
+    const currentType = currentNode.data.componentType as ComponentType;
+    const newType = 'main-component' as ComponentType;
+    
+    let strokeColor = 'hsl(216 8% 45%)'; // default
+    
+    // Component to Variant connection
+    if ((currentType === 'main-component' && newType === 'variant') || 
+        (currentType === 'variant' && newType === 'main-component')) {
+      strokeColor = 'hsl(258 100% 68%)'; // primary
+    }
+    // Token usage connections
+    else if (currentType === 'token' || newType === 'token') {
+      strokeColor = 'hsl(45 100% 68%)'; // component-token
+    }
+
     // Create new edge
     const newEdge = {
       id: `edge-${Date.now()}`,
       source: side === 'top' ? newId : currentNode.id,
       target: side === 'top' ? currentNode.id : newId,
       type: 'default',
-      style: { stroke: 'hsl(258 100% 68%)' },
+      style: { stroke: strokeColor },
     };
 
     // Add to flow
