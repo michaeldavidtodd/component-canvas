@@ -46,7 +46,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   dagreGraph.setGraph({ 
     rankdir: direction,
     ranksep: 150,  // Vertical spacing between levels
-    nodesep: 120,  // Horizontal spacing between nodes
+    nodesep: 80,   // Horizontal spacing between nodes (reduced from 120)
     edgesep: 20,   // Edge separation
     marginx: 50,   // Margin around the graph
     marginy: 50
