@@ -22,9 +22,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
+    console.log('🔧 Auth: Setting up auth listener...');
+    
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔧 Auth state change:', { event, session: !!session, user: !!session?.user });
         setSession(session);
         setUser(session?.user ?? null);
         setIsAnonymous(false);

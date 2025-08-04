@@ -30,8 +30,10 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    
+    console.log('🔧 Auth: Attempting sign in...', { email: signInForm.email });
     const { error } = await signIn(signInForm.email, signInForm.password);
+    console.log('🔧 Auth: Sign in result:', { error: !!error, errorMessage: error?.message });
     
     if (error) {
       toast({
