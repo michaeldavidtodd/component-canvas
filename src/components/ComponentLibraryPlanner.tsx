@@ -241,7 +241,6 @@ export const ComponentLibraryPlanner = () => {
       const positionSubtree = (nodeId: string, centerX: number, level: number) => {
         const y = baseY + (level * rowSpacing);
         const nodeChildren = children.get(nodeId) || [];
-        const nodeParents = parents.get(nodeId) || [];
         
         if (nodeChildren.length === 0) {
           // Leaf node - just position it
@@ -255,35 +254,33 @@ export const ComponentLibraryPlanner = () => {
         }, 0);
         
         let currentX = centerX - totalChildrenWidth / 2;
-        const childPositions: { id: string; x: number; connections: number }[] = [];
+        const childPositions: { id: string; x: number; parentCount: number }[] = [];
         
         nodeChildren.forEach(childId => {
           const childWidth = subtreeWidths.get(childId) || nodeWidth;
           const childCenterX = currentX + childWidth / 2;
           
-          // Count how many connections this child has to current node's parents
+          // Count total number of parents for this child
           const childParents = parents.get(childId) || [];
-          const connectionsToOurParents = childParents.filter(parentId => 
-            nodeParents.includes(parentId)
-          ).length;
+          const parentCount = childParents.length;
           
           childPositions.push({ 
             id: childId, 
             x: childCenterX, 
-            connections: connectionsToOurParents 
+            parentCount: parentCount 
           });
           
           positionSubtree(childId, childCenterX, level + 1);
           currentX += childWidth;
         });
         
-        // Calculate weighted center based on children's connections to parents
-        if (nodeParents.length > 0) {
+        // Calculate weighted center based on children's total parent connections
+        if (childPositions.length > 0) {
           let totalWeight = 0;
           let weightedSum = 0;
           
-          childPositions.forEach(({ x, connections }) => {
-            const weight = Math.max(1, connections); // Minimum weight of 1
+          childPositions.forEach(({ x, parentCount }) => {
+            const weight = Math.max(1, parentCount); // Minimum weight of 1
             totalWeight += weight;
             weightedSum += x * weight;
           });
