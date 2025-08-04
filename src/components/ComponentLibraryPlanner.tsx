@@ -289,6 +289,102 @@ export const ComponentLibraryPlanner = () => {
         return false;
       };
 
+      // Function to center parents over their children (bottom-to-top, left-to-right)
+      const centerParentsOverChildren = (
+        positions: Map<string, { x: number; y: number }>,
+        allNodes: Node[],
+        children: Map<string, string[]>,
+        parents: Map<string, string>,
+        nodeWidth: number
+      ): Map<string, { x: number; y: number }> => {
+        const finalPositions = new Map(positions);
+        
+        // Find all root nodes and process trees from left to right
+        const rootNodes = allNodes
+          .filter(node => !parents.has(node.id))
+          .map(node => ({ id: node.id, x: finalPositions.get(node.id)?.x || 0 }))
+          .sort((a, b) => a.x - b.x);
+        
+        // Process each tree independently from left to right
+        rootNodes.forEach(root => {
+          const processedNodes = new Set<string>();
+          
+          // Get max depth for this tree to start from bottom
+          const getDepth = (nodeId: string, currentDepth = 0): number => {
+            const nodeChildren = children.get(nodeId) || [];
+            if (nodeChildren.length === 0) return currentDepth;
+            
+            return Math.max(...nodeChildren.map(childId => getDepth(childId, currentDepth + 1)));
+          };
+          
+          const maxDepth = getDepth(root.id);
+          
+          // Process from bottom level to top level
+          for (let depth = maxDepth; depth >= 0; depth--) {
+            const nodesAtDepth = new Set<string>();
+            
+            // Find all nodes at this depth in this tree
+            const findNodesAtDepth = (nodeId: string, currentDepth = 0) => {
+              if (currentDepth === depth) {
+                nodesAtDepth.add(nodeId);
+              } else if (currentDepth < depth) {
+                const nodeChildren = children.get(nodeId) || [];
+                nodeChildren.forEach(childId => findNodesAtDepth(childId, currentDepth + 1));
+              }
+            };
+            
+            findNodesAtDepth(root.id);
+            
+            // For each node at this depth, center it over its children (if any)
+            Array.from(nodesAtDepth).forEach(nodeId => {
+              if (processedNodes.has(nodeId)) return;
+              
+              const nodeChildren = children.get(nodeId) || [];
+              if (nodeChildren.length > 0) {
+                // Calculate center position based on children
+                const childPositions = nodeChildren
+                  .map(childId => finalPositions.get(childId))
+                  .filter(pos => pos !== undefined) as { x: number; y: number }[];
+                
+                if (childPositions.length > 0) {
+                  const minChildX = Math.min(...childPositions.map(pos => pos.x));
+                  const maxChildX = Math.max(...childPositions.map(pos => pos.x));
+                  const centerX = (minChildX + maxChildX) / 2;
+                  
+                  const currentPos = finalPositions.get(nodeId);
+                  if (currentPos) {
+                    // Check for conflicts with other nodes at the same level
+                    const currentY = currentPos.y;
+                    const nodesAtSameLevel = Array.from(finalPositions.entries())
+                      .filter(([id, pos]) => Math.abs(pos.y - currentY) < 50 && id !== nodeId)
+                      .map(([id, pos]) => ({ id, x: pos.x }))
+                      .sort((a, b) => a.x - b.x);
+                    
+                    let adjustedX = centerX;
+                    
+                    // Check for overlaps and adjust if necessary
+                    for (const otherNode of nodesAtSameLevel) {
+                      if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
+                        // If there's a conflict, shift right
+                        if (adjustedX >= otherNode.x) {
+                          adjustedX = otherNode.x + nodeWidth + 20;
+                        }
+                      }
+                    }
+                    
+                    finalPositions.set(nodeId, { x: adjustedX, y: currentY });
+                  }
+                }
+              }
+              
+              processedNodes.add(nodeId);
+            });
+          }
+        });
+        
+        return finalPositions;
+      };
+
       // Layout positioning with conflict resolution
       let iteration = 0;
       let hasConflicts = true;
@@ -420,9 +516,12 @@ export const ComponentLibraryPlanner = () => {
           // Increase spacing for next iteration
           siblingSpacing += 50;
         } else {
+          // Bottom-to-top centering pass - process trees from left to right
+          const finalNodes = centerParentsOverChildren(updatedNodes, nds, children, parents, nodeWidth);
+          
           // Apply final positions to nodes
           return nds.map(node => {
-            const newPosition = updatedNodes.get(node.id);
+            const newPosition = finalNodes.get(node.id);
             if (newPosition) {
               return {
                 ...node,
