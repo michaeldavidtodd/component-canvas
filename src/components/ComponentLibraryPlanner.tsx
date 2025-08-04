@@ -15,40 +15,6 @@ import {
   EdgeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import dagre from '@dagrejs/dagre';
-
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-
-const nodeWidth = 200;
-const nodeHeight = 60;
-
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({ rankdir: direction });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const newNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-    };
-  });
-
-  return { nodes: newNodes, edges };
-};
 
 import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
@@ -193,16 +159,56 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    console.log('smartLayout called with nodes:', nodes.length, 'edges:', edges.length);
+    if (!nodes.length || !edges.length) return;
     
-    const { nodes: layoutedNodes } = getLayoutedElements(
-      nodes,
-      edges,
-      'TB'
-    );
+    // Build parent-child relationships
+    const children = new Map<string, string[]>();
+    const parents = new Map<string, string[]>();
     
-    console.log('layoutedNodes:', layoutedNodes);
-    setNodes(layoutedNodes as any);
+    edges.forEach(edge => {
+      if (!children.has(edge.source)) children.set(edge.source, []);
+      if (!parents.has(edge.target)) parents.set(edge.target, []);
+      
+      children.get(edge.source)!.push(edge.target);
+      parents.get(edge.target)!.push(edge.source);
+    });
+    
+    // Find root nodes (no parents)
+    const roots = nodes.filter(node => !parents.has(node.id) || parents.get(node.id)!.length === 0);
+    
+    const nodeWidth = 250;
+    const nodeHeight = 100;
+    const levelHeight = 200;
+    
+    const positioned = new Map<string, { x: number; y: number }>();
+    
+    // Position nodes level by level
+    const positionLevel = (nodeIds: string[], level: number) => {
+      const y = level * levelHeight;
+      const totalWidth = nodeIds.length * nodeWidth;
+      let startX = -totalWidth / 2;
+      
+      nodeIds.forEach((nodeId, index) => {
+        const x = startX + (index * nodeWidth) + (nodeWidth / 2);
+        positioned.set(nodeId, { x, y });
+        
+        // Process children for next level
+        const nodeChildren = children.get(nodeId) || [];
+        if (nodeChildren.length > 0) {
+          positionLevel(nodeChildren, level + 1);
+        }
+      });
+    };
+    
+    positionLevel(roots.map(r => r.id), 0);
+    
+    // Apply positions
+    const newNodes = nodes.map(node => {
+      const pos = positioned.get(node.id);
+      return pos ? { ...node, position: pos } : node;
+    });
+    
+    setNodes(newNodes);
   }, [nodes, edges, setNodes]);
 
   // Step-by-step layout functions
