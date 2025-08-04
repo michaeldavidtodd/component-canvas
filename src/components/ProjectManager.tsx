@@ -18,7 +18,8 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
     setCurrentProject, 
     createProject, 
     saveVersion, 
-    loadVersions 
+    loadVersions,
+    toggleProjectPublic
   } = useProjectPersistence();
   const [isInitialized, setIsInitialized] = useState(false);
   const initializingRef = useRef(false);

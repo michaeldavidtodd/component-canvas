@@ -1,7 +1,12 @@
 import { ComponentType } from '@/types/component';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { 
   Component, 
   Layers, 
@@ -18,7 +23,10 @@ import {
   ToggleLeft,
   ToggleRight,
   Sparkles,
-  Layout
+  Layout,
+  Share,
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -84,6 +92,59 @@ export const Toolbar = ({
   onSmartLayout,
   onCleanupLayout
 }: ToolbarProps) => {
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { toggleProjectPublic } = useProjectPersistence();
+  const { toast } = useToast();
+
+  const handleShare = async () => {
+    if (!currentProject) return;
+    
+    try {
+      const shareToken = await toggleProjectPublic(currentProject.id, true);
+      const shareUrl = `${window.location.origin}/share/${shareToken}`;
+      
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      
+      toast({
+        title: "Project shared!",
+        description: "Share link copied to clipboard"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create share link",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStopSharing = async () => {
+    if (!currentProject) return;
+    
+    try {
+      await toggleProjectPublic(currentProject.id, false);
+      setShareDialogOpen(false);
+      
+      toast({
+        title: "Sharing disabled",
+        description: "Project is now private"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disable sharing",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const shareUrl = currentProject?.share_token 
+    ? `${window.location.origin}/share/${currentProject.share_token}`
+    : '';
+
   return (
     <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
       <div>
@@ -170,6 +231,81 @@ export const Toolbar = ({
                 History
               </Button>
             </div>
+
+            <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                >
+                  <Share className="h-3 w-3" />
+                  {currentProject?.is_public ? 'Manage Sharing' : 'Share Project'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Share Project</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {currentProject?.is_public ? (
+                    <>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-2">Share link:</p>
+                        <div className="flex gap-2">
+                          <Input
+                            value={shareUrl}
+                            readOnly
+                            className="text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(shareUrl);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                          >
+                            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(shareUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Anyone with this link can view your project (read-only).
+                      </p>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleStopSharing}
+                        className="w-full"
+                      >
+                        Stop Sharing
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Create a public link to share your project as read-only with others.
+                      </p>
+                      <Button
+                        onClick={handleShare}
+                        className="w-full gap-2"
+                      >
+                        <Share className="h-3 w-3" />
+                        Create Share Link
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
             
             <div className="flex items-center gap-2 text-xs">
               <button

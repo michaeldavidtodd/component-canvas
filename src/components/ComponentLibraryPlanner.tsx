@@ -90,7 +90,13 @@ const edgeTypes = {
   default: SimpleDeleteEdge,
 };
 
-export const ComponentLibraryPlanner = () => {
+export const ComponentLibraryPlanner = ({ 
+  isSharedView = false, 
+  sharedProjectData = null 
+}: { 
+  isSharedView?: boolean; 
+  sharedProjectData?: any; 
+} = {}) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
@@ -114,11 +120,24 @@ export const ComponentLibraryPlanner = () => {
 
   // Force set currentProject if we have projects but no currentProject
   useEffect(() => {
-    if (!currentProject && projects.length > 0 && user && !isAnonymous) {
+    if (!currentProject && projects.length > 0 && user && !isAnonymous && !isSharedView) {
       console.log('🔧 ComponentLibraryPlanner: Force setting currentProject to:', projects[0]);
       setCurrentProject(projects[0]);
     }
-  }, [projects, currentProject, user, isAnonymous, setCurrentProject]);
+  }, [projects, currentProject, user, isAnonymous, setCurrentProject, isSharedView]);
+
+  // Load shared project data
+  useEffect(() => {
+    if (isSharedView && sharedProjectData) {
+      console.log('📋 Loading shared project data:', sharedProjectData);
+      const latestVersion = sharedProjectData.versions[0];
+      if (latestVersion) {
+        setNodes(latestVersion.nodes as any);
+        setEdges(latestVersion.edges as any);
+      }
+      setIsProjectInitialized(true);
+    }
+  }, [isSharedView, sharedProjectData, setNodes, setEdges]);
 
   // Update existing edges to use default type (for delete button functionality)
   useEffect(() => {
@@ -352,49 +371,57 @@ export const ComponentLibraryPlanner = () => {
 
   return (
     <ReactFlowProvider>
-      <ProjectManager 
-        onProjectLoaded={handleProjectLoaded} 
-        onInitialized={setIsProjectInitialized}
-      />
+      {!isSharedView && (
+        <ProjectManager 
+          onProjectLoaded={handleProjectLoaded} 
+          onInitialized={setIsProjectInitialized}
+        />
+      )}
       <div className="flex h-screen bg-canvas">
-        <Toolbar 
-          onAddNode={addNode}
-          user={user}
-          isAnonymous={isAnonymous}
-          onSignOut={handleSignOut}
-          onNavigateToAuth={() => navigate('/auth')}
-          onSave={handleManualSave}
-          onShowVersions={() => setShowVersionHistory(true)}
-          currentProject={currentProject}
-          autoSaveEnabled={autoSaveEnabled}
-          onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
-          onSmartLayout={() => onLayout('TB')}
-          onCleanupLayout={cleanupLayout}
-        />
+        {!isSharedView && (
+          <Toolbar 
+            onAddNode={addNode}
+            user={user}
+            isAnonymous={isAnonymous}
+            onSignOut={handleSignOut}
+            onNavigateToAuth={() => navigate('/auth')}
+            onSave={handleManualSave}
+            onShowVersions={() => setShowVersionHistory(true)}
+            currentProject={currentProject}
+            autoSaveEnabled={autoSaveEnabled}
+            onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+            onSmartLayout={() => onLayout('TB')}
+            onCleanupLayout={cleanupLayout}
+          />
+        )}
         
-        <VersionHistory
-          open={showVersionHistory}
-          onOpenChange={setShowVersionHistory}
-          versions={versions}
-          onLoadVersion={loadVersion}
-          onVersionLoaded={(version) => {
-            setNodes(version.nodes as any);
-            setEdges(version.edges as any);
-          }}
-        />
+        {!isSharedView && (
+          <VersionHistory
+            open={showVersionHistory}
+            onOpenChange={setShowVersionHistory}
+            versions={versions}
+            onLoadVersion={loadVersion}
+            onVersionLoaded={(version) => {
+              setNodes(version.nodes as any);
+              setEdges(version.edges as any);
+            }}
+          />
+        )}
         
         <div className="flex-1 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            
+            onNodesChange={isSharedView ? undefined : onNodesChange}
+            onEdgesChange={isSharedView ? undefined : onEdgesChange}
+            onConnect={isSharedView ? undefined : onConnect}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            onNodeClick={(_, node) => handleNodeSelect(node)}
-            onPaneClick={() => handleNodeSelect(null)}
+            onNodeClick={isSharedView ? undefined : (_, node) => handleNodeSelect(node)}
+            onPaneClick={isSharedView ? undefined : () => handleNodeSelect(null)}
+            nodesDraggable={!isSharedView}
+            nodesConnectable={!isSharedView}
+            elementsSelectable={!isSharedView}
             fitView
             className="bg-canvas"
           >
@@ -416,7 +443,7 @@ export const ComponentLibraryPlanner = () => {
             />
             
             {/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
-            {user && !isAnonymous && currentProject && (
+            {user && !isAnonymous && currentProject && !isSharedView && (
               <AutoSaveHandler
                 currentProject={currentProject}
                 autoSaveEnabled={autoSaveEnabled}
@@ -430,11 +457,13 @@ export const ComponentLibraryPlanner = () => {
           <ConnectionLegend />
         </div>
 
-         <PropertiesPanel
-           selectedNode={selectedNode}
-           onUpdateNode={updateNodeData}
-           onDeleteNode={deleteSelectedNode}
-         />
+        {!isSharedView && (
+          <PropertiesPanel
+            selectedNode={selectedNode}
+            onUpdateNode={updateNodeData}
+            onDeleteNode={deleteSelectedNode}
+          />
+        )}
       </div>
     </ReactFlowProvider>
   );

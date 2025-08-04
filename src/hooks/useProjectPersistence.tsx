@@ -12,6 +12,8 @@ interface Project {
   id: string;
   name: string;
   description?: string;
+  is_public?: boolean;
+  share_token?: string;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +31,7 @@ interface ProjectVersion {
 }
 
 export const useProjectPersistence = () => {
-  const { user } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const { toast } = useToast();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -326,6 +328,68 @@ export const useProjectPersistence = () => {
     }
   }, [toast]);
 
+  const toggleProjectPublic = useCallback(async (projectId: string, isPublic: boolean) => {
+    if (!user && !isAnonymous) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update({ is_public: isPublic })
+        .eq('id', projectId)
+        .select('share_token')
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setProjects(projects.map(p => 
+        p.id === projectId 
+          ? { ...p, is_public: isPublic } 
+          : p
+      ));
+
+      if (currentProject?.id === projectId) {
+        setCurrentProject({ ...currentProject, is_public: isPublic });
+      }
+
+      return data.share_token;
+    } catch (error) {
+      console.error('Error toggling project public status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update sharing settings",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  }, [user, isAnonymous, projects, currentProject, toast]);
+
+  const getPublicProject = useCallback(async (shareToken: string) => {
+    try {
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('share_token', shareToken)
+        .eq('is_public', true)
+        .single();
+
+      if (projectError) throw projectError;
+
+      const { data: versions, error: versionsError } = await supabase
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false });
+
+      if (versionsError) throw versionsError;
+
+      return { project, versions };
+    } catch (error) {
+      console.error('Error loading public project:', error);
+      throw error;
+    }
+  }, []);
+
   // Load projects when user changes
   useEffect(() => {
     if (user) {
@@ -371,6 +435,8 @@ export const useProjectPersistence = () => {
     loadVersion,
     deleteVersion,
     loadProjects,
-    loadVersions
+    loadVersions,
+    toggleProjectPublic,
+    getPublicProject
   };
 };
