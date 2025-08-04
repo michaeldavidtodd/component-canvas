@@ -353,33 +353,31 @@ export const ComponentLibraryPlanner = () => {
                   
                    const currentPos = finalPositions.get(nodeId);
                    if (currentPos) {
-                     // Update position but only if it doesn't break sibling group integrity
-                     const parentId = parents.get(nodeId);
-                     const siblings = parentId ? (children.get(parentId) || []).filter(id => id !== nodeId) : [];
+                     // Check for conflicts with other nodes at the same level
+                     const currentY = currentPos.y;
+                     const nodesAtSameLevel = Array.from(finalPositions.entries())
+                       .filter(([id, pos]) => Math.abs(pos.y - currentY) < 50 && id !== nodeId)
+                       .map(([id, pos]) => ({ id, x: pos.x }))
+                       .sort((a, b) => a.x - b.x);
                      
-                     // If this node has siblings, be more conservative about centering
-                     if (siblings.length > 0) {
-                       // Only center if it doesn't move too far from siblings
-                       const siblingPositions = siblings
-                         .map(id => finalPositions.get(id))
-                         .filter(pos => pos !== undefined) as { x: number; y: number }[];
-                       
-                       if (siblingPositions.length > 0) {
-                         const siblingMinX = Math.min(...siblingPositions.map(pos => pos.x));
-                         const siblingMaxX = Math.max(...siblingPositions.map(pos => pos.x));
-                         const siblingRange = siblingMaxX - siblingMinX;
-                         
-                         // Only center if it stays within reasonable bounds of siblings
-                         if (Math.abs(centerX - currentPos.x) <= siblingRange + nodeWidth) {
-                           finalPositions.set(nodeId, { x: centerX, y: currentPos.y });
+                     let adjustedX = centerX;
+                     
+                     // Check for overlaps and adjust if necessary
+                     for (const otherNode of nodesAtSameLevel) {
+                       if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
+                         // If there's a conflict, shift right
+                         if (adjustedX >= otherNode.x) {
+                           adjustedX = otherNode.x + nodeWidth + 20;
                          }
-                       } else {
-                         finalPositions.set(nodeId, { x: centerX, y: currentPos.y });
                        }
-                     } else {
-                       // No siblings, safe to center
-                       finalPositions.set(nodeId, { x: centerX, y: currentPos.y });
                      }
+                     
+                     // Add debugging for the problematic nodes
+                     if (nodeId.includes('Primary Button') || nodeId.includes('Secondary Button')) {
+                       console.log(`Centering ${nodeId}: centerX=${centerX}, adjustedX=${adjustedX}, conflicts with:`, nodesAtSameLevel);
+                     }
+                     
+                     finalPositions.set(nodeId, { x: adjustedX, y: currentY });
                    }
                 }
               }
