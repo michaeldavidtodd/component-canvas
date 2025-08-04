@@ -156,10 +156,6 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
         ${selected ? getBorderColor(data.componentType) : 'border-border'}
         transition-all duration-200 group
       `}
-      style={{ 
-        width: nodeWidth,
-        minWidth: 160
-      }}
     >
       <NodeResizer 
         minWidth={160} 

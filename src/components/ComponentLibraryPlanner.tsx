@@ -13,6 +13,7 @@ import {
   Node,
   NodeChange,
   EdgeChange,
+  
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
@@ -174,6 +175,7 @@ export const ComponentLibraryPlanner = () => {
       })
     );
   }, [nodes, setEdges, getEdgeColor]);
+
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -603,6 +605,7 @@ export const ComponentLibraryPlanner = () => {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodeClick={(_, node) => handleNodeSelect(node)}
