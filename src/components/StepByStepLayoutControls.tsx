@@ -37,25 +37,11 @@ const layoutSteps = [
     color: 'bg-green-500'
   },
   {
-    id: 'apply-spacing',
-    title: 'Fine-tune Spacing',
-    description: 'Apply micro-adjustments to spacing, building on previous layout work',
-    icon: SeparatorHorizontal,
-    color: 'bg-purple-500'
-  },
-  {
-    id: 'shift-parents',
-    title: 'Center Parents',
-    description: 'Center parent nodes over children while preserving grouping',
-    icon: Move,
-    color: 'bg-orange-500'
-  },
-  {
-    id: 'center-trees',
-    title: 'Center Trees',
-    description: 'Center entire trees while maintaining all previous improvements',
+    id: 'center-parents-safe',
+    title: 'Center Parents (Safe)',
+    description: 'Center parent nodes over children while preventing nodes from getting too close',
     icon: AlignCenter,
-    color: 'bg-pink-500'
+    color: 'bg-purple-500'
   }
 ];
 

@@ -652,30 +652,14 @@ export const ComponentLibraryPlanner = () => {
             return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
           });
           
-        case 'apply-spacing':
-          // Step 3: Improve spacing between nodes (build on steps 1 & 2)
-          return nds.map(node => {
-            // Add consistent spacing adjustments
-            const level = nodeLevels.get(node.id) || 0;
-            const nodesAtLevel = levelNodes.get(level) || [];
-            const indexAtLevel = nodesAtLevel.findIndex(n => n.id === node.id);
-            
-            return {
-              ...node,
-              position: {
-                x: node.position.x + (indexAtLevel * 10), // Slight spacing adjustment
-                y: node.position.y
-              }
-            };
-          });
-          
-        case 'shift-parents':
-          // Step 4: Center parents over their children
-          const shiftPositions = new Map<string, { x: number; y: number }>();
+        case 'center-parents-safe':
+          // Step 3: Center parents over children while preventing nodes from getting too close
+          const safePositions = new Map<string, { x: number; y: number }>();
+          const minNodeDistance = 180; // Minimum distance between nodes
           
           // First, set all current positions
           nds.forEach(node => {
-            shiftPositions.set(node.id, { x: node.position.x, y: node.position.y });
+            safePositions.set(node.id, { x: node.position.x, y: node.position.y });
           });
           
           // Process from bottom to top
@@ -686,7 +670,7 @@ export const ComponentLibraryPlanner = () => {
               const nodeChildren = children.get(node.id) || [];
               if (nodeChildren.length > 0) {
                 const childPositions = nodeChildren
-                  .map(childId => shiftPositions.get(childId))
+                  .map(childId => safePositions.get(childId))
                   .filter(pos => pos !== undefined) as { x: number; y: number }[];
                 
                 if (childPositions.length > 0) {
@@ -694,9 +678,40 @@ export const ComponentLibraryPlanner = () => {
                   const maxChildX = Math.max(...childPositions.map(pos => pos.x));
                   const centerX = (minChildX + maxChildX) / 2;
                   
-                  const currentPos = shiftPositions.get(node.id);
+                  const currentPos = safePositions.get(node.id);
                   if (currentPos) {
-                    shiftPositions.set(node.id, { x: centerX, y: currentPos.y });
+                    let adjustedX = centerX;
+                    
+                    // Check for conflicts with other nodes at the same level
+                    const nodesAtSameLevel = nodesAtLevel
+                      .filter(n => n.id !== node.id)
+                      .map(n => safePositions.get(n.id))
+                      .filter(pos => pos !== undefined) as { x: number; y: number }[];
+                    
+                    // Ensure minimum distance from other nodes
+                    let conflicts = true;
+                    let iterations = 0;
+                    const maxIterations = 10;
+                    
+                    while (conflicts && iterations < maxIterations) {
+                      conflicts = false;
+                      iterations++;
+                      
+                      for (const otherPos of nodesAtSameLevel) {
+                        const distance = Math.abs(adjustedX - otherPos.x);
+                        if (distance < minNodeDistance) {
+                          // Only move away (spread apart), never closer
+                          if (adjustedX >= otherPos.x) {
+                            adjustedX = otherPos.x + minNodeDistance;
+                          } else {
+                            adjustedX = otherPos.x - minNodeDistance;
+                          }
+                          conflicts = true;
+                        }
+                      }
+                    }
+                    
+                    safePositions.set(node.id, { x: adjustedX, y: currentPos.y });
                   }
                 }
               }
@@ -704,49 +719,7 @@ export const ComponentLibraryPlanner = () => {
           }
           
           return nds.map(node => {
-            const newPos = shiftPositions.get(node.id);
-            return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
-          });
-          
-        case 'center-trees':
-          // Step 5: Center entire trees while maintaining spacing
-          const treePositions = new Map<string, { x: number; y: number }>();
-          
-          // Group nodes by root
-          const treeGroups = new Map<string, typeof nds>();
-          
-          rootNodes.forEach(root => {
-            const treeNodes: typeof nds = [];
-            const addToTree = (nodeId: string) => {
-              const node = nodeMap.get(nodeId);
-              if (node) {
-                treeNodes.push(node);
-                const nodeChildren = children.get(nodeId) || [];
-                nodeChildren.forEach(addToTree);
-              }
-            };
-            addToTree(root.id);
-            treeGroups.set(root.id, treeNodes);
-          });
-          
-          let treeOffsetX = -400;
-          Array.from(treeGroups.entries()).forEach(([rootId, treeNodes]) => {
-            const treeMinX = Math.min(...treeNodes.map(n => n.position.x));
-            const offsetX = treeOffsetX - treeMinX;
-            
-            treeNodes.forEach(node => {
-              treePositions.set(node.id, {
-                x: node.position.x + offsetX,
-                y: node.position.y
-              });
-            });
-            
-            const treeMaxX = Math.max(...treeNodes.map(n => n.position.x + offsetX));
-            treeOffsetX = treeMaxX + 300;
-          });
-          
-          return nds.map(node => {
-            const newPos = treePositions.get(node.id);
+            const newPos = safePositions.get(node.id);
             return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
           });
           
