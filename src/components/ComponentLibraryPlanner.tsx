@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
 
 import { ComponentNode } from './nodes/ComponentNode';
+import DeleteButtonEdge from './edges/DeleteButtonEdge';
 import { Toolbar } from './Toolbar';
 import { StepByStepLayoutControls } from './StepByStepLayoutControls';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -82,6 +83,10 @@ const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
 
 const nodeTypes = {
   component: ComponentNode,
+};
+
+const edgeTypes = {
+  default: DeleteButtonEdge,
 };
 
 export const ComponentLibraryPlanner = () => {
@@ -553,6 +558,7 @@ export const ComponentLibraryPlanner = () => {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodeClick={(_, node) => handleNodeSelect(node)}
             onPaneClick={() => handleNodeSelect(null)}
             fitView
