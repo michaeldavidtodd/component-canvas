@@ -193,12 +193,15 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
+    console.log('smartLayout called with nodes:', nodes.length, 'edges:', edges.length);
+    
     const { nodes: layoutedNodes } = getLayoutedElements(
       nodes,
       edges,
       'TB'
     );
-
+    
+    console.log('layoutedNodes:', layoutedNodes);
     setNodes(layoutedNodes as any);
   }, [nodes, edges, setNodes]);
 
