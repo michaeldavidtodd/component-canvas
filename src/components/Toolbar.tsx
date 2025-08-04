@@ -18,6 +18,7 @@ import {
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface ToolbarProps {
   onAddNode: (type: ComponentType) => void;
@@ -216,12 +217,16 @@ export const Toolbar = ({
               
               <Separator />
               
-              <div className="p-2">
+              <div className="p-2 space-y-1">
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="text-xs text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onSignOut}
-                  className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <LogOut className="h-4 w-4" />
                   Sign out
