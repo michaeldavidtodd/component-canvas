@@ -211,46 +211,6 @@ export const ComponentLibraryPlanner = () => {
         }
       });
 
-      // Function to get all descendants of a node
-      const getAllDescendants = (nodeId: string): string[] => {
-        const descendants: string[] = [];
-        const nodeChildren = children.get(nodeId) || [];
-        
-        nodeChildren.forEach(childId => {
-          descendants.push(childId);
-          descendants.push(...getAllDescendants(childId));
-        });
-        
-        return descendants;
-      };
-
-      // Function to calculate subtree width (total width needed for all descendants)
-      const calculateSubtreeWidth = (nodeId: string): number => {
-        const descendants = getAllDescendants(nodeId);
-        if (descendants.length === 0) return 0;
-        
-        // Group descendants by level
-        const descendantsByLevel = new Map<number, string[]>();
-        descendants.forEach(descendantId => {
-          const level = nodeLevels.get(descendantId);
-          if (level !== undefined) {
-            if (!descendantsByLevel.has(level)) {
-              descendantsByLevel.set(level, []);
-            }
-            descendantsByLevel.get(level)!.push(descendantId);
-          }
-        });
-        
-        // Find the widest level
-        let maxWidth = 0;
-        descendantsByLevel.forEach(levelDescendants => {
-          const width = Math.max(0, (levelDescendants.length - 1) * nodeSpacing);
-          maxWidth = Math.max(maxWidth, width);
-        });
-        
-        return maxWidth;
-      };
-
       // Function to check if two line segments intersect
       const linesIntersect = (line1: { x1: number; y1: number; x2: number; y2: number }, 
                              line2: { x1: number; y1: number; x2: number; y2: number }): boolean => {
@@ -339,60 +299,26 @@ export const ComponentLibraryPlanner = () => {
         const updatedNodes = new Map<string, { x: number; y: number }>();
         const maxLevel = Math.max(...Array.from(levelNodes.keys()));
         
-        // First, position root nodes with proper spacing for their subtrees
-        const rootNodesAtLevel0 = levelNodes.get(0) || [];
-        if (rootNodesAtLevel0.length > 0) {
-          const y = baseY;
-          
-          // Calculate spacing needed for each root node based on its subtree width
-          const rootSpacings = rootNodesAtLevel0.map(rootNode => {
-            const subtreeWidth = calculateSubtreeWidth(rootNode.id);
-            return Math.max(subtreeWidth + siblingSpacing, siblingSpacing);
-          });
-          
-          // Calculate total width and position root nodes
-          const totalWidth = rootSpacings.reduce((sum, spacing) => sum + spacing, 0) - siblingSpacing;
-          let currentX = -totalWidth / 2;
-          
-          rootNodesAtLevel0.forEach((rootNode, index) => {
-            const centerX = currentX + rootSpacings[index] / 2;
-            updatedNodes.set(rootNode.id, { x: centerX, y });
-            currentX += rootSpacings[index];
-          });
-        }
-        
-        // Then position nodes at other levels, centering them under their root ancestors
-        for (let level = 1; level <= maxLevel; level++) {
+        for (let level = 0; level <= maxLevel; level++) {
           const nodesAtLevel = levelNodes.get(level) || [];
           if (nodesAtLevel.length === 0) continue;
           
           const y = baseY + (level * rowSpacing);
           
-          // Group nodes by their root ancestor
-          const nodesByRoot = new Map<string, typeof nds>();
-          
-          nodesAtLevel.forEach(node => {
-            // Find the root ancestor
-            let currentId = node.id;
-            while (parents.has(currentId)) {
-              currentId = parents.get(currentId)!;
-            }
+          if (level === 0) {
+            // Position root nodes evenly spaced
+            const totalWidth = Math.max(0, (nodesAtLevel.length - 1) * siblingSpacing);
+            let currentX = -totalWidth / 2;
             
-            if (!nodesByRoot.has(currentId)) {
-              nodesByRoot.set(currentId, []);
-            }
-            nodesByRoot.get(currentId)!.push(node);
-          });
-          
-          // Position each group under its root
-          nodesByRoot.forEach((groupNodes, rootId) => {
-            const rootPos = updatedNodes.get(rootId);
-            if (!rootPos) return;
-            
-            // Group by immediate parent within this root subtree
+            nodesAtLevel.forEach((node) => {
+              updatedNodes.set(node.id, { x: currentX, y });
+              currentX += siblingSpacing;
+            });
+          } else {
+            // Group nodes by their immediate parent
             const siblingGroups = new Map<string, typeof nds>();
             
-            groupNodes.forEach(node => {
+            nodesAtLevel.forEach(node => {
               const parentId = parents.get(node.id);
               if (parentId) {
                 if (!siblingGroups.has(parentId)) {
@@ -402,45 +328,47 @@ export const ComponentLibraryPlanner = () => {
               }
             });
             
-            // Calculate total width needed for all sibling groups
-            const groups = Array.from(siblingGroups.values());
-            let totalGroupWidth = 0;
-            groups.forEach(group => {
-              const groupWidth = Math.max(0, (group.length - 1) * nodeSpacing);
-              totalGroupWidth += groupWidth;
-              if (totalGroupWidth > 0) totalGroupWidth += siblingSpacing;
-            });
-            totalGroupWidth = Math.max(totalGroupWidth - siblingSpacing, 0);
-            
-            // Center all groups under the root
-            let currentX = rootPos.x - totalGroupWidth / 2;
-            
-            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
+            // Position each sibling group centered under its parent
+            siblingGroups.forEach((groupNodes, parentId) => {
               const parentPos = updatedNodes.get(parentId);
+              if (!parentPos) return;
+              
               const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
+              const groupStartX = parentPos.x - groupWidth / 2;
               
-              // Try to center under parent, but maintain overall centering under root
-              let groupStartX = currentX;
-              if (parentPos && groupNodes.length === 1) {
-                // Single node can be centered exactly under parent
-                groupStartX = parentPos.x;
-              } else if (parentPos) {
-                // Multiple nodes: try to center under parent but respect flow
-                const idealCenterX = parentPos.x;
-                const actualCenterX = currentX + groupWidth / 2;
-                const offset = idealCenterX - actualCenterX;
-                groupStartX = Math.max(currentX, currentX + offset);
-              }
-              
-              // Position individual nodes
               groupNodes.forEach((node, nodeIndex) => {
                 const nodeX = groupStartX + (nodeIndex * nodeSpacing);
                 updatedNodes.set(node.id, { x: nodeX, y });
               });
-              
-              currentX = groupStartX + groupWidth + siblingSpacing;
             });
-          });
+            
+            // Check for overlaps and adjust
+            const levelNodePositions = nodesAtLevel
+              .map(node => ({
+                id: node.id,
+                x: updatedNodes.get(node.id)?.x || 0,
+                node
+              }))
+              .sort((a, b) => a.x - b.x);
+            
+            // Spread out overlapping nodes
+            for (let i = 1; i < levelNodePositions.length; i++) {
+              const prevNode = levelNodePositions[i - 1];
+              const currentNode = levelNodePositions[i];
+              
+              if (currentNode.x - prevNode.x < nodeSpacing) {
+                // Calculate how much we need to shift
+                const shift = nodeSpacing - (currentNode.x - prevNode.x);
+                
+                // Shift this node and all nodes to the right
+                for (let j = i; j < levelNodePositions.length; j++) {
+                  const nodeToShift = levelNodePositions[j];
+                  nodeToShift.x += shift;
+                  updatedNodes.set(nodeToShift.id, { x: nodeToShift.x, y });
+                }
+              }
+            }
+          }
         }
         
         // Check for connection line conflicts
