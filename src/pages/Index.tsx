@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SimpleLayoutTest from "@/components/SimpleLayoutTest";
+import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
@@ -26,7 +26,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <SimpleLayoutTest />
+      <ComponentLibraryPlanner />
     </div>
   );
 };
