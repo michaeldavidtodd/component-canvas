@@ -242,56 +242,63 @@ export const ComponentLibraryPlanner = () => {
         const y = baseY + (level * rowSpacing);
         const nodeChildren = children.get(nodeId) || [];
         
-        if (nodeChildren.length === 0) {
-          // Leaf node - just position it
-          layoutPositions.set(nodeId, { x: centerX, y });
-          return;
-        }
+        // Position current node first
+        layoutPositions.set(nodeId, { x: centerX, y });
         
-        // First, position all children to get their positions
-        const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + (subtreeWidths.get(childId) || nodeWidth);
-        }, 0);
+        if (nodeChildren.length === 0) return;
         
-        let currentX = centerX - totalChildrenWidth / 2;
-        const childPositions: { id: string; x: number; parentCount: number }[] = [];
-        
-        nodeChildren.forEach(childId => {
-          const childWidth = subtreeWidths.get(childId) || nodeWidth;
-          const childCenterX = currentX + childWidth / 2;
-          
-          // Count total number of parents for this child
+        // Calculate child weights based on their total parent connections
+        const childWeights = nodeChildren.map(childId => {
           const childParents = parents.get(childId) || [];
-          const parentCount = childParents.length;
-          
-          childPositions.push({ 
-            id: childId, 
-            x: childCenterX, 
-            parentCount: parentCount 
-          });
-          
-          positionSubtree(childId, childCenterX, level + 1);
-          currentX += childWidth;
+          return {
+            id: childId,
+            weight: Math.max(1, childParents.length), // More parents = higher weight
+            width: subtreeWidths.get(childId) || nodeWidth
+          };
         });
         
-        // Calculate weighted center based on children's total parent connections
-        if (childPositions.length > 0) {
-          let totalWeight = 0;
-          let weightedSum = 0;
-          
-          childPositions.forEach(({ x, parentCount }) => {
-            const weight = Math.max(1, parentCount); // Minimum weight of 1
-            totalWeight += weight;
-            weightedSum += x * weight;
-          });
-          
-          if (totalWeight > 0) {
-            centerX = weightedSum / totalWeight;
-          }
-        }
+        // Find the child(ren) with highest weight (most connections)
+        const maxWeight = Math.max(...childWeights.map(c => c.weight));
+        const priorityChildren = childWeights.filter(c => c.weight === maxWeight);
         
-        // Position current node at the weighted center
-        layoutPositions.set(nodeId, { x: centerX, y });
+        // Calculate total width needed
+        const totalChildrenWidth = childWeights.reduce((sum, child) => sum + child.width, 0);
+        
+        // If we have priority children, center the parent over them
+        if (priorityChildren.length > 0 && maxWeight > 1) {
+          // Calculate where priority children should be positioned
+          const priorityTotalWidth = priorityChildren.reduce((sum, child) => sum + child.width, 0);
+          const priorityStartX = centerX - priorityTotalWidth / 2;
+          
+          // Position all children, starting from where priority children should be
+          let currentX = centerX - totalChildrenWidth / 2;
+          
+          // Find where priority children would naturally fall in the sequence
+          let priorityNaturalStart = currentX;
+          for (const child of childWeights) {
+            if (priorityChildren.some(p => p.id === child.id)) break;
+            priorityNaturalStart += child.width;
+          }
+          
+          // Adjust starting position to align priority children with center
+          const adjustment = priorityStartX - priorityNaturalStart;
+          currentX += adjustment;
+          
+          // Position all children
+          childWeights.forEach(child => {
+            const childCenterX = currentX + child.width / 2;
+            positionSubtree(child.id, childCenterX, level + 1);
+            currentX += child.width;
+          });
+        } else {
+          // No priority children or all have same weight - use equal distribution
+          let currentX = centerX - totalChildrenWidth / 2;
+          childWeights.forEach(child => {
+            const childCenterX = currentX + child.width / 2;
+            positionSubtree(child.id, childCenterX, level + 1);
+            currentX += child.width;
+          });
+        }
       };
       
       // Position each root and its subtree
