@@ -242,55 +242,62 @@ export const ComponentLibraryPlanner = () => {
         const y = baseY + (level * rowSpacing);
         const nodeChildren = children.get(nodeId) || [];
         
-        if (nodeChildren.length === 0) {
-          // Leaf node - just position it
-          layoutPositions.set(nodeId, { x: centerX, y });
-          return;
-        }
+        // Position current node
+        layoutPositions.set(nodeId, { x: centerX, y });
         
-        // Distribute children within allocated space
-        const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + (subtreeWidths.get(childId) || nodeWidth);
-        }, 0);
+        if (nodeChildren.length === 0) return;
         
-        let currentX = centerX - totalChildrenWidth / 2;
-        const childPositions: { id: string; x: number; parentCount: number }[] = [];
-        
-        // Position children and collect their info
-        nodeChildren.forEach(childId => {
-          const childWidth = subtreeWidths.get(childId) || nodeWidth;
-          const childCenterX = currentX + childWidth / 2;
-          
-          positionSubtree(childId, childCenterX, level + 1);
-          
-          // Count total parents for this child
+        // Calculate weights for children based on their total parent count
+        const childData = nodeChildren.map(childId => {
           const childParents = parents.get(childId) || [];
-          childPositions.push({ 
-            id: childId, 
-            x: childCenterX, 
-            parentCount: childParents.length 
-          });
-          
-          currentX += childWidth;
+          return {
+            id: childId,
+            parentCount: childParents.length,
+            width: subtreeWidths.get(childId) || nodeWidth
+          };
         });
         
-        // Find the optimal parent position based on children with most connections
-        let bestCenterX = centerX;
-        if (childPositions.length > 0) {
-          // Find children with the maximum number of parent connections
-          const maxParents = Math.max(...childPositions.map(c => c.parentCount));
-          const priorityChildren = childPositions.filter(c => c.parentCount === maxParents);
-          
-          if (priorityChildren.length > 0 && maxParents > 1) {
-            // Center over the priority children
-            const minPriorityX = Math.min(...priorityChildren.map(c => c.x));
-            const maxPriorityX = Math.max(...priorityChildren.map(c => c.x));
-            bestCenterX = (minPriorityX + maxPriorityX) / 2;
-          }
-        }
+        // Find the child(ren) with the most parents (highest priority for centering)
+        const maxParents = Math.max(...childData.map(c => c.parentCount));
+        const priorityChildren = childData.filter(c => c.parentCount === maxParents);
         
-        // Position current node
-        layoutPositions.set(nodeId, { x: bestCenterX, y });
+        const totalChildrenWidth = childData.reduce((sum, child) => sum + child.width, 0);
+        
+        // If we have priority children (with more than 1 parent), adjust positioning
+        if (maxParents > 1 && priorityChildren.length > 0) {
+          // Calculate total width of priority children
+          const priorityWidth = priorityChildren.reduce((sum, child) => sum + child.width, 0);
+          
+          // We want to center the current node over the priority children
+          // First, find where priority children would naturally be positioned
+          let priorityStartInSequence = 0;
+          for (const child of childData) {
+            if (priorityChildren.some(p => p.id === child.id)) break;
+            priorityStartInSequence += child.width;
+          }
+          
+          // Calculate where priority children should be centered under current node
+          const priorityDesiredStart = centerX - priorityWidth / 2;
+          
+          // Calculate where all children should start to achieve this
+          const allChildrenStart = priorityDesiredStart - priorityStartInSequence;
+          
+          // Position all children from this adjusted start
+          let currentX = allChildrenStart;
+          childData.forEach(child => {
+            const childCenterX = currentX + child.width / 2;
+            positionSubtree(child.id, childCenterX, level + 1);
+            currentX += child.width;
+          });
+        } else {
+          // No priority children - use standard centering
+          let currentX = centerX - totalChildrenWidth / 2;
+          childData.forEach(child => {
+            const childCenterX = currentX + child.width / 2;
+            positionSubtree(child.id, childCenterX, level + 1);
+            currentX += child.width;
+          });
+        }
       };
       
       // Position each root and its subtree
