@@ -202,6 +202,20 @@ export const ComponentLibraryPlanner = () => {
     setSelectedNode(node);
   }, []);
 
+  // Listen for custom nodeCreated events to update selection
+  useEffect(() => {
+    const handleNodeCreated = (event: CustomEvent) => {
+      const newNode = event.detail.node;
+      setSelectedNode(newNode);
+    };
+
+    window.addEventListener('nodeCreated', handleNodeCreated as EventListener);
+    
+    return () => {
+      window.removeEventListener('nodeCreated', handleNodeCreated as EventListener);
+    };
+  }, []);
+
   const addNode = useCallback((type: ComponentType) => {
     const newNode = {
       id: `node-${Date.now()}`,

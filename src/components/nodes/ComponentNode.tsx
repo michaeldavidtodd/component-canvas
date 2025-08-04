@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useRef } from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useStore } from '@xyflow/react';
 import { ComponentType } from '@/types/component';
 import { 
   Component, 
@@ -122,6 +122,13 @@ export const ComponentNode = memo(({ data, selected }: any) => {
     // Deselect all existing nodes and add the new selected node
     setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), newNode]);
     setEdges((edges) => [...edges, newEdge]);
+    
+    // Dispatch custom event to notify parent component of selection
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('nodeCreated', { 
+        detail: { node: newNode } 
+      }));
+    }, 0);
   }, [data, setNodes, setEdges, getNodes, getEdges]);
 
   const handleMouseEnter = (side: 'top' | 'bottom') => {
