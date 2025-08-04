@@ -66,13 +66,19 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: newNodes, edges };
 };
 
+// Apply layout to initial elements
+const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+  initialNodes,
+  initialEdges,
+);
+
 const nodeTypes = {
   component: ComponentNode,
 };
 
 export const ComponentLibraryPlanner = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isProjectInitialized, setIsProjectInitialized] = useState(false);
