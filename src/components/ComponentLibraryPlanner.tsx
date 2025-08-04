@@ -160,7 +160,7 @@ export const ComponentLibraryPlanner = () => {
     let siblingSpacing = 200; // Horizontal spacing between sibling groups (will be adjusted)
     const nodeSpacing = 180; // Spacing between individual nodes
     const baseY = 100; // Starting Y position
-    const maxIterations = 5; // Maximum iterations to prevent infinite loops
+    const maxIterations = 3; // Maximum iterations to prevent infinite loops
     
     setNodes((nds) => {
       // Build hierarchy tree based on connections
@@ -211,26 +211,10 @@ export const ComponentLibraryPlanner = () => {
         }
       });
 
-      // Function to check if two line segments intersect
-      const linesIntersect = (line1: { x1: number; y1: number; x2: number; y2: number }, 
-                             line2: { x1: number; y1: number; x2: number; y2: number }): boolean => {
-        const { x1: x1a, y1: y1a, x2: x2a, y2: y2a } = line1;
-        const { x1: x1b, y1: y1b, x2: x2b, y2: y2b } = line2;
-        
-        const denom = (x1a - x2a) * (y1b - y2b) - (y1a - y2a) * (x1b - x2b);
-        if (Math.abs(denom) < 1e-10) return false; // Lines are parallel
-        
-        const t = ((x1a - x1b) * (y1b - y2b) - (y1a - y1b) * (x1b - x2b)) / denom;
-        const u = -((x1a - x2a) * (y1a - y1b) - (y1a - y2a) * (x1a - x1b)) / denom;
-        
-        return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-      };
-
-      // Function to detect connection line conflicts
+      // Simple conflict detection for overlapping connection lines
       const detectLineConflicts = (positions: Map<string, { x: number; y: number }>): boolean => {
-        const connectionLines: Array<{ x1: number; y1: number; x2: number; y2: number; edge: any }> = [];
+        const connectionLines: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
         
-        // Build connection lines based on current positions
         edges.forEach(edge => {
           const sourcePos = positions.get(edge.source);
           const targetPos = positions.get(edge.target);
@@ -240,47 +224,25 @@ export const ComponentLibraryPlanner = () => {
               x1: sourcePos.x,
               y1: sourcePos.y,
               x2: targetPos.x,
-              y2: targetPos.y,
-              edge
+              y2: targetPos.y
             });
           }
         });
         
-        // Check for intersections between connection lines
+        // Check for close parallel lines
         for (let i = 0; i < connectionLines.length; i++) {
           for (let j = i + 1; j < connectionLines.length; j++) {
             const line1 = connectionLines[i];
             const line2 = connectionLines[j];
             
-            // Skip if lines share a common node
-            if (line1.edge.source === line2.edge.source || 
-                line1.edge.source === line2.edge.target ||
-                line1.edge.target === line2.edge.source || 
-                line1.edge.target === line2.edge.target) {
-              continue;
-            }
+            const line1MinX = Math.min(line1.x1, line1.x2);
+            const line1MaxX = Math.max(line1.x1, line1.x2);
+            const line2MinX = Math.min(line2.x1, line2.x2);
+            const line2MaxX = Math.max(line2.x1, line2.x2);
             
-            // Check if lines are close enough to cause visual conflict
-            const minDistance = 30; // Minimum distance between parallel lines
-            const midY1 = (line1.y1 + line1.y2) / 2;
-            const midY2 = (line2.y1 + line2.y2) / 2;
-            
-            // For lines at similar Y levels, check horizontal overlap
-            if (Math.abs(midY1 - midY2) < rowSpacing * 0.3) {
-              const line1MinX = Math.min(line1.x1, line1.x2);
-              const line1MaxX = Math.max(line1.x1, line1.x2);
-              const line2MinX = Math.min(line2.x1, line2.x2);
-              const line2MaxX = Math.max(line2.x1, line2.x2);
-              
-              // Check for horizontal overlap
-              if (!(line1MaxX < line2MinX - minDistance || line2MaxX < line1MinX - minDistance)) {
-                return true; // Conflict detected
-              }
-            }
-            
-            // Also check for actual line intersections
-            if (linesIntersect(line1, line2)) {
-              return true;
+            // Check for horizontal overlap with insufficient spacing
+            if (!(line1MaxX < line2MinX - 30 || line2MaxX < line1MinX - 30)) {
+              return true; // Conflict detected
             }
           }
         }
@@ -295,7 +257,6 @@ export const ComponentLibraryPlanner = () => {
       while (hasConflicts && iteration < maxIterations) {
         iteration++;
         
-        // Position nodes level by level
         const updatedNodes = new Map<string, { x: number; y: number }>();
         const maxLevel = Math.max(...Array.from(levelNodes.keys()));
         
@@ -305,67 +266,67 @@ export const ComponentLibraryPlanner = () => {
           
           const y = baseY + (level * rowSpacing);
           
-          if (level === 0) {
-            // Position root nodes evenly spaced
-            const totalWidth = Math.max(0, (nodesAtLevel.length - 1) * siblingSpacing);
+          // Group nodes by their parent for sibling grouping
+          const siblingGroups = new Map<string, typeof nds>();
+          const orphanNodes: typeof nds = [];
+          
+          nodesAtLevel.forEach(node => {
+            const parentId = parents.get(node.id);
+            if (parentId) {
+              if (!siblingGroups.has(parentId)) {
+                siblingGroups.set(parentId, []);
+              }
+              siblingGroups.get(parentId)!.push(node);
+            } else {
+              orphanNodes.push(node);
+            }
+          });
+          
+          // Position sibling groups centered under their parents
+          siblingGroups.forEach((groupNodes, parentId) => {
+            const parentPos = updatedNodes.get(parentId);
+            if (!parentPos) return;
+            
+            const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
+            const groupStartX = parentPos.x - groupWidth / 2;
+            
+            groupNodes.forEach((node, nodeIndex) => {
+              const nodeX = groupStartX + (nodeIndex * nodeSpacing);
+              updatedNodes.set(node.id, { x: nodeX, y });
+            });
+          });
+          
+          // Position orphan nodes (root level)
+          if (orphanNodes.length > 0) {
+            const totalWidth = Math.max(0, (orphanNodes.length - 1) * siblingSpacing);
             let currentX = -totalWidth / 2;
             
-            nodesAtLevel.forEach((node) => {
+            orphanNodes.forEach((node) => {
               updatedNodes.set(node.id, { x: currentX, y });
               currentX += siblingSpacing;
             });
-          } else {
-            // Group nodes by their immediate parent
-            const siblingGroups = new Map<string, typeof nds>();
+          }
+          
+          // Fix overlaps within the level
+          const levelNodePositions = nodesAtLevel
+            .map(node => ({
+              id: node.id,
+              x: updatedNodes.get(node.id)?.x || 0
+            }))
+            .sort((a, b) => a.x - b.x);
+          
+          for (let i = 1; i < levelNodePositions.length; i++) {
+            const prevNode = levelNodePositions[i - 1];
+            const currentNode = levelNodePositions[i];
             
-            nodesAtLevel.forEach(node => {
-              const parentId = parents.get(node.id);
-              if (parentId) {
-                if (!siblingGroups.has(parentId)) {
-                  siblingGroups.set(parentId, []);
-                }
-                siblingGroups.get(parentId)!.push(node);
-              }
-            });
-            
-            // Position each sibling group centered under its parent
-            siblingGroups.forEach((groupNodes, parentId) => {
-              const parentPos = updatedNodes.get(parentId);
-              if (!parentPos) return;
-              
-              const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
-              const groupStartX = parentPos.x - groupWidth / 2;
-              
-              groupNodes.forEach((node, nodeIndex) => {
-                const nodeX = groupStartX + (nodeIndex * nodeSpacing);
-                updatedNodes.set(node.id, { x: nodeX, y });
-              });
-            });
-            
-            // Check for overlaps and adjust
-            const levelNodePositions = nodesAtLevel
-              .map(node => ({
-                id: node.id,
-                x: updatedNodes.get(node.id)?.x || 0,
-                node
-              }))
-              .sort((a, b) => a.x - b.x);
-            
-            // Spread out overlapping nodes
-            for (let i = 1; i < levelNodePositions.length; i++) {
-              const prevNode = levelNodePositions[i - 1];
-              const currentNode = levelNodePositions[i];
-              
-              if (currentNode.x - prevNode.x < nodeSpacing) {
-                // Calculate how much we need to shift
-                const shift = nodeSpacing - (currentNode.x - prevNode.x);
-                
-                // Shift this node and all nodes to the right
-                for (let j = i; j < levelNodePositions.length; j++) {
-                  const nodeToShift = levelNodePositions[j];
-                  nodeToShift.x += shift;
-                  updatedNodes.set(nodeToShift.id, { x: nodeToShift.x, y });
-                }
+            if (currentNode.x - prevNode.x < nodeSpacing) {
+              const shift = nodeSpacing - (currentNode.x - prevNode.x);
+              for (let j = i; j < levelNodePositions.length; j++) {
+                levelNodePositions[j].x += shift;
+                updatedNodes.set(levelNodePositions[j].id, { 
+                  x: levelNodePositions[j].x, 
+                  y 
+                });
               }
             }
           }
@@ -375,10 +336,9 @@ export const ComponentLibraryPlanner = () => {
         hasConflicts = detectLineConflicts(updatedNodes);
         
         if (hasConflicts && iteration < maxIterations) {
-          // Increase spacing for next iteration
           siblingSpacing += 50;
         } else {
-          // Apply final positions to nodes
+          // Apply final positions
           return nds.map(node => {
             const newPosition = updatedNodes.get(node.id);
             if (newPosition) {
@@ -392,7 +352,6 @@ export const ComponentLibraryPlanner = () => {
         }
       }
       
-      // Fallback return (should not reach here)
       return nds;
     });
   }, [edges, setNodes]);
