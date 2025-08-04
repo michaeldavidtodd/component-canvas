@@ -88,12 +88,13 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
       y: currentNode.position.y + offsetY,
     };
 
-    // Create new node with selected: true
+    // Create new node with selected: true and proper dimensions
     const newNode = {
       id: newId,
       type: 'component',
       position: newPosition,
       selected: true,
+      style: { width: 200, height: 80 },
       data: {
         label: 'New Component',
         componentType: 'main-component' as ComponentType,

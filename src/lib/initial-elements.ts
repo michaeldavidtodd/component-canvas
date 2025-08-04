@@ -5,6 +5,7 @@ export const initialNodes = [
     id: '1',
     type: 'component',
     position: { x: 250, y: 100 },
+    style: { width: 200, height: 80 },
     data: {
       label: 'Button',
       componentType: 'main-component',
@@ -15,6 +16,7 @@ export const initialNodes = [
     id: '2',
     type: 'component',
     position: { x: 100, y: 250 },
+    style: { width: 200, height: 80 },
     data: {
       label: 'Primary Button',
       componentType: 'variant',
@@ -25,6 +27,7 @@ export const initialNodes = [
     id: '3',
     type: 'component',
     position: { x: 400, y: 250 },
+    style: { width: 200, height: 80 },
     data: {
       label: 'Secondary Button',
       componentType: 'variant',
@@ -35,6 +38,7 @@ export const initialNodes = [
     id: '4',
     type: 'component',
     position: { x: 250, y: 400 },
+    style: { width: 200, height: 80 },
     data: {
       label: 'Button Icon',
       componentType: 'sub-component',
@@ -45,6 +49,7 @@ export const initialNodes = [
     id: '5',
     type: 'component',
     position: { x: 600, y: 100 },
+    style: { width: 200, height: 80 },
     data: {
       label: 'Primary Color',
       componentType: 'token',
