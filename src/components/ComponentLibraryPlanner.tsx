@@ -166,6 +166,7 @@ export const ComponentLibraryPlanner = () => {
     setNodes((nds) => {
       const nodeMap = new Map(nds.map(node => [node.id, node]));
       const children = new Map<string, string[]>();
+      const parents = new Map<string, string[]>();
       
       // Build parent-child relationships from edges
       edges.forEach(edge => {
@@ -173,6 +174,11 @@ export const ComponentLibraryPlanner = () => {
           children.set(edge.source, []);
         }
         children.get(edge.source)!.push(edge.target);
+        
+        if (!parents.has(edge.target)) {
+          parents.set(edge.target, []);
+        }
+        parents.get(edge.target)!.push(edge.source);
       });
       
       // Find root nodes (nodes with no parents)
@@ -180,35 +186,6 @@ export const ComponentLibraryPlanner = () => {
         !edges.some(edge => edge.target === node.id)
       );
       if (rootNodes.length === 0) return nds;
-      
-      // Calculate subtree widths (bottom-up) - this is key for family tree layout
-      const subtreeWidths = new Map<string, number>();
-      const visited = new Set<string>();
-      
-      const calculateSubtreeWidth = (nodeId: string): number => {
-        if (visited.has(nodeId)) return subtreeWidths.get(nodeId) || nodeWidth;
-        visited.add(nodeId);
-        
-        const nodeChildren = children.get(nodeId) || [];
-        if (nodeChildren.length === 0) {
-          // Leaf node - only needs its own width
-          subtreeWidths.set(nodeId, nodeWidth);
-          return nodeWidth;
-        }
-        
-        // Sum of children's subtree widths
-        const childrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + calculateSubtreeWidth(childId);
-        }, 0);
-        
-        // Node needs at least its children's combined width, minimum its own width
-        const width = Math.max(nodeWidth, childrenWidth);
-        subtreeWidths.set(nodeId, width);
-        return width;
-      };
-      
-      // Calculate subtree widths for all nodes
-      nds.forEach(node => calculateSubtreeWidth(node.id));
       
       // Calculate levels for positioning
       const levels = new Map<string, number>();
@@ -227,53 +204,124 @@ export const ComponentLibraryPlanner = () => {
       
       rootNodes.forEach(root => calculateLevel(root.id, 0));
       
-      // Position nodes using family tree algorithm
-      const layoutPositions = new Map<string, { x: number; y: number }>();
+      // Calculate subtree widths (includes all children for spacing)
+      const subtreeWidths = new Map<string, number>();
+      const visited = new Set<string>();
       
-      // Allocate horizontal space (top-down)
-      const positionSubtree = (nodeId: string, centerX: number, level: number) => {
-        const y = baseY + (level * rowSpacing);
+      const calculateSubtreeWidth = (nodeId: string): number => {
+        if (visited.has(nodeId)) return subtreeWidths.get(nodeId) || nodeWidth;
+        visited.add(nodeId);
+        
         const nodeChildren = children.get(nodeId) || [];
+        if (nodeChildren.length === 0) {
+          subtreeWidths.set(nodeId, nodeWidth);
+          return nodeWidth;
+        }
         
-        // Position current node at center
-        layoutPositions.set(nodeId, { x: centerX, y });
-        
-        if (nodeChildren.length === 0) return;
-        
-        // Distribute children within allocated space
-        const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + (subtreeWidths.get(childId) || nodeWidth);
+        const childrenWidth = nodeChildren.reduce((sum, childId) => {
+          return sum + calculateSubtreeWidth(childId);
         }, 0);
         
-        let currentX = centerX - totalChildrenWidth / 2;
-        
-        nodeChildren.forEach(childId => {
-          const childWidth = subtreeWidths.get(childId) || nodeWidth;
-          const childCenterX = currentX + childWidth / 2;
-          
-          positionSubtree(childId, childCenterX, level + 1);
-          currentX += childWidth;
-        });
+        const width = Math.max(nodeWidth, childrenWidth);
+        subtreeWidths.set(nodeId, width);
+        return width;
       };
       
-      // Position each root and its subtree
-      if (rootNodes.length === 1) {
-        positionSubtree(rootNodes[0].id, 0, 0);
-      } else {
-        // Multiple roots - distribute them
-        const totalRootsWidth = rootNodes.reduce((sum, root) => {
-          return sum + (subtreeWidths.get(root.id) || nodeWidth);
-        }, 0);
+      nds.forEach(node => calculateSubtreeWidth(node.id));
+      
+      // Position nodes - bottom up approach
+      const layoutPositions = new Map<string, { x: number; y: number }>();
+      
+      // Get all levels
+      const maxLevel = Math.max(...Array.from(levels.values()));
+      
+      // Position leaf nodes first (bottom level)
+      for (let level = maxLevel; level >= 0; level--) {
+        const nodesAtLevel = nds.filter(node => levels.get(node.id) === level);
         
-        let currentX = -totalRootsWidth / 2;
-        rootNodes.forEach(root => {
-          const rootWidth = subtreeWidths.get(root.id) || nodeWidth;
-          const rootCenterX = currentX + rootWidth / 2;
-          
-          positionSubtree(root.id, rootCenterX, 0);
-          currentX += rootWidth;
-        });
+        if (level === maxLevel) {
+          // Position leaf nodes
+          let currentX = 0;
+          nodesAtLevel.forEach(node => {
+            layoutPositions.set(node.id, { 
+              x: currentX, 
+              y: baseY + (level * rowSpacing) 
+            });
+            currentX += nodeWidth;
+          });
+        } else {
+          // Position parent nodes
+          nodesAtLevel.forEach(node => {
+            const nodeChildren = children.get(node.id) || [];
+            const y = baseY + (level * rowSpacing);
+            
+            if (nodeChildren.length === 0) {
+              // No children, position arbitrarily
+              layoutPositions.set(node.id, { x: 0, y });
+            } else {
+              // Find child with most parent connections
+              let targetChild = nodeChildren[0];
+              let maxConnections = (parents.get(targetChild) || []).length;
+              
+              nodeChildren.forEach(childId => {
+                const connectionCount = (parents.get(childId) || []).length;
+                if (connectionCount > maxConnections) {
+                  maxConnections = connectionCount;
+                  targetChild = childId;
+                }
+              });
+              
+              // Center parent over the child with most connections
+              const targetChildPos = layoutPositions.get(targetChild);
+              if (targetChildPos) {
+                layoutPositions.set(node.id, { 
+                  x: targetChildPos.x, 
+                  y 
+                });
+              } else {
+                layoutPositions.set(node.id, { x: 0, y });
+              }
+            }
+          });
+        }
       }
+      
+      // Adjust positions to spread out subtrees properly
+      const adjustForSubtrees = () => {
+        // Group nodes by level and adjust X positions to prevent overlap
+        for (let level = 0; level <= maxLevel; level++) {
+          const nodesAtLevel = nds.filter(node => levels.get(node.id) === level);
+          
+          // Sort nodes by current X position
+          const sortedNodes = nodesAtLevel
+            .map(node => ({ node, pos: layoutPositions.get(node.id)! }))
+            .sort((a, b) => a.pos.x - b.pos.x);
+          
+          // Adjust positions to ensure minimum spacing based on subtree widths
+          let currentX = 0;
+          if (level === 0) {
+            // For root nodes, center them around 0
+            const totalWidth = sortedNodes.reduce((sum, { node }) => 
+              sum + (subtreeWidths.get(node.id) || nodeWidth), 0);
+            currentX = -totalWidth / 2;
+          }
+          
+          sortedNodes.forEach(({ node }) => {
+            const subtreeWidth = subtreeWidths.get(node.id) || nodeWidth;
+            const centerX = currentX + subtreeWidth / 2;
+            
+            const currentPos = layoutPositions.get(node.id)!;
+            layoutPositions.set(node.id, { 
+              x: centerX, 
+              y: currentPos.y 
+            });
+            
+            currentX += subtreeWidth;
+          });
+        }
+      };
+      
+      adjustForSubtrees();
       
       // Apply positions
       return nds.map(node => {
