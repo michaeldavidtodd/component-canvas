@@ -67,6 +67,7 @@ export const ComponentNode = memo(({ data, selected }: any) => {
   const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
 
   const addNode = useCallback((side: 'top' | 'bottom') => {
+    console.log('ADD NODE CALLED!', side);
     const nodes = getNodes();
     const edges = getEdges();
     const currentNode = nodes.find(n => n.data === data);
@@ -171,7 +172,11 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           >
             <button
               className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
-              onClick={() => addNode('top')}
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('BUTTON CLICKED TOP!');
+                addNode('top');
+              }}
               aria-label="Add node above"
             >
               <Plus className="w-3 h-3" />
@@ -230,7 +235,11 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           >
             <button
               className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
-              onClick={() => addNode('bottom')}
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('BUTTON CLICKED BOTTOM!');
+                addNode('bottom');
+              }}
               aria-label="Add node below"
             >
               <Plus className="w-3 h-3" />
