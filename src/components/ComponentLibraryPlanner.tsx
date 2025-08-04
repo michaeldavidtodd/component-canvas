@@ -18,7 +18,7 @@ import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
 
 import { ComponentNode } from './nodes/ComponentNode';
-import DeleteButtonEdge from './edges/DeleteButtonEdge';
+import SimpleDeleteEdge from './edges/SimpleDeleteEdge';
 import { Toolbar } from './Toolbar';
 import { StepByStepLayoutControls } from './StepByStepLayoutControls';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -86,7 +86,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  default: DeleteButtonEdge,
+  default: SimpleDeleteEdge,
 };
 
 export const ComponentLibraryPlanner = () => {
