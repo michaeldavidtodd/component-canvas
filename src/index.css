@@ -168,10 +168,33 @@
 
 .react-flow__controls {
   box-shadow: var(--shadow-md);
+  background: hsl(var(--workspace));
+  border: 1px solid hsl(var(--border));
+}
+
+.react-flow__controls button {
+  background: hsl(var(--workspace));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.react-flow__controls button:hover {
+  background: hsl(var(--muted));
 }
 
 .react-flow__minimap {
   box-shadow: var(--shadow-md);
+  background: hsl(var(--workspace));
+  border: 1px solid hsl(var(--border));
+}
+
+.react-flow__minimap-mask {
+  fill: hsl(var(--primary) / 0.1);
+}
+
+.react-flow__minimap-node {
+  fill: hsl(var(--muted));
+  stroke: hsl(var(--border));
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
