@@ -524,7 +524,6 @@ export const ComponentLibraryPlanner = () => {
            selectedNode={selectedNode}
            onUpdateNode={updateNodeData}
            onDeleteNode={deleteSelectedNode}
-           onSmartLayout={() => {}}
            onCleanupLayout={cleanupLayout}
            onToggleStepControls={() => setShowStepControls(!showStepControls)}
            showStepControls={showStepControls}

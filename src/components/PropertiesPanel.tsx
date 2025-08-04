@@ -11,7 +11,7 @@ interface PropertiesPanelProps {
   selectedNode: any;
   onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
   onDeleteNode: () => void;
-  onSmartLayout: () => void;
+  
   onCleanupLayout: () => void;
   onToggleStepControls?: () => void;
   showStepControls?: boolean;
@@ -29,7 +29,7 @@ export const PropertiesPanel = ({
   selectedNode, 
   onUpdateNode, 
   onDeleteNode,
-  onSmartLayout,
+  
   onCleanupLayout,
   onToggleStepControls,
   showStepControls
@@ -132,18 +132,6 @@ export const PropertiesPanel = ({
              {showStepControls ? 'Hide' : 'Show'} Step Controls
            </Button>
          )}
-         <Button
-           variant="outline"
-           size="sm"
-           onClick={() => {
-             console.log('Smart Layout button clicked!');
-             onSmartLayout();
-           }}
-           className="w-full gap-2"
-         >
-           <Sparkles className="w-4 h-4" />
-           Smart Layout
-         </Button>
          <Button
            variant="outline"
            size="sm"
