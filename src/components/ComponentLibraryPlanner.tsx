@@ -21,7 +21,7 @@ import dagre from '@dagrejs/dagre';
 import { ComponentNode } from './nodes/ComponentNode';
 import SimpleDeleteEdge from './edges/SimpleDeleteEdge';
 import { Toolbar } from './Toolbar';
-import { StepByStepLayoutControls } from './StepByStepLayoutControls';
+
 import { PropertiesPanel } from './PropertiesPanel';
 import { ConnectionLegend } from './ConnectionLegend';
 import { VersionHistory } from './VersionHistory';
@@ -96,8 +96,6 @@ export const ComponentLibraryPlanner = () => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isProjectInitialized, setIsProjectInitialized] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
-  const [showStepControls, setShowStepControls] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -282,221 +280,6 @@ export const ComponentLibraryPlanner = () => {
   );
 
 
-  // Step-by-step layout functions
-  const executeLayoutStep = useCallback((stepId: string) => {
-    const rowSpacing = 250;
-    const nodeWidth = 150;
-    
-    setNodes((nds) => {
-      // Build hierarchy first for all steps
-      const nodeMap = new Map(nds.map(node => [node.id, node]));
-      const children = new Map<string, string[]>();
-      const parents = new Map<string, string>();
-      
-      edges.forEach(edge => {
-        if (!children.has(edge.source)) {
-          children.set(edge.source, []);
-        }
-        children.get(edge.source)!.push(edge.target);
-        parents.set(edge.target, edge.source);
-      });
-      
-      const rootNodes = nds.filter(node => !parents.has(node.id));
-      const nodeLevels = new Map<string, number>();
-      const levelNodes = new Map<number, typeof nds>();
-      
-      const calculateLevel = (nodeId: string, level: number = 0) => {
-        if (nodeLevels.has(nodeId)) return;
-        nodeLevels.set(nodeId, level);
-        if (!levelNodes.has(level)) {
-          levelNodes.set(level, []);
-        }
-        const node = nodeMap.get(nodeId);
-        if (node) {
-          levelNodes.get(level)!.push(node);
-        }
-        const nodeChildren = children.get(nodeId) || [];
-        nodeChildren.forEach(childId => calculateLevel(childId, level + 1));
-      };
-      
-      rootNodes.forEach(node => calculateLevel(node.id, 0));
-      nds.forEach(node => {
-        if (!nodeLevels.has(node.id)) {
-          calculateLevel(node.id, 0);
-        }
-      });
-      
-      const baseY = 100;
-      
-      switch (stepId) {
-        case 'hierarchy-rows':
-          // Step 1: Only set Y positions by hierarchy level (keep current X positions)
-          return nds.map(node => {
-            const level = nodeLevels.get(node.id) || 0;
-            return {
-              ...node,
-              position: { 
-                x: node.position.x, // Keep current X
-                y: baseY + (level * rowSpacing) 
-              }
-            };
-          });
-          
-        case 'proximity-order':
-          // Step 2: Group siblings horizontally (build on step 1's Y positions)
-          const proximityPositions = new Map<string, { x: number; y: number }>();
-          
-          for (let level = 0; level <= Math.max(...Array.from(levelNodes.keys())); level++) {
-            const nodesAtLevel = levelNodes.get(level) || [];
-            const y = baseY + (level * rowSpacing); // Use consistent Y from step 1
-            
-            // Group by parent
-            const siblingGroups = new Map<string, typeof nds>();
-            const orphanNodes: typeof nds = [];
-            
-            nodesAtLevel.forEach(node => {
-              const parentId = parents.get(node.id);
-              if (parentId) {
-                if (!siblingGroups.has(parentId)) {
-                  siblingGroups.set(parentId, []);
-                }
-                siblingGroups.get(parentId)!.push(node);
-              } else {
-                orphanNodes.push(node);
-              }
-            });
-            
-            let currentX = 0;
-            
-            // Position orphan nodes first
-            orphanNodes.forEach((node, index) => {
-              proximityPositions.set(node.id, { x: currentX + (index * 200), y });
-            });
-            currentX += orphanNodes.length * 200 + 100;
-            
-            // Position sibling groups
-            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
-              groupNodes.forEach((node, index) => {
-                proximityPositions.set(node.id, { x: currentX + (index * 200), y });
-              });
-              currentX += groupNodes.length * 200 + 100;
-            });
-          }
-          
-          return nds.map(node => {
-            const newPos = proximityPositions.get(node.id);
-            return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
-          });
-          
-        case 'center-parents-safe':
-          // Step 3: Center parents over children while preventing nodes from getting too close
-          const safePositions = new Map<string, { x: number; y: number }>();
-          const minNodeDistance = 180; // Minimum distance between nodes
-          
-          // First, set all current positions
-          nds.forEach(node => {
-            safePositions.set(node.id, { x: node.position.x, y: node.position.y });
-          });
-          
-          // Process from bottom to top
-          for (let level = Math.max(...Array.from(levelNodes.keys())); level >= 0; level--) {
-            const nodesAtLevel = levelNodes.get(level) || [];
-            
-            nodesAtLevel.forEach(node => {
-              const nodeChildren = children.get(node.id) || [];
-              if (nodeChildren.length > 0) {
-                const childPositions = nodeChildren
-                  .map(childId => safePositions.get(childId))
-                  .filter(pos => pos !== undefined) as { x: number; y: number }[];
-                
-                if (childPositions.length > 0) {
-                  const minChildX = Math.min(...childPositions.map(pos => pos.x));
-                  const maxChildX = Math.max(...childPositions.map(pos => pos.x));
-                  const centerX = (minChildX + maxChildX) / 2;
-                  
-                  const currentPos = safePositions.get(node.id);
-                  if (currentPos) {
-                    let adjustedX = centerX;
-                    
-                    // Check for conflicts with ALL other nodes (not just same level)
-                    const allOtherNodes = Array.from(safePositions.entries())
-                      .filter(([id]) => id !== node.id)
-                      .map(([id, pos]) => pos);
-                    
-                    // Ensure minimum distance from other nodes
-                    let conflicts = true;
-                    let iterations = 0;
-                    const maxIterations = 20;
-                    
-                    while (conflicts && iterations < maxIterations) {
-                      conflicts = false;
-                      iterations++;
-                      
-                      for (const otherPos of allOtherNodes) {
-                        const horizontalDistance = Math.abs(adjustedX - otherPos.x);
-                        const verticalDistance = Math.abs(currentPos.y - otherPos.y);
-                        
-                        // Only check for conflicts if nodes are close vertically (within 2 levels)
-                        if (verticalDistance < 200 && horizontalDistance < minNodeDistance) {
-                          // Only move away (spread apart), never closer
-                          if (adjustedX >= otherPos.x) {
-                            adjustedX = otherPos.x + minNodeDistance;
-                          } else {
-                            adjustedX = otherPos.x - minNodeDistance;
-                          }
-                          conflicts = true;
-                        }
-                      }
-                    }
-                    
-                    safePositions.set(node.id, { x: adjustedX, y: currentPos.y });
-                  }
-                }
-              }
-            });
-          }
-          
-          return nds.map(node => {
-            const newPos = safePositions.get(node.id);
-            return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
-          });
-          
-        default:
-          return nds;
-      }
-    });
-    
-    // Mark step as completed
-    setCompletedSteps(prev => new Set([...prev, stepId]));
-  }, [edges, setNodes]);
-
-  const resetLayoutSteps = useCallback(() => {
-    setCompletedSteps(new Set());
-  }, []);
-
-  const randomizeLayout = useCallback(() => {
-    setNodes((nds) => {
-      // Define the area bounds for randomization
-      const bounds = {
-        minX: -500,
-        maxX: 1500,
-        minY: 50,
-        maxY: 800
-      };
-      
-      return nds.map(node => ({
-        ...node,
-        position: {
-          x: Math.random() * (bounds.maxX - bounds.minX) + bounds.minX,
-          y: Math.random() * (bounds.maxY - bounds.minY) + bounds.minY
-        }
-      }));
-    });
-    
-    // Reset completed steps since positions are now random
-    setCompletedSteps(new Set());
-  }, [setNodes]);
-
   const cleanupLayout = useCallback(() => {
     const gridSize = 50; // Grid snap size
     const minSpacing = 200; // Minimum spacing between nodes
@@ -585,6 +368,8 @@ export const ComponentLibraryPlanner = () => {
           currentProject={currentProject}
           autoSaveEnabled={autoSaveEnabled}
           onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
+          onSmartLayout={() => onLayout('TB')}
+          onCleanupLayout={cleanupLayout}
         />
         
         <VersionHistory
@@ -649,23 +434,7 @@ export const ComponentLibraryPlanner = () => {
            selectedNode={selectedNode}
            onUpdateNode={updateNodeData}
            onDeleteNode={deleteSelectedNode}
-           onSmartLayout={() => onLayout('TB')}
-           onCleanupLayout={cleanupLayout}
-           onToggleStepControls={() => setShowStepControls(!showStepControls)}
-           showStepControls={showStepControls}
          />
-         
-         {/* Step-by-step layout controls */}
-         {showStepControls && (
-           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
-              <StepByStepLayoutControls
-                onExecuteStep={executeLayoutStep}
-                completedSteps={completedSteps}
-                onReset={resetLayoutSteps}
-                onRandomize={randomizeLayout}
-              />
-           </div>
-         )}
       </div>
     </ReactFlowProvider>
   );

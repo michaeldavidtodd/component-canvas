@@ -5,17 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, FileText, Layout, Sparkles, Settings } from 'lucide-react';
+import { Trash2, FileText } from 'lucide-react';
 
 interface PropertiesPanelProps {
   selectedNode: any;
   onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
   onDeleteNode: () => void;
-  onSmartLayout: () => void;
-  
-  onCleanupLayout: () => void;
-  onToggleStepControls?: () => void;
-  showStepControls?: boolean;
 }
 
 const componentTypeOptions: { value: ComponentType; label: string }[] = [
@@ -29,12 +24,7 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
 export const PropertiesPanel = ({ 
   selectedNode, 
   onUpdateNode, 
-  onDeleteNode,
-  onSmartLayout,
-  
-  onCleanupLayout,
-  onToggleStepControls,
-  showStepControls
+  onDeleteNode
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
@@ -217,47 +207,15 @@ export const PropertiesPanel = ({
       </div>
 
        <div className="mt-auto pt-4 border-t border-border space-y-2">
-         {onToggleStepControls && (
-           <Button
-             variant={showStepControls ? "default" : "outline"}
-             size="sm"
-             onClick={onToggleStepControls}
-             className="w-full gap-2"
-           >
-             <Settings className="w-4 h-4" />
-             {showStepControls ? 'Hide' : 'Show'} Step Controls
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              console.log('🔘 Smart Layout button clicked!');
-              onSmartLayout();
-            }}
-            className="w-full gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            Smart Layout
-          </Button>
-          <Button
-           variant="outline"
+         <Button
+           variant="destructive"
            size="sm"
-           onClick={onCleanupLayout}
+           onClick={onDeleteNode}
            className="w-full gap-2"
          >
-           <Layout className="w-4 h-4" />
-           Clean Up
+           <Trash2 className="w-4 h-4" />
+           Delete Component
          </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={onDeleteNode}
-          className="w-full gap-2"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete Component
-        </Button>
       </div>
     </div>
   );

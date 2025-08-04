@@ -16,7 +16,9 @@ import {
   Save,
   History,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Sparkles,
+  Layout
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -31,6 +33,8 @@ interface ToolbarProps {
   currentProject?: any;
   autoSaveEnabled?: boolean;
   onToggleAutoSave?: () => void;
+  onSmartLayout?: () => void;
+  onCleanupLayout?: () => void;
 }
 
 const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -76,7 +80,9 @@ export const Toolbar = ({
   onShowVersions,
   currentProject,
   autoSaveEnabled,
-  onToggleAutoSave 
+  onToggleAutoSave,
+  onSmartLayout,
+  onCleanupLayout
 }: ToolbarProps) => {
   return (
     <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
@@ -107,6 +113,29 @@ export const Toolbar = ({
             <Plus className="w-4 h-4 ml-auto text-muted-foreground" />
           </Button>
         ))}
+      </div>
+      
+      {/* Layout Controls */}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium text-foreground mb-1">Layout</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onSmartLayout}
+          className="justify-start gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          Smart Layout
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCleanupLayout}
+          className="justify-start gap-2"
+        >
+          <Layout className="w-4 h-4" />
+          Clean Up
+        </Button>
       </div>
       
       {/* Save functionality - only show for authenticated users */}
