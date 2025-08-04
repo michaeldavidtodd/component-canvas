@@ -362,12 +362,15 @@ export const ComponentLibraryPlanner = () => {
                      
                      let adjustedX = centerX;
                      
-                     // Check for overlaps and adjust if necessary
+                     // Check for overlaps and adjust if necessary - ensure siblings stay properly spaced
+                     const parentId = parents.get(nodeId);
+                     const siblings = parentId ? (children.get(parentId) || []).filter(id => id !== nodeId) : [];
+                     
                      for (const otherNode of nodesAtSameLevel) {
-                       if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
+                       if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 40) { // Increased spacing
                          // If there's a conflict, shift right
                          if (adjustedX >= otherNode.x) {
-                           adjustedX = otherNode.x + nodeWidth + 20;
+                           adjustedX = otherNode.x + nodeWidth + 40; // Increased spacing
                          }
                        }
                      }
