@@ -510,7 +510,7 @@ export const ComponentLibraryPlanner = () => {
             fitView
             className="bg-canvas"
           >
-            <Background color="#e1e5e9" gap={16} />
+            <Background className="[&>*]:!stroke-border" gap={16} />
             <Controls className="bg-workspace border border-border" />
             <MiniMap 
               className="bg-workspace border border-border"

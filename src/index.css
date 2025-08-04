@@ -89,11 +89,15 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Figma purple/violet primary palette for dark mode */
+    --primary: 258 100% 68%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --primary-hover: 258 100% 72%;
+    --primary-muted: 258 30% 15%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+    --secondary-hover: 217.2 32.6% 22%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -101,12 +105,27 @@
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
 
+    /* Component type colors for dark mode */
+    --component-main: 258 100% 68%;
+    --component-variant: 197 100% 68%;
+    --component-sub: 152 100% 68%;
+    --component-token: 45 100% 68%;
+    --component-instance: 21 100% 68%;
+
+    /* Status colors for dark mode */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 152 60% 45%;
+    --warning: 45 95% 50%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 258 100% 68%;
+
+    /* Canvas and workspace for dark mode */
+    --canvas: 222.2 84% 6%;
+    --workspace: 217.2 32.6% 17.5%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
