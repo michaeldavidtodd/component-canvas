@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -20,6 +20,8 @@ export default function DeleteButtonEdge({
   selected,
 }: any) {
   const { setEdges } = useReactFlow();
+  const [isHovered, setIsHovered] = useState(false);
+  
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -33,10 +35,18 @@ export default function DeleteButtonEdge({
     setEdges((edges) => edges.filter((edge) => edge.id !== id));
   };
 
+  const showButton = selected || isHovered;
+
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
-      {selected && (
+      <BaseEdge 
+        path={edgePath} 
+        markerEnd={markerEnd} 
+        style={style}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      />
+      {showButton && (
         <EdgeLabelRenderer>
           <div
             className="absolute pointer-events-auto"
