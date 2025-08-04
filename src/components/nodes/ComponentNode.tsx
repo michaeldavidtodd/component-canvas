@@ -84,11 +84,12 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       y: currentNode.position.y + offsetY,
     };
 
-    // Create new node
+    // Create new node with selected: true
     const newNode = {
       id: newId,
       type: 'component',
       position: newPosition,
+      selected: true,
       data: {
         label: 'New Component',
         componentType: 'main-component' as ComponentType,
@@ -118,8 +119,8 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       style: { stroke: strokeColor },
     };
 
-    // Add to flow
-    setNodes((nodes) => [...nodes, newNode]);
+    // Deselect all existing nodes and add the new selected node
+    setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), newNode]);
     setEdges((edges) => [...edges, newEdge]);
   }, [data, setNodes, setEdges, getNodes, getEdges]);
 
