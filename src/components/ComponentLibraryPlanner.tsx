@@ -121,6 +121,16 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [projects, currentProject, user, isAnonymous, setCurrentProject]);
 
+  // Update existing edges to use default type (for delete button functionality)
+  useEffect(() => {
+    setEdges((currentEdges) => 
+      currentEdges.map((edge) => ({
+        ...edge,
+        type: 'default'
+      }))
+    );
+  }, []); // Run once on mount
+
   // Debug logging
   console.log('🔍 ComponentLibraryPlanner state:', {
     user: !!user,
@@ -156,7 +166,7 @@ export const ComponentLibraryPlanner = () => {
       
       const newEdge = {
         ...params,
-        type: 'smoothstep',
+        type: 'default',
         animated: true,
         style: { stroke: strokeColor }
       };
