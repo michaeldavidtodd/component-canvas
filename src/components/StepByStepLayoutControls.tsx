@@ -25,35 +25,35 @@ const layoutSteps = [
   {
     id: 'hierarchy-rows',
     title: 'Organize by Hierarchy',
-    description: 'Divide nodes into rows based on their level in the component tree',
+    description: 'Set Y positions by hierarchy level, keeping current X positions intact',
     icon: Layers,
     color: 'bg-blue-500'
   },
   {
     id: 'proximity-order',
-    title: 'Order by Proximity',
-    description: 'Arrange nodes within each row based on proximity to their parent',
+    title: 'Group Siblings',
+    description: 'Group siblings horizontally while maintaining hierarchy levels from step 1',
     icon: ArrowUpDown,
     color: 'bg-green-500'
   },
   {
     id: 'apply-spacing',
-    title: 'Apply Node Spacing',
-    description: 'Add proper spacing between nodes within sibling groups',
+    title: 'Fine-tune Spacing',
+    description: 'Apply micro-adjustments to spacing, building on previous layout work',
     icon: SeparatorHorizontal,
     color: 'bg-purple-500'
   },
   {
     id: 'shift-parents',
-    title: 'Shift Parent Positions',
-    description: 'Move parent nodes to better center over their child groups',
+    title: 'Center Parents',
+    description: 'Center parent nodes over children while preserving grouping',
     icon: Move,
     color: 'bg-orange-500'
   },
   {
     id: 'center-trees',
     title: 'Center Trees',
-    description: 'Center each component tree while maintaining relative spacing',
+    description: 'Center entire trees while maintaining all previous improvements',
     icon: AlignCenter,
     color: 'bg-pink-500'
   }

@@ -594,25 +594,25 @@ export const ComponentLibraryPlanner = () => {
       
       switch (stepId) {
         case 'hierarchy-rows':
-          // Step 1: Reset to simple grid and organize into clear hierarchy rows
-          const gridX = 200;
-          return nds.map((node, index) => {
+          // Step 1: Only set Y positions by hierarchy level (keep current X positions)
+          return nds.map(node => {
             const level = nodeLevels.get(node.id) || 0;
-            const nodesAtLevel = levelNodes.get(level) || [];
-            const indexAtLevel = nodesAtLevel.findIndex(n => n.id === node.id);
             return {
               ...node,
-              position: { x: gridX * indexAtLevel, y: baseY + (level * rowSpacing) }
+              position: { 
+                x: node.position.x, // Keep current X
+                y: baseY + (level * rowSpacing) 
+              }
             };
           });
           
         case 'proximity-order':
-          // Step 2: Group siblings together near their parents
+          // Step 2: Group siblings horizontally (build on step 1's Y positions)
           const proximityPositions = new Map<string, { x: number; y: number }>();
           
           for (let level = 0; level <= Math.max(...Array.from(levelNodes.keys())); level++) {
             const nodesAtLevel = levelNodes.get(level) || [];
-            const y = baseY + (level * rowSpacing);
+            const y = baseY + (level * rowSpacing); // Use consistent Y from step 1
             
             // Group by parent
             const siblingGroups = new Map<string, typeof nds>();
@@ -653,51 +653,20 @@ export const ComponentLibraryPlanner = () => {
           });
           
         case 'apply-spacing':
-          // Step 3: Apply proper spacing between sibling nodes
-          const spacingPositions = new Map<string, { x: number; y: number }>();
-          const siblingSpacing = 200;
-          
-          for (let level = 0; level <= Math.max(...Array.from(levelNodes.keys())); level++) {
-            const nodesAtLevel = levelNodes.get(level) || [];
-            const y = baseY + (level * rowSpacing);
-            
-            const siblingGroups = new Map<string, typeof nds>();
-            const orphanNodes: typeof nds = [];
-            
-            nodesAtLevel.forEach(node => {
-              const parentId = parents.get(node.id);
-              if (parentId) {
-                if (!siblingGroups.has(parentId)) {
-                  siblingGroups.set(parentId, []);
-                }
-                siblingGroups.get(parentId)!.push(node);
-              } else {
-                orphanNodes.push(node);
-              }
-            });
-            
-            let currentX = -300;
-            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
-              groupNodes.forEach((node, index) => {
-                spacingPositions.set(node.id, { 
-                  x: currentX + (index * (nodeWidth + 40)), 
-                  y 
-                });
-              });
-              currentX += (groupNodes.length * (nodeWidth + 40)) + siblingSpacing;
-            });
-            
-            orphanNodes.forEach((node, index) => {
-              spacingPositions.set(node.id, { 
-                x: currentX + (index * (nodeWidth + 40)), 
-                y 
-              });
-            });
-          }
-          
+          // Step 3: Improve spacing between nodes (build on steps 1 & 2)
           return nds.map(node => {
-            const newPos = spacingPositions.get(node.id);
-            return newPos ? { ...node, position: { x: newPos.x, y: newPos.y } } : node;
+            // Add consistent spacing adjustments
+            const level = nodeLevels.get(node.id) || 0;
+            const nodesAtLevel = levelNodes.get(level) || [];
+            const indexAtLevel = nodesAtLevel.findIndex(n => n.id === node.id);
+            
+            return {
+              ...node,
+              position: {
+                x: node.position.x + (indexAtLevel * 10), // Slight spacing adjustment
+                y: node.position.y
+              }
+            };
           });
           
         case 'shift-parents':
