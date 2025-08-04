@@ -1,5 +1,5 @@
 import { Node } from '@xyflow/react';
-import { ComponentNodeData, ComponentType } from '@/types/component';
+import { ComponentNodeData, ComponentType, TokenType, TokenSubType } from '@/types/component';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +64,49 @@ export const PropertiesPanel = ({
     onUpdateNode(selectedNode.id, { componentType: value });
   };
 
+  const handleTokenTypeChange = (value: TokenType) => {
+    onUpdateNode(selectedNode.id, { 
+      tokenType: value,
+      tokenSubType: undefined // Reset sub-type when main type changes
+    });
+  };
+
+  const handleTokenSubTypeChange = (value: TokenSubType) => {
+    onUpdateNode(selectedNode.id, { tokenSubType: value });
+  };
+
+  // Token type options
+  const tokenTypeOptions: { value: TokenType; label: string }[] = [
+    { value: 'color', label: 'Color' },
+    { value: 'spacing', label: 'Spacing' },
+    { value: 'corner-radius', label: 'Corner Radius' },
+    { value: 'size', label: 'Size' },
+  ];
+
+  // Dynamic sub-type options based on selected token type
+  const getTokenSubTypeOptions = (tokenType: TokenType): { value: TokenSubType; label: string }[] => {
+    switch (tokenType) {
+      case 'color':
+        return [
+          { value: 'background', label: 'Background' },
+          { value: 'foreground', label: 'Foreground' },
+        ];
+      case 'spacing':
+        return [
+          { value: 'padding', label: 'Padding' },
+          { value: 'margin', label: 'Margin' },
+          { value: 'gap', label: 'Gap' },
+        ];
+      case 'size':
+        return [
+          { value: 'font-size', label: 'Font Size' },
+          { value: 'dimensions', label: 'Dimensions' },
+        ];
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="w-80 bg-workspace border-l border-border p-4 flex flex-col gap-4">
       <div>
@@ -120,6 +163,57 @@ export const PropertiesPanel = ({
             className="mt-1 min-h-[80px]"
           />
         </div>
+
+        {/* Token-specific fields */}
+        {selectedNode.data.componentType === 'token' && (
+          <div className="border-t border-border pt-4 space-y-4">
+            <div>
+              <Label htmlFor="token-type" className="text-sm font-medium">
+                Token Type
+              </Label>
+              <Select
+                value={selectedNode.data.tokenType || ''}
+                onValueChange={handleTokenTypeChange}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select token type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tokenTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedNode.data.tokenType && getTokenSubTypeOptions(selectedNode.data.tokenType).length > 0 && (
+              <div className="ml-4">
+                <Label htmlFor="token-subtype" className="text-sm font-medium text-muted-foreground">
+                  {selectedNode.data.tokenType === 'color' ? 'Color Usage' : 
+                   selectedNode.data.tokenType === 'spacing' ? 'Spacing Type' : 
+                   selectedNode.data.tokenType === 'size' ? 'Size Type' : 'Subtype'}
+                </Label>
+                <Select
+                  value={selectedNode.data.tokenSubType || ''}
+                  onValueChange={handleTokenSubTypeChange}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select subtype" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getTokenSubTypeOptions(selectedNode.data.tokenType).map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
        <div className="mt-auto pt-4 border-t border-border space-y-2">
