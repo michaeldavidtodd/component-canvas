@@ -37,35 +37,31 @@ const nodeWidth = 172;
 const nodeHeight = 36;
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  console.log('🔧 getLayoutedElements called with:', {
-    nodesCount: nodes.length,
-    edgesCount: edges.length,
-    direction,
-    nodeIds: nodes.map(n => n.id),
-    edgeConnections: edges.map(e => `${e.source}->${e.target}`)
-  });
-
   // Create a fresh graph instance each time
   const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({ rankdir: direction });
+  
+  // Configure dagre for hierarchical layout
+  dagreGraph.setGraph({ 
+    rankdir: direction,
+    ranksep: 150,  // Vertical spacing between levels
+    nodesep: 120,  // Horizontal spacing between nodes
+    edgesep: 20,   // Edge separation
+    marginx: 50,   // Margin around the graph
+    marginy: 50
+  });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-    console.log(`📍 Added node ${node.id} to dagre graph`);
   });
 
   edges.forEach((edge) => {
     dagreGraph.setEdge(edge.source, edge.target);
-    console.log(`🔗 Added edge ${edge.source} -> ${edge.target} to dagre graph`);
   });
 
-  console.log('⚡ Running dagre.layout...');
   dagre.layout(dagreGraph);
 
   const newNodes = nodes.map((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
-    console.log(`📐 Node ${node.id} positioned at:`, nodeWithPosition);
     return {
       ...node,
       position: {
@@ -75,7 +71,6 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
     };
   });
 
-  console.log('✅ Final positioned nodes:', newNodes.map(n => ({ id: n.id, position: n.position })));
   return { nodes: newNodes, edges };
 };
 
