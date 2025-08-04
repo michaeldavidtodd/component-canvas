@@ -161,7 +161,6 @@ export const ComponentLibraryPlanner = () => {
     const nodeSpacing = 180; // Spacing between individual nodes
     const baseY = 100; // Starting Y position
     const maxIterations = 5; // Maximum iterations to prevent infinite loops
-    const nodeWidth = 150; // Approximate node width for collision detection
     
     setNodes((nds) => {
       // Build hierarchy tree based on connections
@@ -211,6 +210,46 @@ export const ComponentLibraryPlanner = () => {
           calculateLevel(node.id, 0);
         }
       });
+
+      // Function to get all descendants of a node
+      const getAllDescendants = (nodeId: string): string[] => {
+        const descendants: string[] = [];
+        const nodeChildren = children.get(nodeId) || [];
+        
+        nodeChildren.forEach(childId => {
+          descendants.push(childId);
+          descendants.push(...getAllDescendants(childId));
+        });
+        
+        return descendants;
+      };
+
+      // Function to calculate subtree width (total width needed for all descendants)
+      const calculateSubtreeWidth = (nodeId: string): number => {
+        const descendants = getAllDescendants(nodeId);
+        if (descendants.length === 0) return 0;
+        
+        // Group descendants by level
+        const descendantsByLevel = new Map<number, string[]>();
+        descendants.forEach(descendantId => {
+          const level = nodeLevels.get(descendantId);
+          if (level !== undefined) {
+            if (!descendantsByLevel.has(level)) {
+              descendantsByLevel.set(level, []);
+            }
+            descendantsByLevel.get(level)!.push(descendantId);
+          }
+        });
+        
+        // Find the widest level
+        let maxWidth = 0;
+        descendantsByLevel.forEach(levelDescendants => {
+          const width = Math.max(0, (levelDescendants.length - 1) * nodeSpacing);
+          maxWidth = Math.max(maxWidth, width);
+        });
+        
+        return maxWidth;
+      };
 
       // Function to check if two line segments intersect
       const linesIntersect = (line1: { x1: number; y1: number; x2: number; y2: number }, 
@@ -300,117 +339,108 @@ export const ComponentLibraryPlanner = () => {
         const updatedNodes = new Map<string, { x: number; y: number }>();
         const maxLevel = Math.max(...Array.from(levelNodes.keys()));
         
-        for (let level = 0; level <= maxLevel; level++) {
+        // First, position root nodes with proper spacing for their subtrees
+        const rootNodesAtLevel0 = levelNodes.get(0) || [];
+        if (rootNodesAtLevel0.length > 0) {
+          const y = baseY;
+          
+          // Calculate spacing needed for each root node based on its subtree width
+          const rootSpacings = rootNodesAtLevel0.map(rootNode => {
+            const subtreeWidth = calculateSubtreeWidth(rootNode.id);
+            return Math.max(subtreeWidth + siblingSpacing, siblingSpacing);
+          });
+          
+          // Calculate total width and position root nodes
+          const totalWidth = rootSpacings.reduce((sum, spacing) => sum + spacing, 0) - siblingSpacing;
+          let currentX = -totalWidth / 2;
+          
+          rootNodesAtLevel0.forEach((rootNode, index) => {
+            const centerX = currentX + rootSpacings[index] / 2;
+            updatedNodes.set(rootNode.id, { x: centerX, y });
+            currentX += rootSpacings[index];
+          });
+        }
+        
+        // Then position nodes at other levels, centering them under their root ancestors
+        for (let level = 1; level <= maxLevel; level++) {
           const nodesAtLevel = levelNodes.get(level) || [];
           if (nodesAtLevel.length === 0) continue;
           
           const y = baseY + (level * rowSpacing);
           
-          // Group nodes by their parent for sibling grouping
-          const siblingGroups = new Map<string, typeof nds>();
-          const orphanNodes: typeof nds = [];
+          // Group nodes by their root ancestor
+          const nodesByRoot = new Map<string, typeof nds>();
           
           nodesAtLevel.forEach(node => {
-            const parentId = parents.get(node.id);
-            if (parentId) {
-              if (!siblingGroups.has(parentId)) {
-                siblingGroups.set(parentId, []);
-              }
-              siblingGroups.get(parentId)!.push(node);
-            } else {
-              orphanNodes.push(node);
+            // Find the root ancestor
+            let currentId = node.id;
+            while (parents.has(currentId)) {
+              currentId = parents.get(currentId)!;
             }
-          });
-          
-          // Collect all sibling groups and their target parent positions
-          const groupsWithPositions: { nodes: typeof nds; parentX: number; parentId?: string }[] = [];
-          
-          // Add sibling groups based on their parent positions
-          Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
-            const parentPos = updatedNodes.get(parentId);
-            if (parentPos) {
-              groupsWithPositions.push({
-                nodes: groupNodes,
-                parentX: parentPos.x,
-                parentId
-              });
-            } else {
-              // Parent not positioned yet, use default
-              groupsWithPositions.push({
-                nodes: groupNodes,
-                parentX: 0,
-                parentId
-              });
-            }
-          });
-          
-          // Add orphan nodes as individual groups
-          orphanNodes.forEach((node, index) => {
-            groupsWithPositions.push({
-              nodes: [node],
-              parentX: index * siblingSpacing
-            });
-          });
-          
-          // Sort groups by parent position (left to right)
-          groupsWithPositions.sort((a, b) => a.parentX - b.parentX);
-          
-          // Calculate total width needed for all groups
-          let totalGroupWidth = 0;
-          groupsWithPositions.forEach(group => {
-            const groupWidth = Math.max(0, (group.nodes.length - 1) * nodeSpacing);
-            totalGroupWidth += groupWidth + siblingSpacing;
-          });
-          totalGroupWidth = Math.max(totalGroupWidth - siblingSpacing, 0); // Remove last spacing
-          
-          // Position each group
-          let currentX = -totalGroupWidth / 2;
-          
-          groupsWithPositions.forEach((group, groupIndex) => {
-            const groupNodes = group.nodes;
-            const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
             
-            // For sibling groups, center them around their parent's X position
-            let groupStartX = currentX;
-            if (group.parentId && group.nodes.length > 0) {
-              // Center the group around the parent position
-              groupStartX = group.parentX - (groupWidth / 2);
+            if (!nodesByRoot.has(currentId)) {
+              nodesByRoot.set(currentId, []);
+            }
+            nodesByRoot.get(currentId)!.push(node);
+          });
+          
+          // Position each group under its root
+          nodesByRoot.forEach((groupNodes, rootId) => {
+            const rootPos = updatedNodes.get(rootId);
+            if (!rootPos) return;
+            
+            // Group by immediate parent within this root subtree
+            const siblingGroups = new Map<string, typeof nds>();
+            
+            groupNodes.forEach(node => {
+              const parentId = parents.get(node.id);
+              if (parentId) {
+                if (!siblingGroups.has(parentId)) {
+                  siblingGroups.set(parentId, []);
+                }
+                siblingGroups.get(parentId)!.push(node);
+              }
+            });
+            
+            // Calculate total width needed for all sibling groups
+            const groups = Array.from(siblingGroups.values());
+            let totalGroupWidth = 0;
+            groups.forEach(group => {
+              const groupWidth = Math.max(0, (group.length - 1) * nodeSpacing);
+              totalGroupWidth += groupWidth;
+              if (totalGroupWidth > 0) totalGroupWidth += siblingSpacing;
+            });
+            totalGroupWidth = Math.max(totalGroupWidth - siblingSpacing, 0);
+            
+            // Center all groups under the root
+            let currentX = rootPos.x - totalGroupWidth / 2;
+            
+            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
+              const parentPos = updatedNodes.get(parentId);
+              const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
               
-              // Adjust if this would cause overlap with previous groups
-              if (groupIndex > 0) {
-                const minX = currentX;
-                groupStartX = Math.max(groupStartX, minX);
+              // Try to center under parent, but maintain overall centering under root
+              let groupStartX = currentX;
+              if (parentPos && groupNodes.length === 1) {
+                // Single node can be centered exactly under parent
+                groupStartX = parentPos.x;
+              } else if (parentPos) {
+                // Multiple nodes: try to center under parent but respect flow
+                const idealCenterX = parentPos.x;
+                const actualCenterX = currentX + groupWidth / 2;
+                const offset = idealCenterX - actualCenterX;
+                groupStartX = Math.max(currentX, currentX + offset);
               }
-            }
-            
-            // Position individual nodes within the group
-            groupNodes.forEach((node, nodeIndex) => {
-              const nodeX = groupStartX + (nodeIndex * nodeSpacing);
-              updatedNodes.set(node.id, { x: nodeX, y });
+              
+              // Position individual nodes
+              groupNodes.forEach((node, nodeIndex) => {
+                const nodeX = groupStartX + (nodeIndex * nodeSpacing);
+                updatedNodes.set(node.id, { x: nodeX, y });
+              });
+              
+              currentX = groupStartX + groupWidth + siblingSpacing;
             });
-            
-            // Update currentX for next group
-            currentX = groupStartX + groupWidth + siblingSpacing;
           });
-          
-          // Final pass: ensure no overlaps within this level
-          const levelNodePositions = nodesAtLevel
-            .map(node => ({
-              id: node.id,
-              x: updatedNodes.get(node.id)?.x || 0
-            }))
-            .sort((a, b) => a.x - b.x);
-          
-          // Adjust overlapping nodes
-          for (let i = 1; i < levelNodePositions.length; i++) {
-            const prevNode = levelNodePositions[i - 1];
-            const currentNode = levelNodePositions[i];
-            
-            if (currentNode.x - prevNode.x < nodeSpacing) {
-              currentNode.x = prevNode.x + nodeSpacing;
-              updatedNodes.set(currentNode.id, { x: currentNode.x, y });
-            }
-          }
         }
         
         // Check for connection line conflicts
