@@ -15,6 +15,7 @@ import {
   EdgeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import dagre from '@dagrejs/dagre';
 
 import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
@@ -31,6 +32,39 @@ import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Save, History, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+
+const nodeWidth = 172;
+const nodeHeight = 36;
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({ rankdir: direction });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const newNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: newNodes, edges };
+};
 
 const nodeTypes = {
   component: ComponentNode,
@@ -157,6 +191,20 @@ export const ComponentLibraryPlanner = () => {
       setSelectedNode(null);
     }
   }, [selectedNode, setNodes, setEdges]);
+
+  const onLayout = useCallback(
+    (direction = 'TB') => {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        nodes,
+        edges,
+        direction,
+      );
+
+      setNodes([...layoutedNodes] as any);
+      setEdges([...layoutedEdges]);
+    },
+    [nodes, edges, setNodes, setEdges],
+  );
 
 
   // Step-by-step layout functions
@@ -524,6 +572,7 @@ export const ComponentLibraryPlanner = () => {
            selectedNode={selectedNode}
            onUpdateNode={updateNodeData}
            onDeleteNode={deleteSelectedNode}
+           onSmartLayout={() => onLayout('TB')}
            onCleanupLayout={cleanupLayout}
            onToggleStepControls={() => setShowStepControls(!showStepControls)}
            showStepControls={showStepControls}
