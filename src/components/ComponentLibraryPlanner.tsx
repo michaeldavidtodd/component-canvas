@@ -362,15 +362,12 @@ export const ComponentLibraryPlanner = () => {
                      
                      let adjustedX = centerX;
                      
-                     // Check for overlaps and adjust if necessary - ensure siblings stay properly spaced
-                     const parentId = parents.get(nodeId);
-                     const siblings = parentId ? (children.get(parentId) || []).filter(id => id !== nodeId) : [];
-                     
+                     // Check for overlaps and adjust if necessary
                      for (const otherNode of nodesAtSameLevel) {
-                       if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 40) { // Increased spacing
+                       if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
                          // If there's a conflict, shift right
                          if (adjustedX >= otherNode.x) {
-                           adjustedX = otherNode.x + nodeWidth + 40; // Increased spacing
+                           adjustedX = otherNode.x + nodeWidth + 20;
                          }
                        }
                      }
@@ -524,12 +521,12 @@ export const ComponentLibraryPlanner = () => {
           // Increase spacing for next iteration
           siblingSpacing += 50;
         } else {
-          // Bottom-to-top centering pass - process trees from left to right
-          const finalNodes = centerParentsOverChildren(updatedNodes, nds, children, parents, nodeWidth);
+          // Skip the centering pass for now to preserve sibling spacing
+          // const finalNodes = centerParentsOverChildren(updatedNodes, nds, children, parents, nodeWidth);
           
           // Apply final positions to nodes
           return nds.map(node => {
-            const newPosition = finalNodes.get(node.id);
+            const newPosition = updatedNodes.get(node.id);
             if (newPosition) {
               return {
                 ...node,
