@@ -467,9 +467,9 @@ export const ComponentLibraryPlanner = () => {
           // Position each group
           let currentX = -totalGroupWidth / 2;
           
-          groupsWithPositions.forEach((group, groupIndex) => {
-            const groupNodes = group.nodes;
-            const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
+           groupsWithPositions.forEach((group, groupIndex) => {
+             const groupNodes = group.nodes;
+             const groupWidth = Math.max(0, (groupNodes.length - 1) * (nodeWidth + 20)); // Use actual node width + spacing
             
             // For sibling groups, center them around their parent's X position
             let groupStartX = currentX;
@@ -484,11 +484,11 @@ export const ComponentLibraryPlanner = () => {
               }
             }
             
-            // Position individual nodes within the group
-            groupNodes.forEach((node, nodeIndex) => {
-              const nodeX = groupStartX + (nodeIndex * nodeSpacing);
-              updatedNodes.set(node.id, { x: nodeX, y });
-            });
+             // Position individual nodes within the group
+             groupNodes.forEach((node, nodeIndex) => {
+               const nodeX = groupStartX + (nodeIndex * (nodeWidth + 20)); // Use actual node width + spacing
+               updatedNodes.set(node.id, { x: nodeX, y });
+             });
             
             // Update currentX for next group
             currentX = groupStartX + groupWidth + siblingSpacing;
