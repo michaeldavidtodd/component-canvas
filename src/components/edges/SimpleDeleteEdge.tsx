@@ -11,21 +11,31 @@ export default function SimpleDeleteEdge(props: any) {
   const { setEdges } = useReactFlow();
   const [isHovered, setIsHovered] = useState(false);
   const [edgePath, labelX, labelY] = getBezierPath(props);
+  
+  const showButton = isHovered || props.selected;
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
 
   return (
-    <g>
+    <>
       <BaseEdge path={edgePath} {...props} />
-      {/* Invisible wider path for hover detection */}
+      {/* Wide invisible hit area for stable hover */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
-        strokeWidth={20}
+        strokeWidth={30}
         style={{ cursor: 'pointer' }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       />
-      {isHovered && (
+      {showButton && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -34,21 +44,21 @@ export default function SimpleDeleteEdge(props: any) {
               pointerEvents: 'all',
               zIndex: 1000,
             }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseEnter={handleMouseEnter}
           >
             <button
-              className="w-6 h-6 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded-full flex items-center justify-center border-2 border-background shadow-lg transition-colors"
-              onClick={() => {
+              className="w-7 h-7 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded-full flex items-center justify-center border-2 border-background shadow-lg transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
                 setEdges((edges) => edges.filter((edge) => edge.id !== props.id));
               }}
               aria-label="Delete connection"
             >
-              <X className="w-3 h-3" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </EdgeLabelRenderer>
       )}
-    </g>
+    </>
   );
 }
