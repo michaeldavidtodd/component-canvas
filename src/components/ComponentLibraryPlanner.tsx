@@ -13,7 +13,7 @@ import {
   Node,
   NodeChange,
   EdgeChange,
-  
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
@@ -76,11 +76,9 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: newNodes, edges };
 };
 
-// Apply layout to initial elements
-const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-  initialNodes,
-  initialEdges,
-);
+// Start with empty arrays to avoid loading default content
+const layoutedNodes: Node[] = [];
+const layoutedEdges: Edge[] = [];
 
 const nodeTypes = {
   component: ComponentNode,
@@ -89,6 +87,8 @@ const nodeTypes = {
 const edgeTypes = {
   default: SimpleDeleteEdge,
 };
+
+
 
 export const ComponentLibraryPlanner = ({ 
   isSharedView = false, 
@@ -104,6 +104,8 @@ export const ComponentLibraryPlanner = ({
   const [isProjectInitialized, setIsProjectInitialized] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
+  
+
   
   const {
     currentProject,
@@ -422,7 +424,8 @@ export const ComponentLibraryPlanner = ({
             nodesDraggable={!isSharedView}
             nodesConnectable={!isSharedView}
             elementsSelectable={!isSharedView}
-            fitView
+            fitView={nodes.length > 0}
+            fitViewOptions={{ padding: 0.2, includeHiddenNodes: false, minZoom: 0.5, maxZoom: 2 }}
             className="bg-canvas"
           >
             <Background className="[&>*]:!stroke-border" gap={16} />
@@ -441,7 +444,6 @@ export const ComponentLibraryPlanner = ({
                 }
               }}
             />
-            
             {/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
             {user && !isAnonymous && currentProject && !isSharedView && (
               <AutoSaveHandler
