@@ -121,18 +121,21 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
       source: side === 'top' ? newId : currentNode.id,
       target: side === 'top' ? currentNode.id : newId,
       type: 'default',
-      animated: true,
       style: { stroke: strokeColor },
     };
 
+    // Sanitize to remove any selectable property
+    const { selectable: _, ...sanitizedNewNode } = newNode as any;
+    const { selectable: __, ...sanitizedNewEdge } = newEdge as any;
+
     // Deselect all existing nodes and add the new selected node
-    setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), newNode]);
-    setEdges((edges) => [...edges, newEdge]);
+    setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), sanitizedNewNode]);
+    setEdges((edges) => [...edges, sanitizedNewEdge]);
     
     // Dispatch custom event to notify parent component of selection
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('nodeCreated', { 
-        detail: { node: newNode } 
+        detail: { node: sanitizedNewNode } 
       }));
     }, 0);
   }, [data, setNodes, setEdges, getNodes, getEdges]);

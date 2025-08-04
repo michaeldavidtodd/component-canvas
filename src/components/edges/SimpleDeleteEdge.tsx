@@ -28,9 +28,12 @@ export default function SimpleDeleteEdge(props: any) {
     }, 100);
   };
 
+  // Only pass safe props to BaseEdge
+  const { id, source, target, sourceX, sourceY, targetX, targetY, selected, style, ...safeProps } = props;
+
   return (
     <>
-      <BaseEdge path={edgePath} {...props} />
+      <BaseEdge path={edgePath} style={style} />
       {/* Wide invisible hit area for stable hover */}
       <path
         d={edgePath}
