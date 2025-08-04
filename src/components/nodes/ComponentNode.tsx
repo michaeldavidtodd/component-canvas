@@ -66,9 +66,10 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
   const timeoutRef = useRef<NodeJS.Timeout>();
   const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
 
-  // Get the current node to access its style (width)
+  // Get the current node to access its style (width and height)
   const currentNode = useStore((s) => s.nodeLookup.get(id));
   const nodeWidth = currentNode?.style?.width || 200;
+  const nodeHeight = currentNode?.style?.height || 'auto';
 
   const addNode = useCallback((side: 'top' | 'bottom') => {
     console.log('ADD NODE CALLED!', side);
@@ -157,6 +158,7 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
       `}
       style={{ 
         width: nodeWidth,
+        height: nodeHeight,
         minWidth: 160
       }}
     >
