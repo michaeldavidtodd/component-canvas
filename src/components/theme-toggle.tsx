@@ -4,11 +4,9 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 import { useTheme } from "./theme-provider"
-import { useTheme as useNextTheme } from "next-themes"
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme()
-  const { theme } = useNextTheme()
+  const { theme, setTheme } = useTheme()
 
   return (
     <ToggleGroup 

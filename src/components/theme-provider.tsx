@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from "next-themes"
 import { type ThemeProviderProps } from "next-themes/dist/types"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/integrations/supabase/client"
@@ -17,7 +17,24 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [theme, setThemeState] = useState<Theme>("system")
+
+  return (
+    <NextThemesProvider
+      {...props}
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <ThemeProviderInner user={user} toast={toast}>
+        {children}
+      </ThemeProviderInner>
+    </NextThemesProvider>
+  )
+}
+
+function ThemeProviderInner({ children, user, toast }: { children: React.ReactNode, user: any, toast: any }) {
+  const { theme: nextTheme, setTheme: setNextTheme } = useNextTheme() as any
   const [isLoaded, setIsLoaded] = useState(false)
 
   // Load theme preference from user profile
@@ -31,8 +48,8 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
             .eq('user_id', user.id)
             .single()
 
-          if (profile?.theme_preference) {
-            setThemeState(profile.theme_preference as Theme)
+          if (profile?.theme_preference && profile.theme_preference !== nextTheme) {
+            setNextTheme(profile.theme_preference)
           }
         } catch (error) {
           console.error('Error loading user theme preference:', error)
@@ -42,11 +59,11 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     }
 
     loadUserTheme()
-  }, [user])
+  }, [user, setNextTheme, nextTheme])
 
   // Save theme preference to user profile
   const setTheme = async (newTheme: Theme) => {
-    setThemeState(newTheme)
+    setNextTheme(newTheme)
     
     if (user) {
       try {
@@ -69,22 +86,9 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     }
   }
 
-  // Don't render until theme is loaded to prevent flash
-  if (!isLoaded) {
-    return null
-  }
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      <NextThemesProvider
-        {...props}
-        attribute="class"
-        defaultTheme={theme}
-        enableSystem
-        disableTransitionOnChange
-      >
-        {children}
-      </NextThemesProvider>
+    <ThemeContext.Provider value={{ theme: nextTheme, setTheme }}>
+      {children}
     </ThemeContext.Provider>
   )
 }
