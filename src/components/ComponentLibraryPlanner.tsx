@@ -362,15 +362,19 @@ export const ComponentLibraryPlanner = () => {
                     
                     let adjustedX = centerX;
                     
-                    // Check for overlaps and adjust if necessary
-                    for (const otherNode of nodesAtSameLevel) {
-                      if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
-                        // If there's a conflict, shift right
-                        if (adjustedX >= otherNode.x) {
-                          adjustedX = otherNode.x + nodeWidth + 20;
-                        }
-                      }
-                    }
+                     // Check for overlaps and adjust if necessary
+                     let conflictFound = true;
+                     while (conflictFound) {
+                       conflictFound = false;
+                       for (const otherNode of nodesAtSameLevel) {
+                         if (Math.abs(adjustedX - otherNode.x) < nodeWidth + 20) {
+                           // If there's a conflict, shift right
+                           adjustedX = Math.max(adjustedX, otherNode.x + nodeWidth + 20);
+                           conflictFound = true;
+                           break;
+                         }
+                       }
+                     }
                     
                     finalPositions.set(nodeId, { x: adjustedX, y: currentY });
                   }
