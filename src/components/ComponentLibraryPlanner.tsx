@@ -159,16 +159,15 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    const rowSpacing = 150; // Vertical spacing between levels
-    const nodeWidth = 200; // Width allocated per node
-    const baseY = 100; // Starting Y position
+    const rowSpacing = 150;
+    const nodeWidth = 200;
+    const baseY = 100;
     
     setNodes((nds) => {
-      const nodeMap = new Map(nds.map(node => [node.id, node]));
       const children = new Map<string, string[]>();
       const parents = new Map<string, string[]>();
       
-      // Build parent-child relationships from edges
+      // Build relationships
       edges.forEach(edge => {
         if (!children.has(edge.source)) {
           children.set(edge.source, []);
@@ -181,30 +180,13 @@ export const ComponentLibraryPlanner = () => {
         parents.get(edge.target)!.push(edge.source);
       });
       
-      // Find root nodes (nodes with no parents)
+      // Find roots
       const rootNodes = nds.filter(node => 
         !edges.some(edge => edge.target === node.id)
       );
       if (rootNodes.length === 0) return nds;
       
-      // Calculate levels for positioning
-      const levels = new Map<string, number>();
-      const levelVisited = new Set<string>();
-      
-      const calculateLevel = (nodeId: string, level: number) => {
-        if (levelVisited.has(nodeId)) return;
-        levelVisited.add(nodeId);
-        levels.set(nodeId, level);
-        
-        const nodeChildren = children.get(nodeId) || [];
-        nodeChildren.forEach(childId => {
-          calculateLevel(childId, level + 1);
-        });
-      };
-      
-      rootNodes.forEach(root => calculateLevel(root.id, 0));
-      
-      // Calculate subtree widths (includes all children for spacing)
+      // Calculate subtree widths (all children for spacing)
       const subtreeWidths = new Map<string, number>();
       const visited = new Set<string>();
       
@@ -229,110 +211,78 @@ export const ComponentLibraryPlanner = () => {
       
       nds.forEach(node => calculateSubtreeWidth(node.id));
       
-      // Position nodes - bottom up approach
+      // Position nodes with modified centering logic
       const layoutPositions = new Map<string, { x: number; y: number }>();
       
-      // Get all levels
-      const maxLevel = Math.max(...Array.from(levels.values()));
-      
-      // Position leaf nodes first (bottom level)
-      for (let level = maxLevel; level >= 0; level--) {
-        const nodesAtLevel = nds.filter(node => levels.get(node.id) === level);
+      const positionSubtree = (nodeId: string, centerX: number, level: number) => {
+        const y = baseY + (level * rowSpacing);
+        const nodeChildren = children.get(nodeId) || [];
         
-        if (level === maxLevel) {
-          // Position leaf nodes
-          let currentX = 0;
-          nodesAtLevel.forEach(node => {
-            layoutPositions.set(node.id, { 
-              x: currentX, 
-              y: baseY + (level * rowSpacing) 
-            });
-            currentX += nodeWidth;
-          });
-        } else {
-          // Position parent nodes
-          nodesAtLevel.forEach(node => {
-            const nodeChildren = children.get(node.id) || [];
-            const y = baseY + (level * rowSpacing);
-            
-            if (nodeChildren.length === 0) {
-              // No children, position arbitrarily
-              layoutPositions.set(node.id, { x: 0, y });
-            } else {
-              // Find child with most parent connections
-              let targetChild = nodeChildren[0];
-              let maxConnections = (parents.get(targetChild) || []).length;
-              
-              nodeChildren.forEach(childId => {
-                const connectionCount = (parents.get(childId) || []).length;
-                if (connectionCount > maxConnections) {
-                  maxConnections = connectionCount;
-                  targetChild = childId;
-                }
-              });
-              
-              // Center parent over the child with most connections
-              const targetChildPos = layoutPositions.get(targetChild);
-              if (targetChildPos) {
-                layoutPositions.set(node.id, { 
-                  x: targetChildPos.x, 
-                  y 
-                });
-              } else {
-                layoutPositions.set(node.id, { x: 0, y });
-              }
-            }
-          });
+        if (nodeChildren.length === 0) {
+          // Leaf node
+          layoutPositions.set(nodeId, { x: centerX, y });
+          return;
         }
-      }
-      
-      // Adjust positions to spread out subtrees properly
-      const adjustForSubtrees = () => {
-        // Group nodes by level and adjust X positions to prevent overlap
-        for (let level = 0; level <= maxLevel; level++) {
-          const nodesAtLevel = nds.filter(node => levels.get(node.id) === level);
-          
-          // Sort nodes by current X position
-          const sortedNodes = nodesAtLevel
-            .map(node => ({ node, pos: layoutPositions.get(node.id)! }))
-            .sort((a, b) => a.pos.x - b.pos.x);
-          
-          // Adjust positions to ensure minimum spacing based on subtree widths
-          let currentX = 0;
-          if (level === 0) {
-            // For root nodes, center them around 0
-            const totalWidth = sortedNodes.reduce((sum, { node }) => 
-              sum + (subtreeWidths.get(node.id) || nodeWidth), 0);
-            currentX = -totalWidth / 2;
+        
+        // Find child with most parent connections for centering
+        let targetChild = nodeChildren[0];
+        let maxConnections = (parents.get(targetChild) || []).length;
+        
+        nodeChildren.forEach(childId => {
+          const connectionCount = (parents.get(childId) || []).length;
+          if (connectionCount > maxConnections) {
+            maxConnections = connectionCount;
+            targetChild = childId;
           }
-          
-          sortedNodes.forEach(({ node }) => {
-            const subtreeWidth = subtreeWidths.get(node.id) || nodeWidth;
-            const centerX = currentX + subtreeWidth / 2;
-            
-            const currentPos = layoutPositions.get(node.id)!;
-            layoutPositions.set(node.id, { 
-              x: centerX, 
-              y: currentPos.y 
-            });
-            
-            currentX += subtreeWidth;
-          });
-        }
+        });
+        
+        // Position all children first (for their subtree widths)
+        const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
+          return sum + (subtreeWidths.get(childId) || nodeWidth);
+        }, 0);
+        
+        let currentX = centerX - totalChildrenWidth / 2;
+        const childPositions = new Map<string, number>();
+        
+        nodeChildren.forEach(childId => {
+          const childWidth = subtreeWidths.get(childId) || nodeWidth;
+          const childCenterX = currentX + childWidth / 2;
+          childPositions.set(childId, childCenterX);
+          currentX += childWidth;
+        });
+        
+        // Position parent over target child (most connections)
+        const targetChildX = childPositions.get(targetChild)!;
+        layoutPositions.set(nodeId, { x: targetChildX, y });
+        
+        // Recursively position children
+        nodeChildren.forEach(childId => {
+          const childCenterX = childPositions.get(childId)!;
+          positionSubtree(childId, childCenterX, level + 1);
+        });
       };
       
-      adjustForSubtrees();
+      // Position each root subtree
+      if (rootNodes.length === 1) {
+        positionSubtree(rootNodes[0].id, 0, 0);
+      } else {
+        const totalRootsWidth = rootNodes.reduce((sum, root) => {
+          return sum + (subtreeWidths.get(root.id) || nodeWidth);
+        }, 0);
+        
+        let currentX = -totalRootsWidth / 2;
+        rootNodes.forEach(root => {
+          const rootWidth = subtreeWidths.get(root.id) || nodeWidth;
+          const rootCenterX = currentX + rootWidth / 2;
+          positionSubtree(root.id, rootCenterX, 0);
+          currentX += rootWidth;
+        });
+      }
       
       // Apply positions
       return nds.map(node => {
         const newPos = layoutPositions.get(node.id);
-        if (newPos) {
-          return {
-            ...node,
-            position: newPos,
-          };
-        }
-        return node;
+        return newPos ? { ...node, position: newPos } : node;
       });
     });
   }, [edges, setNodes]);
