@@ -87,6 +87,14 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           <p className="text-xs text-muted-foreground capitalize">
             {data.componentType.replace('-', ' ')}
           </p>
+          {data.componentType === 'token' && data.tokenType && (
+            <div className="text-xs text-muted-foreground mt-1">
+              <span className="font-medium">{data.tokenType}</span>
+              {data.tokenSubType && (
+                <span className="ml-1">• {data.tokenSubType}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
