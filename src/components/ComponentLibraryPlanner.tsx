@@ -17,6 +17,39 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
 
+const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+
+const nodeWidth = 200;
+const nodeHeight = 60;
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({ rankdir: direction });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const newNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: newNodes, edges };
+};
+
 import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
 import { StepByStepLayoutControls } from './StepByStepLayoutControls';
@@ -160,36 +193,13 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    if (!nodes.length) return;
-    
-    const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: 'TB' });
-    
-    const nodeWidth = 200;
-    const nodeHeight = 60;
-    
-    nodes.forEach((node) => {
-      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-    });
-    
-    edges.forEach((edge) => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-    
-    dagre.layout(dagreGraph);
-    
-    const newNodes = nodes.map((node) => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - nodeWidth / 2,
-          y: nodeWithPosition.y - nodeHeight / 2,
-        },
-      };
-    });
-    
-    setNodes(newNodes);
+    const { nodes: layoutedNodes } = getLayoutedElements(
+      nodes,
+      edges,
+      'TB'
+    );
+
+    setNodes(layoutedNodes as any);
   }, [nodes, edges, setNodes]);
 
   // Step-by-step layout functions
