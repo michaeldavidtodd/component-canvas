@@ -101,15 +101,23 @@ export const ComponentNode = memo(({ data, selected }: any) => {
     
     let strokeColor = 'hsl(216 8% 45%)'; // default
     
+    console.log('Adding node - Current type:', currentType, 'New type:', newType);
+    
     // Component to Variant connection
     if ((currentType === 'main-component' && newType === 'variant') || 
         (currentType === 'variant' && newType === 'main-component')) {
       strokeColor = 'hsl(258 100% 68%)'; // primary
+      console.log('Using primary color');
     }
     // Token usage connections
     else if (currentType === 'token' || newType === 'token') {
       strokeColor = 'hsl(45 100% 68%)'; // component-token
+      console.log('Using token color');
+    } else {
+      console.log('Using default color');
     }
+    
+    console.log('Final stroke color:', strokeColor);
 
     // Create new edge
     const newEdge = {
