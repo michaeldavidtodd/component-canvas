@@ -46,10 +46,10 @@ const Auth = () => {
         title: "Welcome back!",
         description: "You've been signed in successfully."
       });
-      // Add small delay to ensure auth state is updated before navigation
+      // Add delay to ensure auth state is fully updated before navigation
       setTimeout(() => {
         navigate('/');
-      }, 100);
+      }, 500);
     }
     
     setLoading(false);
