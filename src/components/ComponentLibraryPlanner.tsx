@@ -794,6 +794,29 @@ export const ComponentLibraryPlanner = () => {
     setCompletedSteps(new Set());
   }, []);
 
+  const randomizeLayout = useCallback(() => {
+    setNodes((nds) => {
+      // Define the area bounds for randomization
+      const bounds = {
+        minX: -500,
+        maxX: 1500,
+        minY: 50,
+        maxY: 800
+      };
+      
+      return nds.map(node => ({
+        ...node,
+        position: {
+          x: Math.random() * (bounds.maxX - bounds.minX) + bounds.minX,
+          y: Math.random() * (bounds.maxY - bounds.minY) + bounds.minY
+        }
+      }));
+    });
+    
+    // Reset completed steps since positions are now random
+    setCompletedSteps(new Set());
+  }, [setNodes]);
+
   const cleanupLayout = useCallback(() => {
     const gridSize = 50; // Grid snap size
     const minSpacing = 200; // Minimum spacing between nodes
@@ -953,11 +976,12 @@ export const ComponentLibraryPlanner = () => {
          {/* Step-by-step layout controls */}
          {showStepControls && (
            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
-             <StepByStepLayoutControls
-               onExecuteStep={executeLayoutStep}
-               completedSteps={completedSteps}
-               onReset={resetLayoutSteps}
-             />
+              <StepByStepLayoutControls
+                onExecuteStep={executeLayoutStep}
+                completedSteps={completedSteps}
+                onReset={resetLayoutSteps}
+                onRandomize={randomizeLayout}
+              />
            </div>
          )}
       </div>

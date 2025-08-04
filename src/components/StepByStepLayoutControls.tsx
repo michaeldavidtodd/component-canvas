@@ -10,13 +10,15 @@ import {
   Move, 
   AlignCenter,
   RotateCcw,
-  GripVertical
+  GripVertical,
+  Shuffle
 } from 'lucide-react';
 
 interface StepByStepLayoutControlsProps {
   onExecuteStep: (stepId: string) => void;
   completedSteps: Set<string>;
   onReset: () => void;
+  onRandomize: () => void;
 }
 
 const layoutSteps = [
@@ -60,7 +62,8 @@ const layoutSteps = [
 export function StepByStepLayoutControls({ 
   onExecuteStep, 
   completedSteps, 
-  onReset 
+  onReset,
+  onRandomize
 }: StepByStepLayoutControlsProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -120,15 +123,26 @@ export function StepByStepLayoutControls({
             </div>
             <CardTitle className="text-lg">Layout Steps</CardTitle>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onReset}
-            className="flex items-center gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reset
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRandomize}
+              className="flex items-center gap-2"
+            >
+              <Shuffle className="h-4 w-4" />
+              Randomize
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReset}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           Execute layout steps one at a time to see their individual effects
