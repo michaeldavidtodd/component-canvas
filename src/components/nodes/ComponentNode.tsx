@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useRef } from 'react';
-import { Handle, Position, useReactFlow, useStore } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useStore, NodeResizer } from '@xyflow/react';
 import { ComponentType } from '@/types/component';
 import { 
   Component, 
@@ -61,10 +61,14 @@ const getBorderColor = (type: ComponentType) => {
   }
 };
 
-export const ComponentNode = memo(({ data, selected }: any) => {
+export const ComponentNode = memo(({ data, selected, id }: any) => {
   const [hoveredSide, setHoveredSide] = useState<'top' | 'bottom' | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
+
+  // Get the current node to access its style (width)
+  const currentNode = useStore((s) => s.nodeLookup.get(id));
+  const nodeWidth = currentNode?.style?.width || 200;
 
   const addNode = useCallback((side: 'top' | 'bottom') => {
     console.log('ADD NODE CALLED!', side);
@@ -145,11 +149,22 @@ export const ComponentNode = memo(({ data, selected }: any) => {
   };
 
   return (
-    <div className={`
-      relative bg-workspace border-2 rounded-lg shadow-md min-w-[160px] p-3
-      ${selected ? getBorderColor(data.componentType) : 'border-border'}
-      transition-all duration-200 group
-    `}>
+    <div 
+      className={`
+        relative bg-workspace border-2 rounded-lg shadow-md p-3
+        ${selected ? getBorderColor(data.componentType) : 'border-border'}
+        transition-all duration-200 group
+      `}
+      style={{ 
+        width: nodeWidth,
+        minWidth: 160
+      }}
+    >
+      <NodeResizer 
+        minWidth={160} 
+        minHeight={80}
+        isVisible={selected}
+      />
       {/* Top handle with add button */}
       <div 
         className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center"
@@ -190,14 +205,14 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           {getNodeIcon(data.componentType)}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm text-foreground truncate">
+          <h3 className="font-medium text-sm text-foreground break-words">
             {data.label}
           </h3>
           <p className="text-xs text-muted-foreground capitalize">
             {data.componentType.replace('-', ' ')}
           </p>
           {data.componentType === 'token' && data.tokenType && (
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-xs text-muted-foreground mt-1 break-words">
               <span className="font-medium">{data.tokenType}</span>
               {data.tokenSubType && (
                 <span className="ml-1">• {data.tokenSubType}</span>
@@ -208,7 +223,7 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       </div>
       
       {data.description && (
-        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground break-words leading-relaxed">
           {data.description}
         </p>
       )}
