@@ -96,13 +96,26 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       },
     };
 
-    // Create new edge - let the main component calculate the color
+    // Use same color logic as onConnect
+    const currentType = currentNode.data.componentType as ComponentType;
+    const newType = 'main-component' as ComponentType;
+    
+    let strokeColor = 'hsl(216 8% 45%)'; // default
+    if ((currentType === 'main-component' && newType === 'variant') || 
+        (currentType === 'variant' && newType === 'main-component')) {
+      strokeColor = 'hsl(258 100% 68%)';
+    } else if (currentType === 'token' || newType === 'token') {
+      strokeColor = 'hsl(45 100% 68%)';
+    }
+
+    // Create new edge
     const newEdge = {
       id: `edge-${Date.now()}`,
       source: side === 'top' ? newId : currentNode.id,
       target: side === 'top' ? currentNode.id : newId,
       type: 'default',
-      style: { stroke: 'hsl(216 8% 45%)' }, // temporary, will be updated by useEffect
+      animated: true,
+      style: { stroke: strokeColor },
     };
 
     // Add to flow
