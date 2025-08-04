@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useRef } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { ComponentType } from '@/types/component';
 import { 
@@ -63,6 +63,7 @@ const getBorderColor = (type: ComponentType) => {
 
 export const ComponentNode = memo(({ data, selected }: any) => {
   const [hoveredSide, setHoveredSide] = useState<'top' | 'bottom' | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout>();
   const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
 
   const addNode = useCallback((side: 'top' | 'bottom') => {
@@ -108,6 +109,19 @@ export const ComponentNode = memo(({ data, selected }: any) => {
     setEdges((edges) => [...edges, newEdge]);
   }, [data, setNodes, setEdges, getNodes, getEdges]);
 
+  const handleMouseEnter = (side: 'top' | 'bottom') => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setHoveredSide(side);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setHoveredSide(null);
+    }, 150);
+  };
+
   return (
     <div className={`
       relative bg-workspace border-2 rounded-lg shadow-md min-w-[160px] p-3
@@ -116,9 +130,9 @@ export const ComponentNode = memo(({ data, selected }: any) => {
     `}>
       {/* Top handle with add button */}
       <div 
-        className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-        onMouseEnter={() => setHoveredSide('top')}
-        onMouseLeave={() => setHoveredSide(null)}
+        className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center"
+        onMouseEnter={() => handleMouseEnter('top')}
+        onMouseLeave={handleMouseLeave}
       >
         <Handle
           type="target"
@@ -126,13 +140,19 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           className="!w-3 !h-3 !bg-border hover:!bg-primary"
         />
         {hoveredSide === 'top' && (
-          <button
-            className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
-            onClick={() => addNode('top')}
-            aria-label="Add node above"
+          <div
+            className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-8 h-8 flex items-center justify-center"
+            onMouseEnter={() => handleMouseEnter('top')}
+            onMouseLeave={handleMouseLeave}
           >
-            <Plus className="w-3 h-3" />
-          </button>
+            <button
+              className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
+              onClick={() => addNode('top')}
+              aria-label="Add node above"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
         )}
       </div>
       
@@ -169,9 +189,9 @@ export const ComponentNode = memo(({ data, selected }: any) => {
       
       {/* Bottom handle with add button */}
       <div 
-        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2"
-        onMouseEnter={() => setHoveredSide('bottom')}
-        onMouseLeave={() => setHoveredSide(null)}
+        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-8 h-8 flex items-center justify-center"
+        onMouseEnter={() => handleMouseEnter('bottom')}
+        onMouseLeave={handleMouseLeave}
       >
         <Handle
           type="source"
@@ -179,13 +199,19 @@ export const ComponentNode = memo(({ data, selected }: any) => {
           className="!w-3 !h-3 !bg-border hover:!bg-primary"
         />
         {hoveredSide === 'bottom' && (
-          <button
-            className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
-            onClick={() => addNode('bottom')}
-            aria-label="Add node below"
+          <div
+            className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-8 h-8 flex items-center justify-center"
+            onMouseEnter={() => handleMouseEnter('bottom')}
+            onMouseLeave={handleMouseLeave}
           >
-            <Plus className="w-3 h-3" />
-          </button>
+            <button
+              className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
+              onClick={() => addNode('bottom')}
+              aria-label="Add node below"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
         )}
       </div>
     </div>
