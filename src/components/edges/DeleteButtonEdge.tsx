@@ -19,7 +19,8 @@ export default function DeleteButtonEdge({
   markerEnd,
 }: any) {
   const { setEdges } = useReactFlow();
-  const [showButton, setShowButton] = useState(false);
+  
+  console.log('DeleteButtonEdge rendering for edge:', id);
   
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -32,6 +33,7 @@ export default function DeleteButtonEdge({
 
   const onEdgeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Delete button clicked for edge:', id);
     setEdges((edges) => edges.filter((edge) => edge.id !== id));
   };
 
