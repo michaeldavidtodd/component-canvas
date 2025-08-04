@@ -17,10 +17,9 @@ export default function DeleteButtonEdge({
   targetPosition,
   style = {},
   markerEnd,
-  selected,
 }: any) {
   const { setEdges } = useReactFlow();
-  const [isHovered, setIsHovered] = useState(false);
+  const [showButton, setShowButton] = useState(false);
   
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -35,27 +34,35 @@ export default function DeleteButtonEdge({
     setEdges((edges) => edges.filter((edge) => edge.id !== id));
   };
 
-  const showButton = selected || isHovered;
-
   return (
     <>
       <BaseEdge 
         path={edgePath} 
         markerEnd={markerEnd} 
         style={style}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+      />
+      {/* Invisible wider path for better hover detection */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        className="cursor-pointer"
+        onMouseEnter={() => setShowButton(true)}
+        onMouseLeave={() => setShowButton(false)}
       />
       {showButton && (
         <EdgeLabelRenderer>
           <div
-            className="absolute pointer-events-auto"
+            className="absolute pointer-events-auto z-50"
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
+            onMouseEnter={() => setShowButton(true)}
+            onMouseLeave={() => setShowButton(false)}
           >
             <button
-              className="w-6 h-6 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded-full flex items-center justify-center border-2 border-background shadow-md transition-colors"
+              className="w-6 h-6 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded-full flex items-center justify-center border-2 border-background shadow-lg transition-all duration-200"
               onClick={onEdgeClick}
               aria-label="Delete connection"
             >
