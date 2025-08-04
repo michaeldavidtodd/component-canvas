@@ -15,6 +15,7 @@ import {
   EdgeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import dagre from '@dagrejs/dagre';
 
 import { ComponentNode } from './nodes/ComponentNode';
 import { Toolbar } from './Toolbar';
@@ -159,128 +160,37 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    const rowSpacing = 150;
-    const nodeWidth = 200;
-    const baseY = 100;
+    if (!nodes.length) return;
     
-    setNodes((nds) => {
-      const children = new Map<string, string[]>();
-      const parents = new Map<string, string[]>();
-      
-      // Build relationships
-      edges.forEach(edge => {
-        if (!children.has(edge.source)) {
-          children.set(edge.source, []);
-        }
-        children.get(edge.source)!.push(edge.target);
-        
-        if (!parents.has(edge.target)) {
-          parents.set(edge.target, []);
-        }
-        parents.get(edge.target)!.push(edge.source);
-      });
-      
-      // Find roots
-      const rootNodes = nds.filter(node => 
-        !edges.some(edge => edge.target === node.id)
-      );
-      if (rootNodes.length === 0) return nds;
-      
-      // Calculate subtree widths
-      const subtreeWidths = new Map<string, number>();
-      const visited = new Set<string>();
-      
-      const calculateSubtreeWidth = (nodeId: string): number => {
-        if (visited.has(nodeId)) return subtreeWidths.get(nodeId) || nodeWidth;
-        visited.add(nodeId);
-        
-        const nodeChildren = children.get(nodeId) || [];
-        if (nodeChildren.length === 0) {
-          subtreeWidths.set(nodeId, nodeWidth);
-          return nodeWidth;
-        }
-        
-        const childrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + calculateSubtreeWidth(childId);
-        }, 0);
-        
-        const width = Math.max(nodeWidth, childrenWidth);
-        subtreeWidths.set(nodeId, width);
-        return width;
-      };
-      
-      nds.forEach(node => calculateSubtreeWidth(node.id));
-      
-      // Position nodes
-      const layoutPositions = new Map<string, { x: number; y: number }>();
-      
-      const positionSubtree = (nodeId: string, centerX: number, level: number) => {
-        const y = baseY + (level * rowSpacing);
-        const nodeChildren = children.get(nodeId) || [];
-        
-        if (nodeChildren.length === 0) {
-          layoutPositions.set(nodeId, { x: centerX, y });
-          return;
-        }
-        
-        // Calculate total width needed for all children (for spacing)
-        const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
-          return sum + (subtreeWidths.get(childId) || nodeWidth);
-        }, 0);
-        
-        // Position all children
-        let currentX = centerX - totalChildrenWidth / 2;
-        const childCenters = new Map<string, number>();
-        
-        nodeChildren.forEach(childId => {
-          const childWidth = subtreeWidths.get(childId) || nodeWidth;
-          const childCenterX = currentX + childWidth / 2;
-          childCenters.set(childId, childCenterX);
-          positionSubtree(childId, childCenterX, level + 1);
-          currentX += childWidth;
-        });
-        
-        // Find child with most parent connections for centering the parent
-        let targetChild = nodeChildren[0];
-        let maxConnections = (parents.get(targetChild) || []).length;
-        
-        nodeChildren.forEach(childId => {
-          const connectionCount = (parents.get(childId) || []).length;
-          if (connectionCount > maxConnections) {
-            maxConnections = connectionCount;
-            targetChild = childId;
-          }
-        });
-        
-        // Center parent over the target child
-        const targetChildX = childCenters.get(targetChild)!;
-        layoutPositions.set(nodeId, { x: targetChildX, y });
-      };
-      
-      // Position each root subtree
-      if (rootNodes.length === 1) {
-        positionSubtree(rootNodes[0].id, 0, 0);
-      } else {
-        const totalRootsWidth = rootNodes.reduce((sum, root) => {
-          return sum + (subtreeWidths.get(root.id) || nodeWidth);
-        }, 0);
-        
-        let currentX = -totalRootsWidth / 2;
-        rootNodes.forEach(root => {
-          const rootWidth = subtreeWidths.get(root.id) || nodeWidth;
-          const rootCenterX = currentX + rootWidth / 2;
-          positionSubtree(root.id, rootCenterX, 0);
-          currentX += rootWidth;
-        });
-      }
-      
-      // Apply positions
-      return nds.map(node => {
-        const newPos = layoutPositions.get(node.id);
-        return newPos ? { ...node, position: newPos } : node;
-      });
+    const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({ rankdir: 'TB' });
+    
+    const nodeWidth = 200;
+    const nodeHeight = 60;
+    
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
     });
-  }, [edges, setNodes]);
+    
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+    
+    dagre.layout(dagreGraph);
+    
+    const newNodes = nodes.map((node) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: nodeWithPosition.x - nodeWidth / 2,
+          y: nodeWithPosition.y - nodeHeight / 2,
+        },
+      };
+    });
+    
+    setNodes(newNodes);
+  }, [nodes, edges, setNodes]);
 
   // Step-by-step layout functions
   const executeLayoutStep = useCallback((stepId: string) => {
