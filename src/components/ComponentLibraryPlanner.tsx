@@ -142,6 +142,39 @@ export const ComponentLibraryPlanner = () => {
     versionsCount: versions.length
   });
 
+  // Function to get edge color based on node types
+  const getEdgeColor = useCallback((sourceType: ComponentType, targetType: ComponentType) => {
+    // Component to Variant connection
+    if ((sourceType === 'main-component' && targetType === 'variant') || 
+        (sourceType === 'variant' && targetType === 'main-component')) {
+      return 'hsl(258 100% 68%)'; // primary
+    }
+    // Token usage connections
+    else if (sourceType === 'token' || targetType === 'token') {
+      return 'hsl(45 100% 68%)'; // component-token
+    }
+    return 'hsl(216 8% 45%)'; // default muted-foreground
+  }, []);
+
+  // Update edge colors when node types change
+  useEffect(() => {
+    setEdges((currentEdges) => 
+      currentEdges.map((edge) => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetNode = nodes.find(n => n.id === edge.target);
+        
+        if (sourceNode && targetNode) {
+          const newColor = getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType);
+          return {
+            ...edge,
+            style: { ...edge.style, stroke: newColor }
+          };
+        }
+        return edge;
+      })
+    );
+  }, [nodes, setEdges, getEdgeColor]);
+
   const onConnect = useCallback(
     (params: Connection) => {
       const sourceNode = nodes.find(n => n.id === params.source);
@@ -150,18 +183,7 @@ export const ComponentLibraryPlanner = () => {
       let strokeColor = 'hsl(216 8% 45%)'; // default muted-foreground
       
       if (sourceNode && targetNode) {
-        const sourceType = sourceNode.data.componentType;
-        const targetType = targetNode.data.componentType;
-        
-        // Component to Variant connection
-        if ((sourceType === 'main-component' && targetType === 'variant') || 
-            (sourceType === 'variant' && targetType === 'main-component')) {
-          strokeColor = 'hsl(258 100% 68%)'; // primary
-        }
-        // Token usage connections
-        else if (sourceType === 'token' || targetType === 'token') {
-          strokeColor = 'hsl(45 100% 68%)'; // component-token
-        }
+        strokeColor = getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType);
       }
       
       const newEdge = {
@@ -173,7 +195,7 @@ export const ComponentLibraryPlanner = () => {
       
       setEdges((eds) => addEdge(newEdge, eds));
     },
-    [setEdges, nodes]
+    [nodes, setEdges, getEdgeColor]
   );
 
   const handleNodeSelect = useCallback((node: any) => {
