@@ -162,10 +162,12 @@ export const ComponentLibraryPlanner = () => {
     const rowSpacing = 150; // Vertical spacing between levels
     const nodeWidth = 200; // Width allocated per node
     const baseY = 100; // Starting Y position
+    const subtreeSpacing = 50; // Extra spacing between subtrees
     
     setNodes((nds) => {
       const nodeMap = new Map(nds.map(node => [node.id, node]));
       const children = new Map<string, string[]>();
+      const parents = new Map<string, string[]>();
       
       // Build parent-child relationships from edges
       edges.forEach(edge => {
@@ -173,6 +175,11 @@ export const ComponentLibraryPlanner = () => {
           children.set(edge.source, []);
         }
         children.get(edge.source)!.push(edge.target);
+        
+        if (!parents.has(edge.target)) {
+          parents.set(edge.target, []);
+        }
+        parents.get(edge.target)!.push(edge.source);
       });
       
       // Find root nodes (nodes with no parents)
@@ -227,51 +234,94 @@ export const ComponentLibraryPlanner = () => {
       
       rootNodes.forEach(root => calculateLevel(root.id, 0));
       
-      // Position nodes using family tree algorithm
+      // Position nodes using family tree algorithm with connection-weighted centering
       const layoutPositions = new Map<string, { x: number; y: number }>();
       
       // Allocate horizontal space (top-down)
       const positionSubtree = (nodeId: string, centerX: number, level: number) => {
         const y = baseY + (level * rowSpacing);
         const nodeChildren = children.get(nodeId) || [];
+        const nodeParents = parents.get(nodeId) || [];
         
-        // Position current node at center
-        layoutPositions.set(nodeId, { x: centerX, y });
+        if (nodeChildren.length === 0) {
+          // Leaf node - just position it
+          layoutPositions.set(nodeId, { x: centerX, y });
+          return;
+        }
         
-        if (nodeChildren.length === 0) return;
-        
-        // Distribute children within allocated space
+        // First, position all children to get their positions
         const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
           return sum + (subtreeWidths.get(childId) || nodeWidth);
         }, 0);
         
         let currentX = centerX - totalChildrenWidth / 2;
+        const childPositions: { id: string; x: number; connections: number }[] = [];
         
         nodeChildren.forEach(childId => {
           const childWidth = subtreeWidths.get(childId) || nodeWidth;
           const childCenterX = currentX + childWidth / 2;
           
+          // Count how many connections this child has to current node's parents
+          const childParents = parents.get(childId) || [];
+          const connectionsToOurParents = childParents.filter(parentId => 
+            nodeParents.includes(parentId)
+          ).length;
+          
+          childPositions.push({ 
+            id: childId, 
+            x: childCenterX, 
+            connections: connectionsToOurParents 
+          });
+          
           positionSubtree(childId, childCenterX, level + 1);
           currentX += childWidth;
         });
+        
+        // Calculate weighted center based on children's connections to parents
+        if (nodeParents.length > 0) {
+          let totalWeight = 0;
+          let weightedSum = 0;
+          
+          childPositions.forEach(({ x, connections }) => {
+            const weight = Math.max(1, connections); // Minimum weight of 1
+            totalWeight += weight;
+            weightedSum += x * weight;
+          });
+          
+          if (totalWeight > 0) {
+            centerX = weightedSum / totalWeight;
+          }
+        }
+        
+        // Position current node at the weighted center
+        layoutPositions.set(nodeId, { x: centerX, y });
       };
       
       // Position each root and its subtree
       if (rootNodes.length === 1) {
         positionSubtree(rootNodes[0].id, 0, 0);
       } else {
-        // Multiple roots - distribute them
+        // Multiple roots - distribute them with even spacing
         const totalRootsWidth = rootNodes.reduce((sum, root) => {
           return sum + (subtreeWidths.get(root.id) || nodeWidth);
         }, 0);
         
-        let currentX = -totalRootsWidth / 2;
-        rootNodes.forEach(root => {
+        // Add spacing between subtrees
+        const totalSpacing = (rootNodes.length - 1) * subtreeSpacing;
+        const totalWidth = totalRootsWidth + totalSpacing;
+        
+        let currentX = -totalWidth / 2;
+        rootNodes.forEach((root, index) => {
           const rootWidth = subtreeWidths.get(root.id) || nodeWidth;
           const rootCenterX = currentX + rootWidth / 2;
           
           positionSubtree(root.id, rootCenterX, 0);
           currentX += rootWidth;
+          
+          // Add spacing between subtrees (except after the last one)
+          if (index < rootNodes.length - 1) {
+            currentX += subtreeSpacing;
+          }
         });
       }
       
