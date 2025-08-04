@@ -223,23 +223,38 @@ export const ComponentLibraryPlanner = () => {
           return;
         }
         
-        // Position children first
+        // Calculate total width needed for all children (for spacing)
         const totalChildrenWidth = nodeChildren.reduce((sum, childId) => {
           return sum + (subtreeWidths.get(childId) || nodeWidth);
         }, 0);
         
+        // Position all children
         let currentX = centerX - totalChildrenWidth / 2;
+        const childCenters = new Map<string, number>();
+        
         nodeChildren.forEach(childId => {
           const childWidth = subtreeWidths.get(childId) || nodeWidth;
           const childCenterX = currentX + childWidth / 2;
+          childCenters.set(childId, childCenterX);
           positionSubtree(childId, childCenterX, level + 1);
           currentX += childWidth;
         });
         
-        // Center parent over all children
-        const childrenCenterX = nodeChildren.length > 0 ? 
-          (centerX - totalChildrenWidth / 2 + totalChildrenWidth / 2) : centerX;
-        layoutPositions.set(nodeId, { x: childrenCenterX, y });
+        // Find child with most parent connections for centering the parent
+        let targetChild = nodeChildren[0];
+        let maxConnections = (parents.get(targetChild) || []).length;
+        
+        nodeChildren.forEach(childId => {
+          const connectionCount = (parents.get(childId) || []).length;
+          if (connectionCount > maxConnections) {
+            maxConnections = connectionCount;
+            targetChild = childId;
+          }
+        });
+        
+        // Center parent over the target child
+        const targetChildX = childCenters.get(targetChild)!;
+        layoutPositions.set(nodeId, { x: targetChildX, y });
       };
       
       // Position each root subtree
