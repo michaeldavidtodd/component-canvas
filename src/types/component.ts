@@ -15,6 +15,7 @@ export interface ComponentNodeData extends Record<string, unknown> {
   label: string;
   componentType: ComponentType;
   description: string;
+  url?: string; // URL to Figma component or other external link
   // Token-specific fields
   tokenType?: TokenType;
   tokenSubType?: TokenSubType;

@@ -7,7 +7,8 @@ import {
   Palette, 
   Copy, 
   Square,
-  Plus
+  Plus,
+  ExternalLink
 } from 'lucide-react';
 
 const getNodeIcon = (type: ComponentType) => {
@@ -193,32 +194,45 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
             </button>
           </div>
         )}
-      </div>
-      
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`
-          p-1.5 rounded-md flex items-center justify-center
-          ${getNodeColor(data.componentType)}
-        `}>
-          {getNodeIcon(data.componentType)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm text-foreground break-words">
-            {data.label}
-          </h3>
-          <p className="text-xs text-muted-foreground capitalize">
-            {data.componentType.replace('-', ' ')}
-          </p>
-          {data.componentType === 'token' && data.tokenType && (
-            <div className="text-xs text-muted-foreground mt-1 break-words">
-              <span className="font-medium">{data.tokenType}</span>
-              {data.tokenSubType && (
-                <span className="ml-1">• {data.tokenSubType}</span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+       </div>
+       
+       <div className="flex items-center gap-2 mb-2">
+         <div className={`
+           p-1.5 rounded-md flex items-center justify-center
+           ${getNodeColor(data.componentType)}
+         `}>
+           {getNodeIcon(data.componentType)}
+         </div>
+         <div className="flex-1 min-w-0">
+           <h3 className="font-medium text-sm text-foreground break-words">
+             {data.label}
+           </h3>
+           <p className="text-xs text-muted-foreground capitalize">
+             {data.componentType.replace('-', ' ')}
+           </p>
+           {data.componentType === 'token' && data.tokenType && (
+             <div className="text-xs text-muted-foreground mt-1 break-words">
+               <span className="font-medium">{data.tokenType}</span>
+               {data.tokenSubType && (
+                 <span className="ml-1">• {data.tokenSubType}</span>
+               )}
+             </div>
+           )}
+         </div>
+         {/* Figma Link Button for main components */}
+         {data.componentType === 'main-component' && data.url && (
+           <button
+             onClick={(e) => {
+               e.stopPropagation();
+               window.open(data.url, '_blank', 'noopener,noreferrer');
+             }}
+             className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+             title="Open in Figma"
+           >
+             <ExternalLink className="w-3 h-3" />
+           </button>
+         )}
+       </div>
       
       {data.description && (
         <p className="text-xs text-muted-foreground break-words leading-relaxed">

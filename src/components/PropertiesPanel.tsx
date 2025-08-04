@@ -50,6 +50,10 @@ export const PropertiesPanel = ({
     onUpdateNode(selectedNode.id, { description: value });
   };
 
+  const handleUrlChange = (value: string) => {
+    onUpdateNode(selectedNode.id, { url: value });
+  };
+
   const handleTypeChange = (value: ComponentType) => {
     onUpdateNode(selectedNode.id, { componentType: value });
   };
@@ -152,9 +156,29 @@ export const PropertiesPanel = ({
             placeholder="Describe this component's purpose and usage"
             className="mt-1 min-h-[80px]"
           />
-        </div>
+         </div>
 
-        {/* Token-specific fields */}
+         {/* URL field for main components */}
+         {selectedNode.data.componentType === 'main-component' && (
+           <div>
+             <Label htmlFor="component-url" className="text-sm font-medium">
+               Figma URL
+             </Label>
+             <Input
+               id="component-url"
+               value={selectedNode.data.url || ''}
+               onChange={(e) => handleUrlChange(e.target.value)}
+               placeholder="https://figma.com/..."
+               className="mt-1"
+               type="url"
+             />
+             <p className="text-xs text-muted-foreground mt-1">
+               Link to this component in Figma or other design tool
+             </p>
+           </div>
+         )}
+
+         {/* Token-specific fields */}
         {selectedNode.data.componentType === 'token' && (
           <div className="border-t border-border pt-4 space-y-4">
             <div>
