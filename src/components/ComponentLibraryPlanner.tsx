@@ -156,12 +156,13 @@ export const ComponentLibraryPlanner = () => {
   }, [selectedNode, setNodes, setEdges]);
 
   const smartLayout = useCallback(() => {
-    const rowSpacing = 250; // Vertical spacing between rows
-    const minNodeSpacing = 300; // Minimum horizontal spacing between nodes
+    const rowSpacing = 250; // Vertical spacing between levels
+    const siblingSpacing = 200; // Horizontal spacing between sibling groups
+    const nodeSpacing = 180; // Spacing between individual nodes
     const baseY = 100; // Starting Y position
     
     setNodes((nds) => {
-      // Step 1: Build hierarchy tree based on actual connections
+      // Build hierarchy tree based on connections
       const nodeMap = new Map(nds.map(node => [node.id, node]));
       const children = new Map<string, string[]>();
       const parents = new Map<string, string>();
@@ -178,7 +179,7 @@ export const ComponentLibraryPlanner = () => {
       // Find root nodes (nodes with no parents)
       const rootNodes = nds.filter(node => !parents.has(node.id));
       
-      // Step 2: Calculate depth levels for each node
+      // Calculate depth levels for each node
       const nodeLevels = new Map<string, number>();
       const levelNodes = new Map<number, typeof nds>();
       
@@ -209,7 +210,7 @@ export const ComponentLibraryPlanner = () => {
         }
       });
       
-      // Step 3: Position nodes level by level
+      // Position nodes level by level
       const updatedNodes = new Map<string, { x: number; y: number }>();
       const maxLevel = Math.max(...Array.from(levelNodes.keys()));
       
@@ -219,182 +220,126 @@ export const ComponentLibraryPlanner = () => {
         
         const y = baseY + (level * rowSpacing);
         
-        // Step 4: Group nodes by their parent for better organization
-        const nodeGroups = new Map<string, typeof nds>();
+        // Group nodes by their parent for sibling grouping
+        const siblingGroups = new Map<string, typeof nds>();
         const orphanNodes: typeof nds = [];
         
         nodesAtLevel.forEach(node => {
           const parentId = parents.get(node.id);
           if (parentId) {
-            if (!nodeGroups.has(parentId)) {
-              nodeGroups.set(parentId, []);
+            if (!siblingGroups.has(parentId)) {
+              siblingGroups.set(parentId, []);
             }
-            nodeGroups.get(parentId)!.push(node);
+            siblingGroups.get(parentId)!.push(node);
           } else {
             orphanNodes.push(node);
           }
         });
         
-        // Step 5: Position groups based on parent positions
-        const allGroupsNodes: { nodes: typeof nds; parentX?: number }[] = [];
+        // Collect all sibling groups and their target parent positions
+        const groupsWithPositions: { nodes: typeof nds; parentX: number; parentId?: string }[] = [];
         
-        // Add groups with parents
-        Array.from(nodeGroups.entries()).forEach(([parentId, groupNodes]) => {
+        // Add sibling groups based on their parent positions
+        Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
           const parentPos = updatedNodes.get(parentId);
-          allGroupsNodes.push({
-            nodes: groupNodes,
-            parentX: parentPos?.x
-          });
-        });
-        
-        // Add orphan nodes as individual groups
-        orphanNodes.forEach(node => {
-          allGroupsNodes.push({ nodes: [node] });
-        });
-        
-        // Sort groups by parent position (left to right)
-        allGroupsNodes.sort((a, b) => {
-          const aX = a.parentX ?? 0;
-          const bX = b.parentX ?? 0;
-          return aX - bX;
-        });
-        
-        // Step 6: First, identify and position shared child nodes (nodes with multiple parents)
-        const sharedChildren = new Map<string, string[]>(); // nodeId -> parentIds
-        allGroupsNodes.forEach(group => {
-          group.nodes.forEach(node => {
-            const nodeParents = edges.filter(edge => edge.target === node.id).map(edge => edge.source);
-            if (nodeParents.length > 1) {
-              sharedChildren.set(node.id, nodeParents);
-            }
-          });
-        });
-
-        // Step 7: Calculate positions for each group
-        let currentX = 0;
-        const totalGroups = allGroupsNodes.length;
-        const totalWidth = Math.max(0, (totalGroups - 1) * minNodeSpacing * 2); // Extra spacing between groups
-        let startX = -totalWidth / 2;
-        
-        allGroupsNodes.forEach((group, groupIndex) => {
-          const groupNodes = group.nodes;
-          const groupWidth = Math.max(0, (groupNodes.length - 1) * minNodeSpacing);
-          const groupStartX = startX + (groupIndex * minNodeSpacing * 2) - (groupWidth / 2);
-          
-          // Position nodes within the group
-          groupNodes.forEach((node, nodeIndex) => {
-            let nodeX = groupStartX + (nodeIndex * minNodeSpacing);
-            
-            // Special handling for shared children - center them below their parents
-            if (sharedChildren.has(node.id)) {
-              const parentIds = sharedChildren.get(node.id)!;
-              const parentPositions = parentIds
-                .map(parentId => updatedNodes.get(parentId))
-                .filter(pos => pos !== undefined);
-              
-              if (parentPositions.length > 0) {
-                const avgParentX = parentPositions.reduce((sum, pos) => sum + pos!.x, 0) / parentPositions.length;
-                nodeX = avgParentX;
-              }
-            }
-            // If this group has a parent, try to center it around the parent
-            else if (group.parentX !== undefined) {
-              const groupCenterX = groupStartX + (groupWidth / 2);
-              const offsetToParent = group.parentX - groupCenterX;
-              nodeX += offsetToParent;
-            }
-            
-            updatedNodes.set(node.id, { x: nodeX, y });
-          });
-          
-          // Step 8: Adjust spacing within row to avoid overlaps while maintaining shared child centering
-          const rowNodeIds = groupNodes.map(n => n.id);
-          const sortedRowNodes = rowNodeIds
-            .map(id => ({ id, x: updatedNodes.get(id)!.x }))
-            .sort((a, b) => a.x - b.x);
-          
-          // Ensure minimum spacing between adjacent nodes
-          for (let i = 1; i < sortedRowNodes.length; i++) {
-            const prevNode = sortedRowNodes[i - 1];
-            const currentNode = sortedRowNodes[i];
-            
-            if (currentNode.x - prevNode.x < minNodeSpacing) {
-              // Only adjust if it's not a shared child (preserve their centering)
-              if (!sharedChildren.has(currentNode.id)) {
-                currentNode.x = prevNode.x + minNodeSpacing;
-                updatedNodes.set(currentNode.id, { x: currentNode.x, y });
-              }
-            }
+          if (parentPos) {
+            groupsWithPositions.push({
+              nodes: groupNodes,
+              parentX: parentPos.x,
+              parentId
+            });
+          } else {
+            // Parent not positioned yet, use default
+            groupsWithPositions.push({
+              nodes: groupNodes,
+              parentX: 0,
+              parentId
+            });
           }
         });
         
-        // Step 9: Final pass to ensure no overlaps in any row after shared children positioning
-        for (let level = 0; level <= maxLevel; level++) {
-          const nodesAtLevel = levelNodes.get(level) || [];
-          if (nodesAtLevel.length <= 1) continue;
+        // Add orphan nodes as individual groups
+        orphanNodes.forEach((node, index) => {
+          groupsWithPositions.push({
+            nodes: [node],
+            parentX: index * siblingSpacing
+          });
+        });
+        
+        // Sort groups by parent position (left to right)
+        groupsWithPositions.sort((a, b) => a.parentX - b.parentX);
+        
+        // Calculate total width needed for all groups
+        let totalGroupWidth = 0;
+        groupsWithPositions.forEach(group => {
+          const groupWidth = Math.max(0, (group.nodes.length - 1) * nodeSpacing);
+          totalGroupWidth += groupWidth + siblingSpacing;
+        });
+        totalGroupWidth = Math.max(totalGroupWidth - siblingSpacing, 0); // Remove last spacing
+        
+        // Position each group
+        let currentX = -totalGroupWidth / 2;
+        
+        groupsWithPositions.forEach((group, groupIndex) => {
+          const groupNodes = group.nodes;
+          const groupWidth = Math.max(0, (groupNodes.length - 1) * nodeSpacing);
           
-          const levelNodePositions = nodesAtLevel
-            .map(node => {
-              const position = updatedNodes.get(node.id);
-              // Ensure node has a position, if not give it a default one
-              if (!position) {
-                const defaultX = node.position.x; // Use original position as fallback
-                updatedNodes.set(node.id, { x: defaultX, y: baseY + (level * rowSpacing) });
-                return {
-                  id: node.id,
-                  x: defaultX,
-                  isShared: sharedChildren.has(node.id)
-                };
-              }
-              return {
-                id: node.id, 
-                x: position.x,
-                isShared: sharedChildren.has(node.id)
-              };
-            })
-            .sort((a, b) => a.x - b.x);
-          
-          // Adjust overlapping nodes, prioritizing shared children positions
-          for (let i = 1; i < levelNodePositions.length; i++) {
-            const prevNode = levelNodePositions[i - 1];
-            const currentNode = levelNodePositions[i];
+          // For sibling groups, center them around their parent's X position
+          let groupStartX = currentX;
+          if (group.parentId && group.nodes.length > 0) {
+            // Center the group around the parent position
+            groupStartX = group.parentX - (groupWidth / 2);
             
-            if (currentNode.x - prevNode.x < minNodeSpacing) {
-              if (currentNode.isShared && !prevNode.isShared) {
-                // If current is shared and previous isn't, move previous left
-                const newX = currentNode.x - minNodeSpacing;
-                prevNode.x = newX;
-                updatedNodes.set(prevNode.id, { x: newX, y: baseY + (level * rowSpacing) });
-                
-                // Cascade adjustment to earlier nodes if needed
-                let currentPrevNode = prevNode;
-                for (let j = i - 2; j >= 0; j--) {
-                  const earlierNode = levelNodePositions[j];
-                  if (currentPrevNode.x - earlierNode.x < minNodeSpacing) {
-                    earlierNode.x = currentPrevNode.x - minNodeSpacing;
-                    updatedNodes.set(earlierNode.id, { x: earlierNode.x, y: baseY + (level * rowSpacing) });
-                    currentPrevNode = earlierNode;
-                  } else {
-                    break;
-                  }
-                }
-              } else if (!currentNode.isShared) {
-                // If current is not shared, move it right
-                currentNode.x = prevNode.x + minNodeSpacing;
-                updatedNodes.set(currentNode.id, { x: currentNode.x, y: baseY + (level * rowSpacing) });
-              }
+            // Adjust if this would cause overlap with previous groups
+            if (groupIndex > 0) {
+              const minX = currentX;
+              groupStartX = Math.max(groupStartX, minX);
             }
+          }
+          
+          // Position individual nodes within the group
+          groupNodes.forEach((node, nodeIndex) => {
+            const nodeX = groupStartX + (nodeIndex * nodeSpacing);
+            updatedNodes.set(node.id, { x: nodeX, y });
+          });
+          
+          // Update currentX for next group
+          currentX = groupStartX + groupWidth + siblingSpacing;
+        });
+        
+        // Final pass: ensure no overlaps within this level
+        const levelNodePositions = nodesAtLevel
+          .map(node => ({
+            id: node.id,
+            x: updatedNodes.get(node.id)?.x || 0
+          }))
+          .sort((a, b) => a.x - b.x);
+        
+        // Adjust overlapping nodes
+        for (let i = 1; i < levelNodePositions.length; i++) {
+          const prevNode = levelNodePositions[i - 1];
+          const currentNode = levelNodePositions[i];
+          
+          if (currentNode.x - prevNode.x < nodeSpacing) {
+            currentNode.x = prevNode.x + nodeSpacing;
+            updatedNodes.set(currentNode.id, { x: currentNode.x, y });
           }
         }
       }
       
-      // Apply the new positions
+      // Apply positions to nodes
       return nds.map(node => {
-        const newPos = updatedNodes.get(node.id);
-        return newPos ? { ...node, position: newPos } : node;
+        const newPosition = updatedNodes.get(node.id);
+        if (newPosition) {
+          return {
+            ...node,
+            position: { x: newPosition.x, y: newPosition.y }
+          };
+        }
+        return node;
       });
     });
-  }, [setNodes, edges]);
+  }, [edges, setNodes]);
 
   const cleanupLayout = useCallback(() => {
     const gridSize = 50; // Grid snap size
