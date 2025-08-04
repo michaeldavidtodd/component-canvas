@@ -158,58 +158,6 @@ export const ComponentLibraryPlanner = () => {
     }
   }, [selectedNode, setNodes, setEdges]);
 
-  const smartLayout = useCallback(() => {
-    if (!nodes.length || !edges.length) return;
-    
-    // Build parent-child relationships
-    const children = new Map<string, string[]>();
-    const parents = new Map<string, string[]>();
-    
-    edges.forEach(edge => {
-      if (!children.has(edge.source)) children.set(edge.source, []);
-      if (!parents.has(edge.target)) parents.set(edge.target, []);
-      
-      children.get(edge.source)!.push(edge.target);
-      parents.get(edge.target)!.push(edge.source);
-    });
-    
-    // Find root nodes (no parents)
-    const roots = nodes.filter(node => !parents.has(node.id) || parents.get(node.id)!.length === 0);
-    
-    const nodeWidth = 250;
-    const nodeHeight = 100;
-    const levelHeight = 200;
-    
-    const positioned = new Map<string, { x: number; y: number }>();
-    
-    // Position nodes level by level
-    const positionLevel = (nodeIds: string[], level: number) => {
-      const y = level * levelHeight;
-      const totalWidth = nodeIds.length * nodeWidth;
-      let startX = -totalWidth / 2;
-      
-      nodeIds.forEach((nodeId, index) => {
-        const x = startX + (index * nodeWidth) + (nodeWidth / 2);
-        positioned.set(nodeId, { x, y });
-        
-        // Process children for next level
-        const nodeChildren = children.get(nodeId) || [];
-        if (nodeChildren.length > 0) {
-          positionLevel(nodeChildren, level + 1);
-        }
-      });
-    };
-    
-    positionLevel(roots.map(r => r.id), 0);
-    
-    // Apply positions
-    const newNodes = nodes.map(node => {
-      const pos = positioned.get(node.id);
-      return pos ? { ...node, position: pos } : node;
-    });
-    
-    setNodes(newNodes);
-  }, [nodes, edges, setNodes]);
 
   // Step-by-step layout functions
   const executeLayoutStep = useCallback((stepId: string) => {
@@ -576,7 +524,7 @@ export const ComponentLibraryPlanner = () => {
            selectedNode={selectedNode}
            onUpdateNode={updateNodeData}
            onDeleteNode={deleteSelectedNode}
-           onSmartLayout={smartLayout}
+           onSmartLayout={() => {}}
            onCleanupLayout={cleanupLayout}
            onToggleStepControls={() => setShowStepControls(!showStepControls)}
            showStepControls={showStepControls}
