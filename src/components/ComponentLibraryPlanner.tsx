@@ -594,25 +594,27 @@ export const ComponentLibraryPlanner = () => {
       
       switch (stepId) {
         case 'hierarchy-rows':
-          // Step 1: Just organize into rows by hierarchy level
-          return nds.map(node => {
+          // Step 1: Reset to simple grid and organize into clear hierarchy rows
+          const gridX = 200;
+          return nds.map((node, index) => {
             const level = nodeLevels.get(node.id) || 0;
+            const nodesAtLevel = levelNodes.get(level) || [];
+            const indexAtLevel = nodesAtLevel.findIndex(n => n.id === node.id);
             return {
               ...node,
-              position: { x: node.position.x, y: baseY + (level * rowSpacing) }
+              position: { x: gridX * indexAtLevel, y: baseY + (level * rowSpacing) }
             };
           });
           
         case 'proximity-order':
-          // Step 2: Order nodes by proximity to parent
+          // Step 2: Group siblings together near their parents
           const proximityPositions = new Map<string, { x: number; y: number }>();
-          const maxLevel = Math.max(...Array.from(levelNodes.keys()));
           
-          for (let level = 0; level <= maxLevel; level++) {
+          for (let level = 0; level <= Math.max(...Array.from(levelNodes.keys())); level++) {
             const nodesAtLevel = levelNodes.get(level) || [];
             const y = baseY + (level * rowSpacing);
             
-            // Group by parent and sort by proximity
+            // Group by parent
             const siblingGroups = new Map<string, typeof nds>();
             const orphanNodes: typeof nds = [];
             
@@ -629,19 +631,19 @@ export const ComponentLibraryPlanner = () => {
             });
             
             let currentX = 0;
-            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
-              const parentPos = proximityPositions.get(parentId);
-              const startX = parentPos ? parentPos.x - (groupNodes.length * 90) : currentX;
-              
-              groupNodes.forEach((node, index) => {
-                proximityPositions.set(node.id, { x: startX + (index * 180), y });
-              });
-              
-              currentX += groupNodes.length * 180 + 200;
-            });
             
+            // Position orphan nodes first
             orphanNodes.forEach((node, index) => {
-              proximityPositions.set(node.id, { x: currentX + (index * 180), y });
+              proximityPositions.set(node.id, { x: currentX + (index * 200), y });
+            });
+            currentX += orphanNodes.length * 200 + 100;
+            
+            // Position sibling groups
+            Array.from(siblingGroups.entries()).forEach(([parentId, groupNodes]) => {
+              groupNodes.forEach((node, index) => {
+                proximityPositions.set(node.id, { x: currentX + (index * 200), y });
+              });
+              currentX += groupNodes.length * 200 + 100;
             });
           }
           
