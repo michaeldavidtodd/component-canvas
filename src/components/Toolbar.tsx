@@ -26,7 +26,8 @@ import {
   Layout,
   Share,
   Check,
-  ExternalLink
+  ExternalLink,
+  Edit2
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -94,7 +95,9 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { toggleProjectPublic } = useProjectPersistence();
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
+  const { toggleProjectPublic, updateProject } = useProjectPersistence();
   const { toast } = useToast();
 
   const handleShare = async () => {
@@ -144,6 +147,31 @@ export const Toolbar = ({
   const shareUrl = currentProject?.share_token 
     ? `${window.location.origin}/share/${currentProject.share_token}`
     : '';
+
+  const handleEditName = () => {
+    setNewName(currentProject?.name || '');
+    setEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!currentProject || !newName.trim()) return;
+    
+    try {
+      await updateProject(currentProject.id, { name: newName.trim() });
+      setEditingName(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update project name",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingName(false);
+    setNewName('');
+  };
 
   return (
     <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
@@ -205,11 +233,46 @@ export const Toolbar = ({
       {user && !isAnonymous && currentProject && (
         <>
           <Separator />
-          <div className="space-y-2">
+            <div className="space-y-2">
             <h3 className="text-sm font-medium text-foreground mb-1">Project</h3>
-            <p className="text-xs text-muted-foreground truncate" title={currentProject.name}>
-              {currentProject.name}
-            </p>
+            
+            {editingName ? (
+              <div className="flex gap-1">
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  className="text-xs h-7"
+                  placeholder="Project name"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveName}
+                  className="h-7 w-7 p-0"
+                  disabled={!newName.trim()}
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 group">
+                <p className="text-xs text-muted-foreground truncate flex-1" title={currentProject.name}>
+                  {currentProject.name}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditName}
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             
             <div className="flex gap-2">
               <Button

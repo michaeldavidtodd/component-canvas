@@ -158,6 +158,44 @@ export const useProjectPersistence = () => {
     }
   }, [user, toast]);
 
+  // Update project
+  const updateProject = useCallback(async (projectId: string, updates: Partial<Pick<Project, 'name' | 'description'>>) => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', projectId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedProject = data as Project;
+      setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+      
+      if (currentProject?.id === projectId) {
+        setCurrentProject(updatedProject);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Project updated successfully"
+      });
+
+      return updatedProject;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update project",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [user, currentProject, toast]);
+
   // Save project state as a new version
   const saveVersion = useCallback(async (
     projectId: string,
@@ -430,6 +468,7 @@ export const useProjectPersistence = () => {
     },
     setAutoSaveEnabled,
     createProject,
+    updateProject,
     saveVersion,
     autoSave,
     loadVersion,
