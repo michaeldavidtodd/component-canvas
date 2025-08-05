@@ -62,7 +62,7 @@ const Homepage = () => {
                 </Button>
               </Link>
               <Link to="/share/demo">
-                <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-white hover:bg-white/10 font-bold rounded-xl backdrop-blur-sm">
+                <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-foreground bg-background/10 hover:bg-background/20 font-bold rounded-xl backdrop-blur-sm">
                   VIEW DEMO
                 </Button>
               </Link>
