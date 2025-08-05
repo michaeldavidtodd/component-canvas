@@ -212,3 +212,8 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Remove outer-stroke from React Flow background pattern - Using a border with rounded corners on the container instead*/
+.react-flow__background rect {
+  stroke: none !important;
+}

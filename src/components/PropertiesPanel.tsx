@@ -28,7 +28,7 @@ export const PropertiesPanel = ({
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
-      <div className="w-80 bg-workspace border-l border-border p-4">
+      <div className="w-80 m-4 bg-background border border-border p-6 overflow-y-auto rounded-xl">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -102,7 +102,7 @@ export const PropertiesPanel = ({
   };
 
   return (
-    <div className="w-80 bg-workspace border-l border-border p-4 flex flex-col gap-4">
+    <div className="w-80 m-4 bg-background border border-border p-6 flex flex-col gap-4 overflow-y-auto rounded-xl">
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-1">Properties</h3>
         <p className="text-sm text-muted-foreground">
@@ -173,7 +173,7 @@ export const PropertiesPanel = ({
                type="url"
              />
              <p className="text-xs text-muted-foreground mt-1">
-               Link to this component in Figma or other design tool
+               Link to the source component in Figma
              </p>
            </div>
          )}
@@ -230,7 +230,7 @@ export const PropertiesPanel = ({
         )}
       </div>
 
-       <div className="mt-auto pt-4 border-t border-border space-y-2">
+       <div className="mt-auto pt-4 space-y-2">
          <Button
            variant="destructive"
            size="sm"

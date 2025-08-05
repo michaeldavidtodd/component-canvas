@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
+import { Badge } from '@/components/ui/badge';
 import { 
   Component, 
   Layers, 
@@ -28,7 +29,8 @@ import {
   Check,
   ExternalLink,
   Edit2,
-  HelpCircle
+  HelpCircle,
+  LayoutGrid,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -81,6 +83,27 @@ const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; co
     icon: <Copy className="w-4 h-4" />,
     color: 'bg-component-instance'
   },
+];
+
+const layoutOptions = [
+  {
+    icon: <Sparkles className="w-4 h-4" />,
+    title: 'Optimize',
+    description: 'Applies an optimized layout. All nodes will be automatically placed for a clean structured tree-shaped layout.',
+    badge: 'Once'
+  },
+  {
+    icon: <LayoutGrid className="w-4 h-4" />,
+    title: 'Clean up',
+    description: 'Applies slight adjustments to node positions to align them to the grid.',
+    badge: 'Once'
+  },
+  {
+    icon: <ToggleRight className="w-4 h-4" />,
+    title: 'Auto-Optimize Layout',
+    description: 'Applies layout optimizations continuously as changes are made.',
+    badge: 'Continuous'
+  }
 ];
 
 export const Toolbar = ({ 
@@ -181,9 +204,9 @@ export const Toolbar = ({
   };
 
   return (
-    <div className="w-64 bg-workspace border-r border-border p-4 flex flex-col gap-4">
+    <div className="w-fit m-4 bg-background border border-border p-6 flex flex-col gap-8 overflow-y-auto rounded-xl">
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-2">
+        <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
           Component Library Planner
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -196,8 +219,8 @@ export const Toolbar = ({
         {nodeTypes.map((nodeType) => (
           <Button
             key={nodeType.type}
-            variant="ghost"
-            className="justify-start gap-3 h-auto p-3 hover:bg-secondary"
+            variant="secondary"
+            className={`gap-3 h-auto`}
             onClick={() => onAddNode(nodeType.type)}
           >
             <div className={`p-1.5 rounded-md text-white ${nodeType.color}`}>
@@ -210,28 +233,54 @@ export const Toolbar = ({
           </Button>
         ))}
       </div>
-
-      <Separator />
       
       {/* Layout Controls */}
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-foreground mb-1">Layout</h3>
+      <div className="flex flex-col md:grid md:grid-cols-2 gap-2">
+        <h3 className="col-span-full text-sm font-medium text-foreground mb-1 inline-flex items-center justify-between gap-1">
+          Layout 
+          <Popover>
+            <PopoverTrigger asChild>
+              <div className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs gap-1 cursor-help ">
+                  Guidance
+                  <HelpCircle className="size-3" />
+                </Badge>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-fit max-w-sm rounded-xl" align="start" side="right" sideOffset={10}>
+              <div className="space-y-3">
+                <h4 className="font-bold">Layout Options</h4>
+                <div className="space-y-4 text-sm">
+                  {layoutOptions.map((option, index) => (
+                    <div key={index} className="flex flex-col items-start gap-2 bg-muted/50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium inline-flex items-center gap-2">
+                          {option.icon} {option.title}
+                        </span>
+                        <Badge variant="outline" className="text-xs">{option.badge}</Badge>
+                      </div>
+                      <span className="text-muted-foreground text-balance">{option.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </h3>
         <Button
           variant="outline"
-          size="sm"
           onClick={onSmartLayout}
-          className="justify-start gap-2"
+          className="gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          Smart Layout
+          Optimize
         </Button>
         <Button
           variant="outline"
-          size="sm"
           onClick={onCleanupLayout}
-          className="justify-start gap-2"
+          className="gap-2"
         >
-          <Layout className="w-4 h-4" />
+          <LayoutGrid className="w-4 h-4" />
           Clean Up
         </Button>
         <div className="flex items-center gap-2 text-xs">
@@ -244,7 +293,7 @@ export const Toolbar = ({
             ) : (
               <ToggleLeft className="h-4 w-4" />
             )}
-            Auto Smart Layout
+            Auto-Optimize Layout
           </button>
         </div>
       </div>
@@ -252,8 +301,7 @@ export const Toolbar = ({
       {/* Save functionality - only show for authenticated users */}
       {user && !isAnonymous && currentProject && (
         <>
-          <Separator />
-            <div className="space-y-2">
+          <div className="space-y-2">
             <h3 className="text-sm font-medium text-foreground mb-1">Project</h3>
             
             {editingName ? (
@@ -270,7 +318,6 @@ export const Toolbar = ({
                   autoFocus
                 />
                 <Button
-                  size="sm"
                   onClick={handleSaveName}
                   className="h-7 w-7 p-0"
                   disabled={!newName.trim()}
@@ -285,7 +332,6 @@ export const Toolbar = ({
                 </p>
                 <Button
                   variant="ghost"
-                  size="sm"
                   onClick={handleEditName}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
@@ -297,7 +343,6 @@ export const Toolbar = ({
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={onSave}
                 className="flex-1 gap-2"
               >
@@ -306,7 +351,6 @@ export const Toolbar = ({
               </Button>
               <Button
                 variant="outline"
-                size="sm"
                 onClick={onShowVersions}
                 className="flex-1 gap-2"
               >
@@ -319,7 +363,6 @@ export const Toolbar = ({
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
                   className="w-full gap-2"
                 >
                   <Share className="h-3 w-3" />
@@ -342,7 +385,6 @@ export const Toolbar = ({
                             className="text-xs"
                           />
                           <Button
-                            size="sm"
                             onClick={() => {
                               navigator.clipboard.writeText(shareUrl);
                               setCopied(true);
@@ -352,7 +394,6 @@ export const Toolbar = ({
                             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                           </Button>
                           <Button
-                            size="sm"
                             variant="outline"
                             onClick={() => window.open(shareUrl, '_blank')}
                           >
@@ -365,7 +406,6 @@ export const Toolbar = ({
                       </p>
                       <Button
                         variant="destructive"
-                        size="sm"
                         onClick={handleStopSharing}
                         className="w-full"
                       >
@@ -421,9 +461,9 @@ export const Toolbar = ({
           </Button>
         </div>
         
-        <p className="text-xs text-muted-foreground">
+        {/* <p className="text-xs text-muted-foreground">
           Click and drag to create connections between components
-        </p>
+        </p> */}
         
         {/* Auth status */}
         {isAnonymous ? (
@@ -453,14 +493,17 @@ export const Toolbar = ({
                   <User className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col flex-1 text-left">
-                  <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                  {/* <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
                     {user.email?.split('@')[0] || 'User'}
+                  </span> */}
+                  <span className="text-base font-medium text-foreground truncate max-w-[120px]">
+                    User Settings
                   </span>
                   <span className="text-xs text-muted-foreground">Signed in</span>
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-0" align="start" side="top">
+            <PopoverContent className="w-64 p-0 rounded-xl" align="start" side="top">
               <div className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">

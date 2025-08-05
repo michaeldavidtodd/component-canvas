@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
-import { ArrowRight, ArrowLeft, Sparkles, MessageCircleCode, History, Layout, Zap, SquareArrowOutUpRight, Share, ExternalLink } from 'lucide-react';
-import { ReactFlow, Background, MiniMap, Controls, Node, Edge } from '@xyflow/react';
+import { ArrowRight, ArrowLeft, Sparkles, MessageCircleCode, History, SquareArrowOutUpRight, ExternalLink, Component, Layers, Square, Palette, Copy } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 import './OnboardingFlow.css';
 
@@ -20,7 +18,7 @@ const onboardingSteps = [
     description: '',
     content: (
       <div className="space-y-4">
-        <div className="flex items-center justify-center">
+        {/* <div className="flex items-center justify-center">
           <div className="w-[300px] h-40 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
             <ReactFlow
               nodes={[
@@ -134,6 +132,13 @@ const onboardingSteps = [
               <Background color="#334155" gap={20} size={1} />
             </ReactFlow>
           </div>
+        </div> */}
+        <div className="flex items-center justify-center gap-4">
+          <Component className="w-16 h-16 text-purple-500" />
+          <Layers className="w-16 h-16 text-blue-500" />
+          <Square className="w-16 h-16 text-green-500" />
+          <Palette className="w-16 h-16 text-yellow-500" />
+          <Copy className="w-16 h-16 text-orange-500" />
         </div>
         <p className="text-center text-balance text-sm">
           Create node-based diagrams  designed for Figma component library relationships. Track changes, and share your designs with your team.
@@ -148,11 +153,11 @@ const onboardingSteps = [
     description: 'Automatically organize your components as you build.',
     content: (
       <div className="space-y-4">
-        <div className="flex items-center justify-center">
+        {/* <div className="flex items-center justify-center">
           <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
             <Zap className="w-8 h-8 text-white" />
           </div>
-        </div>
+        </div> */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-green-600" />
@@ -178,11 +183,11 @@ const onboardingSteps = [
     description: 'Never lose your work and track every change.',
     content: (
       <div className="space-y-4">
-        <div className="flex items-center justify-center">
+        {/* <div className="flex items-center justify-center">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
             <History className="w-8 h-8 text-white" />
           </div>
-        </div>
+        </div> */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-blue-600" />
@@ -208,11 +213,11 @@ const onboardingSteps = [
     description: 'Collaborate with your team effortlessly.',
     content: (
       <div className="space-y-4">
-        <div className="flex items-center justify-center">
+        {/* <div className="flex items-center justify-center">
           <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
             <SquareArrowOutUpRight className="w-8 h-8 text-white" />
           </div>
-        </div>
+        </div> */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <SquareArrowOutUpRight className="w-4 h-4 text-purple-600" />
@@ -238,11 +243,11 @@ const onboardingSteps = [
     description: 'Your feedback helps us improve this tool for everyone. We appreciate every contribution!',
     content: (
       <div className="space-y-4">
-        <div className="flex items-center justify-center">
+        {/* <div className="flex items-center justify-center">
           <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
             <MessageCircleCode className="w-8 h-8 text-white" />
           </div>
-        </div>
+        </div> */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <MessageCircleCode className="w-4 h-4 text-orange-600" />
@@ -301,8 +306,8 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
 
   return (
     <Drawer open={isVisible} onOpenChange={() => handleSkip()}>
-      <DrawerContent className="max-sm:left-4 max-sm:right-4 max-sm:bottom-4 md:max-w-[520px] md:mx-auto md:my-8 rounded-2xl md:h-auto md:max-h-[80vh]">
-        <div className="md:px-6 md:py-4">
+      <DrawerContent variant="dialog">
+        <div className={`md:px-6 md:py-4 h-full flex flex-col`}>
           <div className="flex items-center justify-between mb-2 px-4">
             <div className="flex gap-1">
               {onboardingSteps.map((_, index) => (
@@ -324,10 +329,10 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
             <DrawerDescription className="text-sm text-muted-foreground text-balance">{currentStepData.description}</DrawerDescription>
           </DrawerHeader>
           
-          <div className={`px-4 pb-4 space-y-6 ${isFirstStep ? 'text-center' : ''}`}>
+          <div className={`px-4 pb-4 space-y-6 flex-1 flex flex-col justify-between ${isFirstStep ? 'text-center' : ''}`}>
             {currentStepData.content}
             
-            <div className="flex items-center justify-between pt-4">
+            <div className="flex items-center justify-between">
               {!isFirstStep && (
                 <Button
                   variant="outline"
