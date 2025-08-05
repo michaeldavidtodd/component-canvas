@@ -31,7 +31,7 @@ const onboardingSteps = [
   {
     id: 'smart-layout',
     title: 'Smart Auto Layout',
-    description: 'Automatically organize your components as you build (off by default).',
+    description: 'Automatically organize your components as you build.',
     content: (
       <div className="space-y-4">
         <div className="flex items-center justify-center">
