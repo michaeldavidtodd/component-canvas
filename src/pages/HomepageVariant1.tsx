@@ -74,35 +74,35 @@ const HomepageVariant1 = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/20 to-pink-500/20 backdrop-blur-sm border border-orange-500/30 mb-8">
-                <Sparkles className="w-5 h-5 text-orange-400 mr-2" />
-                <span className="text-orange-300 font-bold">DESIGN SYSTEM REVOLUTION</span>
+                <Layout className="w-5 h-5 text-orange-400 mr-2" />
+                <span className="text-orange-300 font-bold">FOR FIGMA DESIGN SYSTEM TEAMS</span>
               </div>
               
               <h1 className="text-6xl lg:text-8xl font-black text-white mb-8 leading-none tracking-tighter">
                 IT'S A 
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-400">
-                  DESIGN
+                  COMPONENT
                 </span>
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
-                  MOVEMENT
+                  REVOLUTION
                 </span>
               </h1>
               
               <p className="text-2xl text-white/80 mb-12 leading-relaxed font-medium">
-                THAT CELEBRATES STRUCTURE, ORGANIZATION, AND URBAN COMPONENT CULTURE.
+                THAT CELEBRATES STRUCTURE, ORGANIZATION, AND DESIGN SYSTEM CULTURE.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-6">
                 <Link to="/app">
                   <Button size="lg" className="text-xl px-12 py-6 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-black rounded-2xl shadow-2xl transform hover:scale-105 transition-all">
-                    START THE MOVEMENT
+                    START PLANNING
                     <ArrowRight className="ml-3 w-6 h-6" />
                   </Button>
                 </Link>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="lg" className="text-xl px-12 py-6 border-2 border-white/30 text-white bg-white/10 hover:bg-white/20 font-black rounded-2xl backdrop-blur-sm">
-                      SEE THE POWER
+                      VIEW DEMO
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-background">
@@ -144,18 +144,18 @@ const HomepageVariant1 = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="text-6xl lg:text-8xl font-black text-white mb-8 leading-none tracking-tighter">
-                1998
+                SINCE
               </div>
               <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 leading-tight tracking-tight">
-                WHAT SETS US APART IS OUR RELENTLESS COMMITMENT TO QUALITY AND INNOVATION
+                WHAT SETS COMPONENT PLANNER APART IS OUR RELENTLESS COMMITMENT TO DESIGN SYSTEM EXCELLENCE
               </h2>
             </div>
             <div className="space-y-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
                 <Target className="w-12 h-12 text-white mb-6" />
                 <p className="text-xl text-white leading-relaxed font-medium">
-                  WE USE PREMIUM ALGORITHMS, METICULOUS ORGANIZATION, AND CUTTING-EDGE PLANNING TECHNIQUES 
-                  TO CREATE COMPONENT STRUCTURES THAT NOT ONLY LOOK GREAT BUT ALSO FEEL INTUITIVE AND LAST LONG.
+                  WE USE INTELLIGENT ALGORITHMS, METICULOUS ORGANIZATION, AND CUTTING-EDGE PLANNING TECHNIQUES 
+                  TO CREATE COMPONENT STRUCTURES THAT NOT ONLY WORK SEAMLESSLY BUT ALSO SCALE WITH YOUR DESIGN SYSTEM.
                 </p>
               </div>
             </div>
@@ -167,11 +167,11 @@ const HomepageVariant1 = () => {
       <section className="py-24 bg-gradient-to-br from-pink-500 to-purple-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-5xl lg:text-7xl font-black text-white mb-12 leading-tight tracking-tight">
-            WE BELIEVE THAT DESIGN SYSTEMS ARE MORE THAN JUST COMPONENTS
+            WE BELIEVE THAT COMPONENT PLANNING IS MORE THAN JUST ORGANIZATION
           </h2>
           <p className="text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed font-medium">
-            IT'S A FORM OF ART THAT ALLOWS TEAMS TO TELL THEIR STORIES & CONNECT WITH 
-            OTHERS WHO SHARE SIMILAR VALUES AND PASSIONS.
+            IT'S A FORM OF STRATEGIC THINKING THAT ALLOWS TEAMS TO BUILD BETTER SYSTEMS & CONNECT WITH 
+            STAKEHOLDERS WHO SHARE SIMILAR DESIGN VALUES AND GOALS.
           </p>
         </div>
       </section>
@@ -213,15 +213,15 @@ const HomepageVariant1 = () => {
           <h2 className="text-5xl lg:text-7xl font-black text-white mb-8 tracking-tight leading-none">
             JOIN THE
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white">
-              DESIGN REVOLUTION
+              COMPONENT REVOLUTION
             </span>
           </h2>
           <p className="text-2xl text-white/90 mb-12 max-w-3xl mx-auto font-medium leading-relaxed">
-            STRUCTURE YOUR COMPONENTS. ORGANIZE YOUR VISION. REVOLUTIONIZE YOUR WORKFLOW.
+            PLAN YOUR LIBRARY. ORGANIZE YOUR HIERARCHY. REVOLUTIONIZE YOUR DESIGN SYSTEM.
           </p>
           <Link to="/app">
             <Button size="lg" className="text-2xl px-16 py-8 bg-white text-purple-900 hover:bg-white/90 font-black rounded-2xl shadow-2xl transform hover:scale-105 transition-all">
-              START DESIGNING NOW
+              START PLANNING NOW
               <ArrowRight className="ml-4 w-8 h-8" />
             </Button>
           </Link>
@@ -239,7 +239,7 @@ const HomepageVariant1 = () => {
               <span className="text-xl font-black text-white tracking-tight">COMPONENT PLANNER</span>
             </div>
             <p className="text-sm text-white/60">
-              BUILT FOR DESIGN TEAMS WHO VALUE STRUCTURE AND INNOVATION.
+              VISUALIZE AND ORGANIZE YOUR FIGMA COMPONENT RELATIONSHIPS.
             </p>
           </div>
         </div>

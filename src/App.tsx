@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/theme-provider";
 import Homepage from "./pages/Homepage";
+import HomepageVariant1 from "./pages/HomepageVariant1";
+import HomepageVariant2 from "./pages/HomepageVariant2";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import SharedProject from "./pages/SharedProject";
@@ -23,6 +25,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Homepage />} />
+              <Route path="/variant1" element={<HomepageVariant1 />} />
+              <Route path="/variant2" element={<HomepageVariant2 />} />
               <Route path="/app" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/share/:shareToken" element={<SharedProject />} />

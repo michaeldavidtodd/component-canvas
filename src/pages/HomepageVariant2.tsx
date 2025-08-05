@@ -73,7 +73,7 @@ const HomepageVariant2 = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 lg:py-48">
           <div className="text-center">
             <div className="inline-flex items-center px-8 py-4 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-12">
-              <span className="text-white/90 font-bold text-lg">Season #3</span>
+              <span className="text-white/90 font-bold text-lg">For Figma Design System Teams</span>
             </div>
             
             <h1 className="text-7xl lg:text-9xl font-black text-white mb-16 leading-none tracking-tighter">
@@ -81,20 +81,20 @@ const HomepageVariant2 = () => {
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-300">
                 BEST
               </span>
-              <span className="block">SHIP</span>
+              <span className="block">COMPONENT LIBRARY</span>
             </h1>
             
             <div className="flex flex-col sm:flex-row gap-8 justify-center items-center mb-20">
               <Link to="/app">
                 <Button size="lg" className="text-xl px-12 py-6 bg-white text-purple-900 hover:bg-white/90 font-black rounded-2xl shadow-2xl transform hover:scale-105 transition-all">
-                  SET SAIL
+                  START PLANNING
                   <ArrowRight className="ml-3 w-6 h-6" />
                 </Button>
               </Link>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="lg" className="text-xl px-12 py-6 border-2 border-white/30 text-white bg-white/10 hover:bg-white/20 font-black rounded-2xl backdrop-blur-sm">
-                    VIEW BLUEPRINT
+                    VIEW DEMO
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-background">
@@ -132,9 +132,9 @@ const HomepageVariant2 = () => {
       <section className="py-24 bg-black text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-lg font-bold text-orange-400 mb-8 tracking-wider uppercase">MAKE IT ALL JUST WORK</h2>
+            <h2 className="text-lg font-bold text-orange-400 mb-8 tracking-wider uppercase">MAKE COMPONENT PLANNING JUST WORK</h2>
             <p className="text-3xl lg:text-4xl leading-relaxed font-medium">
-              If the user has to work at it, we don't ship it. An effortless experience takes effort on 
+              If design teams have to struggle with it, we don't ship it. An effortless planning experience takes effort on 
               our part. But when we get it right, Component Planner works like magic. So make sure everything 
               passes the no-stress test: keep it <span className="underline decoration-orange-400">intuitive</span> and <span className="underline decoration-orange-400">friction-free</span>.
             </p>
@@ -150,22 +150,22 @@ const HomepageVariant2 = () => {
               <h2 className="text-6xl lg:text-8xl font-black text-black mb-8 leading-none tracking-tighter">
                 ELEVATING
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-blue-700">
-                  CRAFT
+                  DESIGN
                 </span>
-                <span className="block">WITH</span>
+                <span className="block">SYSTEMS</span>
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">
-                  INFLUENCE
+                  TOGETHER
                 </span>
               </h2>
             </div>
             <div className="space-y-12">
               <div>
-                <div className="text-6xl font-black text-black mb-4">70%</div>
-                <p className="text-xl text-black font-semibold">High-quality craft</p>
+                <div className="text-6xl font-black text-black mb-4">90%</div>
+                <p className="text-xl text-black font-semibold">Faster component planning</p>
               </div>
               <div>
-                <div className="text-6xl font-black text-black mb-4">50%</div>
-                <p className="text-xl text-black font-semibold">Influence & drive decisions</p>
+                <div className="text-6xl font-black text-black mb-4">75%</div>
+                <p className="text-xl text-black font-semibold">Better team alignment</p>
               </div>
             </div>
           </div>
@@ -175,14 +175,14 @@ const HomepageVariant2 = () => {
       {/* Relationships Section */}
       <section className="py-24 bg-gradient-to-r from-yellow-400 to-orange-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="text-lg font-bold text-blue-700 mb-4">#2</div>
+          <div className="text-lg font-bold text-blue-700 mb-4">VISUALIZE</div>
           <h2 className="text-6xl lg:text-8xl font-black text-black mb-12 leading-tight tracking-tighter">
             CULTIVATING
-            <span className="block">RELATIONSHIPS</span>
+            <span className="block">COMPONENT RELATIONSHIPS</span>
           </h2>
           <p className="text-2xl text-black/80 max-w-4xl mx-auto leading-relaxed font-medium">
-            Building strong connections between components, teams, and stakeholders to create 
-            harmonious design systems that stand the test of time.
+            Building strong connections between components, hierarchies, and design patterns to create 
+            organized systems that scale beautifully with your product.
           </p>
         </div>
       </section>
@@ -194,7 +194,7 @@ const HomepageVariant2 = () => {
             <h2 className="text-5xl lg:text-7xl font-black text-gray-900 mb-8 tracking-tight leading-tight">
               WE BUILD TO
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
-                MAKE MAGIC
+                PLAN BETTER
               </span>
             </h2>
           </div>
@@ -202,25 +202,25 @@ const HomepageVariant2 = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="p-8 bg-gradient-to-br from-purple-100 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all">
               <Compass className="w-12 h-12 text-purple-600 mb-6" />
-              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">NAVIGATION</h3>
+              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">SMART AUTO-LAYOUT</h3>
               <p className="text-gray-700 text-lg leading-relaxed">
-                Intuitive pathways through your component structure that feel natural and effortless.
+                Intelligent pathways through your component structure that adapt automatically as you build.
               </p>
             </Card>
 
             <Card className="p-8 bg-gradient-to-br from-green-100 to-yellow-100 border-0 shadow-lg hover:shadow-xl transition-all">
               <Anchor className="w-12 h-12 text-green-600 mb-6" />
-              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">STABILITY</h3>
+              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">VERSION HISTORY</h3>
               <p className="text-gray-700 text-lg leading-relaxed">
-                Rock-solid foundations that keep your design system organized and maintainable.
+                Rock-solid foundations that track every change and evolution of your component architecture.
               </p>
             </Card>
 
             <Card className="p-8 bg-gradient-to-br from-orange-100 to-red-100 border-0 shadow-lg hover:shadow-xl transition-all">
               <Ship className="w-12 h-12 text-orange-600 mb-6" />
-              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">JOURNEY</h3>
+              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">TEAM COLLABORATION</h3>
               <p className="text-gray-700 text-lg leading-relaxed">
-                Seamless voyage from concept to implementation with clear direction every step.
+                Seamless voyage from planning to implementation with stakeholder alignment every step.
               </p>
             </Card>
           </div>
@@ -233,15 +233,15 @@ const HomepageVariant2 = () => {
           <h2 className="text-5xl lg:text-7xl font-black text-white mb-8 tracking-tight leading-none">
             READY TO BUILD
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-300">
-              YOUR SHIP?
+              YOUR COMPONENT LIBRARY?
             </span>
           </h2>
           <p className="text-2xl text-white/90 mb-12 max-w-3xl mx-auto font-medium leading-relaxed">
-            Chart your course through component architecture. No experience required to start building.
+            Chart your course through component architecture. No experience required to start planning.
           </p>
           <Link to="/app">
             <Button size="lg" className="text-2xl px-16 py-8 bg-white text-purple-900 hover:bg-white/90 font-black rounded-2xl shadow-2xl transform hover:scale-105 transition-all">
-              START BUILDING
+              START PLANNING
               <ArrowRight className="ml-4 w-8 h-8" />
             </Button>
           </Link>
@@ -259,7 +259,7 @@ const HomepageVariant2 = () => {
               <span className="text-xl font-black text-gray-900 tracking-tight">COMPONENT PLANNER</span>
             </div>
             <p className="text-sm text-gray-600">
-              Building the best ships for design system teams who value craft and collaboration.
+              Visualize and organize your Figma component relationships with intuitive planning tools.
             </p>
           </div>
         </div>
