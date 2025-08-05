@@ -1,11 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch, X, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import InteractiveDemo from "@/components/InteractiveDemo";
+import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const Homepage = () => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { user, isAnonymous, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && (user || isAnonymous)) {
+      navigate('/app');
+    }
+  }, [user, isAnonymous, loading, navigate]);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -19,15 +33,35 @@ const Homepage = () => {
               <span className="text-xl font-semibold text-foreground">Component Planner</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link to="/auth">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link to="/app">
-                <Button>
-                  Get Started
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
+              {loading ? (
+                <div className="w-16 h-9 bg-muted rounded animate-pulse" />
+              ) : user ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="w-4 h-4" />
+                    <span>{user.email}</span>
+                  </div>
+                  <Button variant="ghost" onClick={signOut}>Sign Out</Button>
+                  <Link to="/app">
+                    <Button>
+                      Open App
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button variant="ghost">Sign In</Button>
+                  </Link>
+                  <Link to="/app">
+                    <Button>
+                      Get Started
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -61,11 +95,26 @@ const Homepage = () => {
                   <ArrowRight className="ml-3 w-6 h-6" />
                 </Button>
               </Link>
-              <Link to="/share/demo">
-                <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-white hover:bg-white/10 font-bold rounded-xl backdrop-blur-sm">
-                  VIEW DEMO
-                </Button>
-              </Link>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-foreground bg-background/10 hover:bg-background/20 font-bold rounded-xl backdrop-blur-sm">
+                    VIEW DEMO
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-background">
+                  <div className="relative w-full h-full">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background border border-border"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <ComponentLibraryPlanner />
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>

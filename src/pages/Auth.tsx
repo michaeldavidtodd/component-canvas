@@ -48,7 +48,7 @@ const Auth = () => {
       });
       // Add delay to ensure auth state is fully updated before navigation
       setTimeout(() => {
-        navigate('/');
+        navigate('/app');
       }, 500);
     }
     
