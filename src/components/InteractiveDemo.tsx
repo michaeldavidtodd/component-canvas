@@ -16,10 +16,11 @@ import { ComponentNode } from '@/components/nodes/ComponentNode';
 import { ComponentType } from '@/types/component';
 
 const initialNodes: Node[] = [
+  // Top level - Main Component
   {
     id: 'button-main',
     type: 'component',
-    position: { x: 250, y: 50 },
+    position: { x: 300, y: 50 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Button',
@@ -28,10 +29,11 @@ const initialNodes: Node[] = [
       url: 'https://figma.com/button-component'
     },
   },
+  // Second level - Variants
   {
     id: 'button-primary',
     type: 'component',
-    position: { x: 100, y: 200 },
+    position: { x: 150, y: 180 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Primary Button',
@@ -42,7 +44,7 @@ const initialNodes: Node[] = [
   {
     id: 'button-secondary',
     type: 'component',
-    position: { x: 400, y: 200 },
+    position: { x: 450, y: 180 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Secondary Button',
@@ -50,10 +52,11 @@ const initialNodes: Node[] = [
       description: 'Secondary variant for less prominent actions',
     },
   },
+  // Third level - Sub-components and Tokens
   {
     id: 'button-icon',
     type: 'component',
-    position: { x: 250, y: 350 },
+    position: { x: 50, y: 310 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Button Icon',
@@ -64,7 +67,7 @@ const initialNodes: Node[] = [
   {
     id: 'primary-color',
     type: 'component',
-    position: { x: 600, y: 50 },
+    position: { x: 300, y: 310 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Primary Color',
@@ -75,19 +78,43 @@ const initialNodes: Node[] = [
     },
   },
   {
-    id: 'button-instance',
+    id: 'button-text',
     type: 'component',
-    position: { x: 50, y: 500 },
+    position: { x: 550, y: 310 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Button Text',
+      componentType: 'sub-component' as ComponentType,
+      description: 'Text element used within button components',
+    },
+  },
+  // Bottom level - Instances
+  {
+    id: 'button-instance-1',
+    type: 'component',
+    position: { x: 100, y: 440 },
     style: { width: 200, height: 80 },
     data: {
       label: 'Login Button',
       componentType: 'instance' as ComponentType,
       description: 'Instance of primary button used on login form',
     },
+  },
+  {
+    id: 'button-instance-2',
+    type: 'component',
+    position: { x: 400, y: 440 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Cancel Button',
+      componentType: 'instance' as ComponentType,
+      description: 'Instance of secondary button used for cancel actions',
+    },
   }
 ];
 
 const initialEdges: Edge[] = [
+  // Main component to variants
   {
     id: 'e1',
     source: 'button-main',
@@ -102,6 +129,7 @@ const initialEdges: Edge[] = [
     type: 'default',
     style: { stroke: 'hsl(258 100% 68%)', strokeWidth: 2 },
   },
+  // Variants to sub-components and tokens
   {
     id: 'e3',
     source: 'button-primary',
@@ -111,22 +139,30 @@ const initialEdges: Edge[] = [
   },
   {
     id: 'e4',
-    source: 'button-secondary',
-    target: 'button-icon',
-    type: 'default',
-    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
-  },
-  {
-    id: 'e5',
     source: 'button-primary',
     target: 'primary-color',
     type: 'default',
     style: { stroke: 'hsl(45 100% 68%)', strokeWidth: 2 },
   },
   {
+    id: 'e5',
+    source: 'button-secondary',
+    target: 'button-text',
+    type: 'default',
+    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
+  },
+  // Variants to instances
+  {
     id: 'e6',
     source: 'button-primary',
-    target: 'button-instance',
+    target: 'button-instance-1',
+    type: 'default',
+    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
+  },
+  {
+    id: 'e7',
+    source: 'button-secondary',
+    target: 'button-instance-2',
     type: 'default',
     style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
   }
