@@ -35,6 +35,13 @@ export default {
 					foreground: 'hsl(var(--secondary-foreground))',
 					hover: 'hsl(var(--secondary-hover))'
 				},
+				brand: {
+					pink: 'hsl(var(--brand-pink))',
+					blue: 'hsl(var(--brand-blue))',
+					green: 'hsl(var(--brand-green))',
+					orange: 'hsl(var(--brand-orange))',
+					yellow: 'hsl(var(--brand-yellow))'
+				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'

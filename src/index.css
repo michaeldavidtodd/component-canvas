@@ -6,32 +6,39 @@
 
 @layer base {
   :root {
-    /* Core colors inspired by Figma's design language */
-    --background: 0 0% 98%;
-    --foreground: 216 13% 15%;
+    /* Core colors - clean, vibrant base */
+    --background: 0 0% 99%;
+    --foreground: 220 15% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 13% 15%;
+    --card-foreground: 220 15% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 13% 15%;
+    --popover-foreground: 220 15% 8%;
 
-    /* Figma purple/violet primary palette */
-    --primary: 258 100% 68%;
+    /* Vibrant primary palette - bold purple */
+    --primary: 270 95% 65%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 258 100% 64%;
-    --primary-muted: 258 30% 95%;
+    --primary-hover: 270 95% 60%;
+    --primary-muted: 270 30% 95%;
 
-    /* Neutral grays */
-    --secondary: 216 12% 96%;
-    --secondary-foreground: 216 13% 15%;
-    --secondary-hover: 216 12% 92%;
+    /* Vibrant secondary colors */
+    --secondary: 315 100% 72%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 315 100% 68%;
 
-    --muted: 216 12% 96%;
-    --muted-foreground: 216 8% 45%;
+    --muted: 215 15% 96%;
+    --muted-foreground: 220 10% 40%;
 
-    --accent: 258 30% 95%;
-    --accent-foreground: 258 100% 68%;
+    --accent: 180 100% 70%;
+    --accent-foreground: 220 15% 8%;
+
+    /* Vibrant brand colors */
+    --brand-pink: 315 100% 72%;
+    --brand-blue: 210 100% 65%;
+    --brand-green: 150 100% 60%;
+    --brand-orange: 25 100% 65%;
+    --brand-yellow: 55 100% 70%;
 
     /* Component type colors */
     --component-main: 258 100% 68%;

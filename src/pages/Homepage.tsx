@@ -33,33 +33,36 @@ const Homepage = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-          <div className="text-center max-w-4xl mx-auto">
-            <Badge variant="secondary" className="mb-6 text-sm">
-              For Figma Design System Teams
-            </Badge>
+      <section className="relative overflow-hidden bg-gradient-to-br from-brand-pink via-primary to-brand-blue">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-40">
+          <div className="text-center max-w-5xl mx-auto">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-8">
+              <span className="text-white/90 font-medium">For Figma Design System Teams</span>
+            </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-              Plan Your Component
-              <span className="text-primary block">Library Structure</span>
+            <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black text-white mb-8 leading-none tracking-tight">
+              PLAN YOUR
+              <span className="block bg-gradient-to-r from-brand-yellow to-brand-green bg-clip-text text-transparent">
+                COMPONENT
+              </span>
+              <span className="block">LIBRARY</span>
             </h1>
             
-            <p className="text-xl text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-xl sm:text-2xl text-white/80 mb-12 leading-relaxed max-w-3xl mx-auto font-medium">
               Visualize and organize your Figma component relationships. 
               Plan hierarchies, manage variants, and collaborate on design system architecture.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link to="/app">
-                <Button size="lg" className="text-base px-8 py-6">
-                  Start Planning
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                <Button size="lg" className="text-lg px-10 py-6 bg-white text-primary hover:bg-white/90 font-bold rounded-xl shadow-2xl">
+                  START PLANNING
+                  <ArrowRight className="ml-3 w-6 h-6" />
                 </Button>
               </Link>
               <Link to="/share/demo">
-                <Button variant="outline" size="lg" className="text-base px-8 py-6">
-                  View Demo
+                <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-white hover:bg-white/10 font-bold rounded-xl backdrop-blur-sm">
+                  VIEW DEMO
                 </Button>
               </Link>
             </div>
@@ -68,57 +71,71 @@ const Homepage = () => {
         
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -right-32 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-component-variant/5 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-yellow/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-green/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl"></div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-              Built for Design System Workflows
+      <section className="py-32 bg-background relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl lg:text-6xl font-black text-foreground mb-6 tracking-tight">
+              BUILT FOR DESIGN
+              <span className="block bg-gradient-to-r from-brand-pink to-primary bg-clip-text text-transparent">
+                SYSTEM WORKFLOWS
+              </span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-medium">
               Everything you need to plan, organize, and communicate your component library structure
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="p-8 text-center border-border/50 hover:border-primary/20 transition-colors">
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Layout className="w-8 h-8 text-primary" />
+            <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-blue to-primary p-8 text-center hover:scale-105 transition-all duration-300 shadow-2xl">
+              <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
+                <Layout className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Smart Auto-Layout</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">SMART AUTO-LAYOUT</h3>
+              <p className="text-white/80 leading-relaxed font-medium">
                 Automatically organize your component hierarchy with intelligent layout algorithms. 
                 Toggle on to see your structure adapt as you make changes.
               </p>
-            </Card>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
 
-            <Card className="p-8 text-center border-border/50 hover:border-primary/20 transition-colors">
-              <div className="w-16 h-16 bg-component-variant/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <History className="w-8 h-8 text-component-variant" />
+            <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-green to-brand-yellow p-8 text-center hover:scale-105 transition-all duration-300 shadow-2xl">
+              <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
+                <History className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Version History</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">VERSION HISTORY</h3>
+              <p className="text-white/80 leading-relaxed font-medium">
                 Track every change to your component structure. Compare versions, 
                 revert changes, and maintain a clear evolution of your design system.
               </p>
-            </Card>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
 
-            <Card className="p-8 text-center border-border/50 hover:border-primary/20 transition-colors">
-              <div className="w-16 h-16 bg-component-sub/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Share2 className="w-8 h-8 text-component-sub" />
+            <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-pink to-brand-orange p-8 text-center hover:scale-105 transition-all duration-300 shadow-2xl">
+              <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
+                <Share2 className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Team Collaboration</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">TEAM COLLABORATION</h3>
+              <p className="text-white/80 leading-relaxed font-medium">
                 Share your component plans with stakeholders and team members. 
                 Get feedback and align on structure before building in Figma.
               </p>
-            </Card>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
           </div>
+        </div>
+        
+        {/* Background shapes */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-0">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-brand-pink/10 rounded-full"></div>
+          <div className="absolute bottom-20 right-20 w-48 h-48 bg-brand-blue/10 rounded-full"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full"></div>
         </div>
       </section>
 
@@ -214,22 +231,31 @@ const Homepage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-primary/5">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-            Ready to organize your design system?
+      <section className="py-32 bg-gradient-to-r from-brand-orange via-brand-pink to-primary relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 tracking-tight leading-none">
+            READY TO ORGANIZE
+            <span className="block bg-gradient-to-r from-brand-yellow to-white bg-clip-text text-transparent">
+              YOUR DESIGN SYSTEM?
+            </span>
           </h2>
-          <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
+          <p className="text-xl text-white/80 mb-12 max-w-3xl mx-auto font-medium leading-relaxed">
             Start planning your component library structure today. No account required to get started.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link to="/app">
-              <Button size="lg" className="text-base px-8 py-6">
-                Start Planning Now
-                <ArrowRight className="ml-2 w-5 h-5" />
+              <Button size="lg" className="text-xl px-12 py-6 bg-white text-primary hover:bg-white/90 font-black rounded-xl shadow-2xl">
+                START PLANNING NOW
+                <ArrowRight className="ml-3 w-6 h-6" />
               </Button>
             </Link>
           </div>
+        </div>
+        
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-brand-yellow/20 rounded-full blur-3xl"></div>
         </div>
       </section>
 
