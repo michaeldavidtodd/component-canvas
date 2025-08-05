@@ -211,14 +211,14 @@ export const Toolbar = ({
 
   return (
     <div className="w-fit m-4 bg-background border border-border p-6 flex flex-col gap-8 overflow-y-auto rounded-xl">
-      <div>
+      {/* <div>
         <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
           Component Library Planner
         </h2>
         <p className="text-sm text-muted-foreground">
           Design and visualize your component structure
         </p>
-      </div>
+      </div> */}
       
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium text-foreground mb-1">Add Components</h3>
@@ -454,18 +454,6 @@ export const Toolbar = ({
       )}
 
       <div className="mt-auto pt-4 border-t border-border space-y-3">
-        {/* Help section */}
-        <div className="space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onResetOnboarding}
-            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <HelpCircle className="h-4 w-4" />
-            Show Tutorial
-          </Button>
-        </div>
         
         {/* <p className="text-xs text-muted-foreground">
           Click and drag to create connections between components
@@ -530,19 +518,30 @@ export const Toolbar = ({
               <Separator />
               
               <div className="p-2 space-y-1">
-                <div className="flex items-center justify-between px-2 py-1">
-                  <span className="text-xs text-muted-foreground">Theme</span>
+                {/* <div className="flex items-center justify-between px-2 py-1"> */}
+                  {/* <span className="text-xs text-muted-foreground">Theme</span> */}
                   <ThemeToggle />
+                {/* </div> */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Help section */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onResetOnboarding}
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    Tutorial
+                  </Button>
+                  {/* Sign out */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSignOut}
-                  className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </Button>
               </div>
             </PopoverContent>
           </Popover>

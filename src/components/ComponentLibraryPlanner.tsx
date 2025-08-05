@@ -514,10 +514,18 @@ export const ComponentLibraryPlanner = ({
             elementsSelectable={!isSharedView}
             fitView={nodes.length > 0}
             fitViewOptions={{ padding: 0.2, includeHiddenNodes: false, minZoom: 0.5, maxZoom: 2 }}
-            className="bg-canvas"
+            className="bg-canvas rounded-xl overflow-hidden border border-border"
           >
-            <Background className="[&>*]:!stroke-border rounded-xl overflow-hidden border border-border" gap={16} />
+            <Background className="[&>*]:!stroke-border" gap={16} />
             <Controls className="bg-workspace border border-border" />
+            <div className="absolute top-4 left-4 w-fit h-fit">
+              <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
+                Component Library Planner
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Design and visualize your component structure
+              </p>
+            </div>
             <MiniMap 
               className="bg-workspace border border-border"
               nodeColor={(node) => {

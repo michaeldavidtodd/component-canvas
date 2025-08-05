@@ -17,15 +17,15 @@
     --popover-foreground: 220 15% 8%;
 
     /* Vibrant primary palette - bold purple */
-    --primary: 270 95% 65%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 270 95% 60%;
-    --primary-muted: 270 30% 95%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 0 0% 10%;
+    --primary-muted: 0 0% 90%;
 
-    /* Vibrant secondary colors */
-    --secondary: 315 100% 72%;
-    --secondary-foreground: 0 0% 100%;
-    --secondary-hover: 315 100% 68%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 2%;
+    --secondary-hover: 0 0% 90%;
+    --secondary-muted: 0 0% 96.1%;
 
     --muted: 215 15% 96%;
     --muted-foreground: 220 10% 40%;
