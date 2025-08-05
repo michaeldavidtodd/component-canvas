@@ -13,7 +13,7 @@ const onboardingSteps = [
   {
     id: 'welcome',
     title: 'Welcome to Component Library Planner!',
-    description: 'Build and visualize your React component library architecture with ease.',
+    description: 'Build and visualize your Figma component library architecture with ease.',
     content: (
       <div className="space-y-4">
         <div className="flex items-center justify-center">
@@ -22,7 +22,7 @@ const onboardingSteps = [
           </div>
         </div>
         <p className="text-center text-muted-foreground">
-          Create interactive diagrams to plan your component relationships, track changes, and share your designs with your team.
+          Create interactive diagrams to plan your Figma component relationships, track changes, and share your designs with your team. This tool helps you organize your design system without using AI.
         </p>
       </div>
     ),
@@ -31,7 +31,7 @@ const onboardingSteps = [
   {
     id: 'smart-layout',
     title: 'Smart Auto Layout',
-    description: 'Let AI organize your components automatically as you build.',
+    description: 'Automatically organize your components as you build (off by default).',
     content: (
       <div className="space-y-4">
         <div className="flex items-center justify-center">
@@ -42,18 +42,18 @@ const onboardingSteps = [
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-green-600" />
-            <span className="text-sm">Automatically arranges components as you add them</span>
+            <span className="text-sm">Updates layout structure as you make changes</span>
           </div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-green-600" />
-            <span className="text-sm">Maintains clean, readable layouts</span>
+            <span className="text-sm">Maintains clean, readable layouts automatically</span>
           </div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-green-600" />
-            <span className="text-sm">Focuses on newly added components</span>
+            <span className="text-sm">Focuses view on newly added components</span>
           </div>
         </div>
-        <Badge variant="secondary" className="mx-auto">Enable in the toolbar to try it!</Badge>
+        <Badge variant="secondary" className="mx-auto">Toggle "Auto Smart Layout" in the toolbar!</Badge>
       </div>
     ),
     highlight: 'smart-layout'
@@ -72,7 +72,7 @@ const onboardingSteps = [
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-blue-600" />
-            <span className="text-sm">Automatic saves every few seconds</span>
+            <span className="text-sm">Automatic saves when changes are made</span>
           </div>
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-blue-600" />
@@ -176,16 +176,16 @@ export const OnboardingFlow = ({ onComplete, onSkip }: OnboardingFlowProps) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`transition-all duration-300 transform ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-        <Card className="w-full max-w-md mx-auto shadow-2xl">
-          <CardHeader className="relative">
-            <button
-              onClick={handleSkip}
-              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={handleSkip}
+    >
+      <div 
+        className={`transition-all duration-300 transform ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card className="w-[480px] shadow-2xl">
+          <CardHeader>
             <div className="flex items-center justify-between mb-2">
               <div className="flex gap-1">
                 {onboardingSteps.map((_, index) => (

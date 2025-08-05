@@ -446,6 +446,11 @@ export const ComponentLibraryPlanner = ({
     setShowOnboarding(false);
   };
 
+  const handleResetOnboarding = () => {
+    localStorage.removeItem('hasSeenOnboarding');
+    setShowOnboarding(true);
+  };
+
   return (
     <ReactFlowProvider>
       {!isSharedView && (
@@ -471,6 +476,7 @@ export const ComponentLibraryPlanner = ({
             onCleanupLayout={cleanupLayout}
             autoSmartLayout={autoSmartLayout}
             onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)}
+            onResetOnboarding={handleResetOnboarding}
           />
         )}
         

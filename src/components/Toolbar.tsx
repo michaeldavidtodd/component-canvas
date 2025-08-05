@@ -27,7 +27,8 @@ import {
   Share,
   Check,
   ExternalLink,
-  Edit2
+  Edit2,
+  HelpCircle
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -46,6 +47,7 @@ interface ToolbarProps {
   onCleanupLayout?: () => void;
   autoSmartLayout?: boolean;
   onToggleAutoSmartLayout?: () => void;
+  onResetOnboarding?: () => void;
 }
 
 const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -95,7 +97,8 @@ export const Toolbar = ({
   onSmartLayout,
   onCleanupLayout,
   autoSmartLayout,
-  onToggleAutoSmartLayout
+  onToggleAutoSmartLayout,
+  onResetOnboarding
 }: ToolbarProps) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -405,6 +408,19 @@ export const Toolbar = ({
       )}
 
       <div className="mt-auto pt-4 border-t border-border space-y-3">
+        {/* Help section */}
+        <div className="space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onResetOnboarding}
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Show Tutorial
+          </Button>
+        </div>
+        
         <p className="text-xs text-muted-foreground">
           Click and drag to create connections between components
         </p>
