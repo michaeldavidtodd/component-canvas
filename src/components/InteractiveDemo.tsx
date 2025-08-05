@@ -12,118 +12,78 @@ import {
   MiniMap,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { ComponentNode } from '@/components/nodes/ComponentNode';
+import { ComponentType } from '@/types/component';
 
 const initialNodes: Node[] = [
   {
     id: 'button-main',
-    type: 'default',
-    position: { x: 200, y: 50 },
-    data: { 
-      label: (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-primary rounded-full"></div>
-          <span className="font-semibold">Button</span>
-        </div>
-      )
+    type: 'component',
+    position: { x: 250, y: 50 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Button',
+      componentType: 'main-component' as ComponentType,
+      description: 'Primary button component for user interactions',
+      url: 'https://figma.com/button-component'
     },
-    style: {
-      background: 'hsl(var(--primary))',
-      color: 'white',
-      border: 'none',
-      borderRadius: '12px',
-      fontSize: '14px',
-      fontWeight: 'bold',
-      padding: '12px 16px',
-      minWidth: '120px'
-    }
   },
   {
     id: 'button-primary',
-    type: 'default',
-    position: { x: 50, y: 180 },
-    data: { 
-      label: (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-brand-blue rounded-full"></div>
-          <span>Primary</span>
-        </div>
-      )
+    type: 'component',
+    position: { x: 100, y: 200 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Primary Button',
+      componentType: 'variant' as ComponentType,
+      description: 'Primary variant with brand colors',
     },
-    style: {
-      background: 'hsl(var(--brand-blue))',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '12px',
-      padding: '8px 12px',
-      minWidth: '100px'
-    }
   },
   {
     id: 'button-secondary',
-    type: 'default',
-    position: { x: 200, y: 180 },
-    data: { 
-      label: (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-brand-green rounded-full"></div>
-          <span>Secondary</span>
-        </div>
-      )
+    type: 'component',
+    position: { x: 400, y: 200 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Secondary Button',
+      componentType: 'variant' as ComponentType,
+      description: 'Secondary variant for less prominent actions',
     },
-    style: {
-      background: 'hsl(var(--brand-green))',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '12px',
-      padding: '8px 12px',
-      minWidth: '100px'
-    }
   },
   {
-    id: 'button-ghost',
-    type: 'default',
-    position: { x: 350, y: 180 },
-    data: { 
-      label: (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-muted rounded-full border-2 border-border"></div>
-          <span>Ghost</span>
-        </div>
-      )
+    id: 'button-icon',
+    type: 'component',
+    position: { x: 250, y: 350 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Button Icon',
+      componentType: 'sub-component' as ComponentType,
+      description: 'Icon element used within button components',
     },
-    style: {
-      background: 'hsl(var(--background))',
-      color: 'hsl(var(--foreground))',
-      border: '2px solid hsl(var(--border))',
-      borderRadius: '8px',
-      fontSize: '12px',
-      padding: '8px 12px',
-      minWidth: '100px'
-    }
   },
   {
-    id: 'icon-component',
-    type: 'default',
-    position: { x: 200, y: 300 },
-    data: { 
-      label: (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-brand-orange rounded-full"></div>
-          <span>Icon</span>
-        </div>
-      )
+    id: 'primary-color',
+    type: 'component',
+    position: { x: 600, y: 50 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Primary Color',
+      componentType: 'token' as ComponentType,
+      description: 'Primary brand color token',
+      tokenType: 'color',
+      tokenSubType: 'background'
     },
-    style: {
-      background: 'hsl(var(--brand-orange))',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '12px',
-      padding: '8px 12px',
-      minWidth: '80px'
-    }
+  },
+  {
+    id: 'button-instance',
+    type: 'component',
+    position: { x: 50, y: 500 },
+    style: { width: 200, height: 80 },
+    data: {
+      label: 'Login Button',
+      componentType: 'instance' as ComponentType,
+      description: 'Instance of primary button used on login form',
+    },
   }
 ];
 
@@ -132,35 +92,49 @@ const initialEdges: Edge[] = [
     id: 'e1',
     source: 'button-main',
     target: 'button-primary',
-    type: 'smoothstep',
-    style: { stroke: 'hsl(var(--brand-blue))', strokeWidth: 2 },
-    animated: true
+    type: 'default',
+    style: { stroke: 'hsl(258 100% 68%)', strokeWidth: 2 },
   },
   {
     id: 'e2',
     source: 'button-main',
     target: 'button-secondary',
-    type: 'smoothstep',
-    style: { stroke: 'hsl(var(--brand-green))', strokeWidth: 2 },
-    animated: true
+    type: 'default',
+    style: { stroke: 'hsl(258 100% 68%)', strokeWidth: 2 },
   },
   {
     id: 'e3',
-    source: 'button-main',
-    target: 'button-ghost',
-    type: 'smoothstep',
-    style: { stroke: 'hsl(var(--border))', strokeWidth: 2 },
-    animated: true
+    source: 'button-primary',
+    target: 'button-icon',
+    type: 'default',
+    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
   },
   {
     id: 'e4',
-    source: 'button-main',
-    target: 'icon-component',
-    type: 'smoothstep',
-    style: { stroke: 'hsl(var(--brand-orange))', strokeWidth: 2 },
-    animated: true
+    source: 'button-secondary',
+    target: 'button-icon',
+    type: 'default',
+    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
+  },
+  {
+    id: 'e5',
+    source: 'button-primary',
+    target: 'primary-color',
+    type: 'default',
+    style: { stroke: 'hsl(45 100% 68%)', strokeWidth: 2 },
+  },
+  {
+    id: 'e6',
+    source: 'button-primary',
+    target: 'button-instance',
+    type: 'default',
+    style: { stroke: 'hsl(216 8% 45%)', strokeWidth: 2 },
   }
 ];
+
+const nodeTypes = {
+  component: ComponentNode,
+};
 
 const InteractiveDemo = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -179,6 +153,7 @@ const InteractiveDemo = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
         style={{ background: 'hsl(var(--canvas))' }}
@@ -202,22 +177,29 @@ const InteractiveDemo = () => {
             borderRadius: '8px'
           }}
           nodeColor={(node) => {
-            if (node.id.includes('primary')) return 'hsl(var(--brand-blue))';
-            if (node.id.includes('secondary')) return 'hsl(var(--brand-green))';
-            if (node.id.includes('ghost')) return 'hsl(var(--muted))';
-            if (node.id.includes('icon')) return 'hsl(var(--brand-orange))';
-            return 'hsl(var(--primary))';
+            const nodeData = nodes.find(n => n.id === node.id)?.data;
+            if (!nodeData) return 'hsl(var(--muted))';
+            
+            switch (nodeData.componentType) {
+              case 'main-component': return 'hsl(var(--component-main))';
+              case 'variant': return 'hsl(var(--component-variant))';
+              case 'sub-component': return 'hsl(var(--component-sub))';
+              case 'token': return 'hsl(var(--component-token))';
+              case 'instance': return 'hsl(var(--component-instance))';
+              default: return 'hsl(var(--muted))';
+            }
           }}
         />
       </ReactFlow>
       
       {/* Demo Instructions */}
-      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-xs">
+      <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-xs">
         <h4 className="font-bold text-sm text-foreground mb-2">Interactive Demo</h4>
         <p className="text-xs text-muted-foreground">
           • Drag nodes to reorganize<br/>
           • Use controls to zoom/pan<br/>
-          • Connect components by dragging from edges
+          • Connect components by dragging from edges<br/>
+          • Hover over nodes to add new ones
         </p>
       </div>
     </div>
