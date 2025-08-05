@@ -27,6 +27,7 @@ import { ConnectionLegend } from './ConnectionLegend';
 import { VersionHistory } from './VersionHistory';
 import { AutoSaveHandler } from './AutoSaveHandler';
 import { ProjectManager } from './ProjectManager';
+import { OnboardingFlow } from './OnboardingFlow';
 import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
@@ -153,6 +154,7 @@ export const ComponentLibraryPlanner = ({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isProjectInitialized, setIsProjectInitialized] = useState(false);
   const [autoSmartLayout, setAutoSmartLayout] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -191,6 +193,16 @@ export const ComponentLibraryPlanner = ({
       setIsProjectInitialized(true);
     }
   }, [isSharedView, sharedProjectData, setNodes, setEdges]);
+
+  // Check if user should see onboarding
+  useEffect(() => {
+    if (!isSharedView && user && isProjectInitialized) {
+      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isSharedView, user, isProjectInitialized]);
 
   // Update existing edges to use default type (for delete button functionality)
   useEffect(() => {
@@ -424,6 +436,16 @@ export const ComponentLibraryPlanner = ({
     navigate('/auth');
   };
 
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSkip = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    setShowOnboarding(false);
+  };
+
   return (
     <ReactFlowProvider>
       {!isSharedView && (
@@ -528,6 +550,14 @@ export const ComponentLibraryPlanner = ({
           />
         )}
       </div>
+      
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
     </ReactFlowProvider>
   );
 };
