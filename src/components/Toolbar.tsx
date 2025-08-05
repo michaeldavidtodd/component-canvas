@@ -17,14 +17,12 @@ import {
   Plus,
   User,
   LogOut,
-  Settings,
   Mail,
   Save,
   History,
   ToggleLeft,
   ToggleRight,
   Sparkles,
-  Layout,
   Share,
   Check,
   ExternalLink,
@@ -43,6 +41,7 @@ interface ToolbarProps {
   onSave?: () => void;
   onShowVersions?: () => void;
   currentProject?: any;
+  onProjectUpdate?: (updatedProject: any) => void;
   autoSaveEnabled?: boolean;
   onToggleAutoSave?: () => void;
   onSmartLayout?: () => void;
@@ -115,6 +114,7 @@ export const Toolbar = ({
   onSave,
   onShowVersions,
   currentProject,
+  onProjectUpdate,
   autoSaveEnabled,
   onToggleAutoSave,
   onSmartLayout,
@@ -123,6 +123,7 @@ export const Toolbar = ({
   onToggleAutoSmartLayout,
   onResetOnboarding
 }: ToolbarProps) => {
+  console.log('🔄 Toolbar render - currentProject:', currentProject?.name, 'ID:', currentProject?.id);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -189,6 +190,11 @@ export const Toolbar = ({
     try {
       await updateProject(currentProject.id, { name: newName.trim() });
       setEditingName(false);
+      // Force a re-render by updating the currentProject prop
+      if (currentProject && onProjectUpdate) {
+        const updatedProject = { ...currentProject, name: newName.trim() };
+        onProjectUpdate(updatedProject);
+      }
     } catch (error) {
       toast({
         title: "Error",

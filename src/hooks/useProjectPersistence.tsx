@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Node, Edge, Viewport } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -33,7 +33,14 @@ interface ProjectVersion {
 export const useProjectPersistence = () => {
   const { user, isAnonymous } = useAuth();
   const { toast } = useToast();
-  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
+  const currentProjectRef = useRef<Project | null>(null);
+  
+  // Initialize ref with current project
+  useEffect(() => {
+    currentProjectRef.current = currentProject;
+    console.log('🎯 Initial ref setup:', currentProjectRef.current);
+  }, []);
   const [projects, setProjects] = useState<Project[]>([]);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -139,7 +146,7 @@ export const useProjectPersistence = () => {
 
       const newProject = data as Project;
       setProjects(prev => [newProject, ...prev]);
-      setCurrentProject(newProject);
+      setCurrentProjectState(newProject);
       
       toast({
         title: "Success",
@@ -162,6 +169,8 @@ export const useProjectPersistence = () => {
   const updateProject = useCallback(async (projectId: string, updates: Partial<Pick<Project, 'name' | 'description'>>) => {
     if (!user) return null;
 
+    console.log('🔄 updateProject called with:', { projectId, updates, currentProjectId: currentProjectRef.current?.id });
+
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -173,11 +182,15 @@ export const useProjectPersistence = () => {
       if (error) throw error;
 
       const updatedProject = data as Project;
+      console.log('🔄 Database update successful:', updatedProject);
+      
       setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
       
-      if (currentProject?.id === projectId) {
-        setCurrentProject(updatedProject);
-      }
+      // Always update the currentProject state if the project ID matches
+      // This ensures the UI updates even if the ref is not working properly
+      console.log('🔄 Updating currentProject state to:', updatedProject.name);
+      // Create a new object reference to ensure React detects the change
+      setCurrentProjectState({ ...updatedProject });
       
       toast({
         title: "Success",
@@ -194,7 +207,7 @@ export const useProjectPersistence = () => {
       });
       return null;
     }
-  }, [user, currentProject, toast]);
+  }, [user, toast]);
 
   // Save project state as a new version
   const saveVersion = useCallback(async (
@@ -386,8 +399,8 @@ export const useProjectPersistence = () => {
           : p
       ));
 
-      if (currentProject?.id === projectId) {
-        setCurrentProject({ ...currentProject, is_public: isPublic });
+      if (currentProjectRef.current?.id === projectId) {
+        setCurrentProjectState({ ...currentProjectRef.current, is_public: isPublic });
       }
 
       return data.share_token;
@@ -434,7 +447,7 @@ export const useProjectPersistence = () => {
       loadProjects();
     } else {
       setProjects([]);
-      setCurrentProject(null);
+      setCurrentProjectState(null);
       setVersions([]);
     }
   }, [user, loadProjects]);
@@ -448,9 +461,11 @@ export const useProjectPersistence = () => {
     }
   }, [currentProject, loadVersions]);
 
-  // Debug current project state
+  // Update ref when currentProject changes
   useEffect(() => {
+    currentProjectRef.current = currentProject;
     console.log('🎯 useProjectPersistence: currentProject changed:', currentProject);
+    console.log('🎯 useProjectPersistence: ref updated to:', currentProjectRef.current);
   }, [currentProject]);
 
   return {
@@ -464,7 +479,7 @@ export const useProjectPersistence = () => {
     // Actions
     setCurrentProject: (project: Project | null) => {
       console.log('🔧 setCurrentProject called with:', project);
-      setCurrentProject(project);
+      setCurrentProjectState(project);
     },
     setAutoSaveEnabled,
     createProject,

@@ -28,12 +28,9 @@ import { VersionHistory } from './VersionHistory';
 import { AutoSaveHandler } from './AutoSaveHandler';
 import { ProjectManager } from './ProjectManager';
 import { OnboardingFlow } from './OnboardingFlow';
-import { initialNodes, initialEdges } from '@/lib/initial-elements';
 import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
-import { Button } from '@/components/ui/button';
-import { User, LogOut, Save, History, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const nodeWidth = 172;
@@ -204,6 +201,11 @@ export const ComponentLibraryPlanner = ({
     }
   }, [isSharedView, user, isProjectInitialized]);
 
+  // Debug currentProject changes
+  useEffect(() => {
+    console.log('🔍 ComponentLibraryPlanner: currentProject changed:', currentProject?.name);
+  }, [currentProject]);
+
   // Update existing edges to use default type (for delete button functionality)
   useEffect(() => {
     setEdges((currentEdges) => 
@@ -220,6 +222,7 @@ export const ComponentLibraryPlanner = ({
     isAnonymous,
     currentProject: !!currentProject,
     projectName: currentProject?.name,
+    projectId: currentProject?.id,
     autoSaveEnabled,
     isProjectInitialized,
     versionsCount: versions.length
@@ -470,6 +473,7 @@ export const ComponentLibraryPlanner = ({
             onSave={handleManualSave}
             onShowVersions={() => setShowVersionHistory(true)}
             currentProject={currentProject}
+            onProjectUpdate={(updatedProject) => setCurrentProject(updatedProject)}
             autoSaveEnabled={autoSaveEnabled}
             onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
             onSmartLayout={() => onLayout('TB')}
@@ -494,7 +498,7 @@ export const ComponentLibraryPlanner = ({
           />
         )}
         
-        <div className="flex-1 relative">
+        <div className="flex-1 py-4 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -512,7 +516,7 @@ export const ComponentLibraryPlanner = ({
             fitViewOptions={{ padding: 0.2, includeHiddenNodes: false, minZoom: 0.5, maxZoom: 2 }}
             className="bg-canvas"
           >
-            <Background className="[&>*]:!stroke-border" gap={16} />
+            <Background className="[&>*]:!stroke-border rounded-xl overflow-hidden border border-border" gap={16} />
             <Controls className="bg-workspace border border-border" />
             <MiniMap 
               className="bg-workspace border border-border"
