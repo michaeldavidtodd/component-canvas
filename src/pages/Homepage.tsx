@@ -40,7 +40,7 @@ const Homepage = () => {
               <span className="text-white/90 font-medium">For Figma Design System Teams</span>
             </div>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black text-white mb-8 leading-none tracking-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black text-white mb-8 leading-none tracking-tight font-display">
               PLAN YOUR
               <span className="block bg-gradient-to-r from-brand-yellow to-brand-green bg-clip-text text-transparent">
                 COMPONENT
@@ -81,7 +81,7 @@ const Homepage = () => {
       <section className="py-32 bg-background relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-6xl font-black text-foreground mb-6 tracking-tight">
+            <h2 className="text-4xl lg:text-6xl font-black text-foreground mb-6 tracking-tight font-display">
               BUILT FOR DESIGN
               <span className="block bg-gradient-to-r from-brand-pink to-primary bg-clip-text text-transparent">
                 SYSTEM WORKFLOWS
@@ -97,7 +97,7 @@ const Homepage = () => {
               <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
                 <Layout className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">SMART AUTO-LAYOUT</h3>
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight font-display">SMART AUTO-LAYOUT</h3>
               <p className="text-white/80 leading-relaxed font-medium">
                 Automatically organize your component hierarchy with intelligent layout algorithms. 
                 Toggle on to see your structure adapt as you make changes.
@@ -109,7 +109,7 @@ const Homepage = () => {
               <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
                 <History className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">VERSION HISTORY</h3>
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight font-display">VERSION HISTORY</h3>
               <p className="text-white/80 leading-relaxed font-medium">
                 Track every change to your component structure. Compare versions, 
                 revert changes, and maintain a clear evolution of your design system.
@@ -121,7 +121,7 @@ const Homepage = () => {
               <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
                 <Share2 className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">TEAM COLLABORATION</h3>
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight font-display">TEAM COLLABORATION</h3>
               <p className="text-white/80 leading-relaxed font-medium">
                 Share your component plans with stakeholders and team members. 
                 Get feedback and align on structure before building in Figma.
@@ -144,9 +144,12 @@ const Homepage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-                Perfect for Design System Planning
-              </h2>
+          <h2 className="text-4xl lg:text-6xl font-black text-foreground mb-8 tracking-tight font-display leading-tight">
+            PERFECT FOR DESIGN
+            <span className="block bg-gradient-to-r from-brand-pink to-primary bg-clip-text text-transparent">
+              SYSTEM PLANNING
+            </span>
+          </h2>
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -233,7 +236,7 @@ const Homepage = () => {
       {/* CTA Section */}
       <section className="py-32 bg-gradient-to-r from-brand-orange via-brand-pink to-primary relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 tracking-tight leading-none">
+          <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 tracking-tight leading-none font-display">
             READY TO ORGANIZE
             <span className="block bg-gradient-to-r from-brand-yellow to-white bg-clip-text text-transparent">
               YOUR DESIGN SYSTEM?
