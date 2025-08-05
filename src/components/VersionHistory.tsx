@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { History, Clock, User, RotateCcw, Maximize2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 interface ProjectVersion {
   id: string;
@@ -25,6 +28,7 @@ interface VersionHistoryProps {
   onLoadVersion: (versionId: string) => Promise<ProjectVersion | null>;
   onDeleteVersion?: (versionId: string) => void;
   onVersionLoaded?: (version: ProjectVersion) => void;
+  nodeTypes?: any;
 }
 
 export const VersionHistory = ({
@@ -33,7 +37,8 @@ export const VersionHistory = ({
   versions,
   onLoadVersion,
   onDeleteVersion,
-  onVersionLoaded
+  onVersionLoaded,
+  nodeTypes
 }: VersionHistoryProps) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [expandedVersion, setExpandedVersion] = useState<ProjectVersion | null>(null);
@@ -203,29 +208,44 @@ export const VersionHistory = ({
 
       {/* Expanded Preview Modal */}
       <Dialog open={!!expandedVersion} onOpenChange={() => setExpandedVersion(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Preview: {expandedVersion && formatVersionName(expandedVersion)}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => expandedVersion && handleLoadVersion(expandedVersion.id)}
-                disabled={loading === expandedVersion?.id}
-                className="gap-2"
-              >
-                <RotateCcw className="h-3 w-3" />
-                {loading === expandedVersion?.id ? 'Loading...' : 'Restore This Version'}
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
+        <DialogPortal>
+          <DialogOverlay />
+                    <DialogPrimitive.Content
+            className="fixed left-[50%] top-[50%] z-50 w-screen h-screen max-w-none translate-x-[-50%] translate-y-[-50%] bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          >
+            <DialogHeader className="p-6 pb-0">
+              <DialogTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Preview: {expandedVersion && formatVersionName(expandedVersion)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => expandedVersion && handleLoadVersion(expandedVersion.id)}
+                    disabled={loading === expandedVersion?.id}
+                    className="gap-2"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {loading === expandedVersion?.id ? 'Loading...' : 'Restore This Version'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExpandedVersion(null)}
+                    className="gap-2"
+                  >
+                    <X className="h-3 w-3" />
+                    Close
+                  </Button>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
           
           {expandedVersion && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground p-6 pb-4">
                 <span>Created: {formatDistanceToNow(new Date(expandedVersion.created_at), { addSuffix: true })}</span>
                 <span>•</span>
                 <span>{expandedVersion.nodes.length} nodes</span>
@@ -239,103 +259,23 @@ export const VersionHistory = ({
                 )}
               </div>
               
-              <div className="h-96 bg-muted/30 rounded border relative overflow-hidden">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg 
-                    width="100%" 
-                    height="100%" 
-                    viewBox="0 0 800 600"
-                    className="w-full h-full"
-                  >
-                    {/* Calculate bounds for proper scaling */}
-                    {(() => {
-                      const validNodes = expandedVersion.nodes.filter(n => n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number');
-                      if (validNodes.length === 0) return null;
-                      
-                      const minX = Math.min(...validNodes.map(n => n.position.x));
-                      const maxX = Math.max(...validNodes.map(n => n.position.x));
-                      const minY = Math.min(...validNodes.map(n => n.position.y));
-                      const maxY = Math.max(...validNodes.map(n => n.position.y));
-                      
-                      const width = maxX - minX;
-                      const height = maxY - minY;
-                      const scale = Math.min(750 / Math.max(width, height), 1);
-                      
-                      return (
-                        <>
-                          {/* Render edges first */}
-                          {expandedVersion.edges.map((edge, idx) => {
-                            const sourceNode = validNodes.find(n => n.id === edge.source);
-                            const targetNode = validNodes.find(n => n.id === edge.target);
-                            
-                            if (!sourceNode || !targetNode) return null;
-                            
-                            const x1 = (sourceNode.position.x - minX) * scale + 25;
-                            const y1 = (sourceNode.position.y - minY) * scale + 25;
-                            const x2 = (targetNode.position.x - minX) * scale + 25;
-                            const y2 = (targetNode.position.y - minY) * scale + 25;
-                            
-                            return (
-                              <line
-                                key={idx}
-                                x1={x1}
-                                y1={y1}
-                                x2={x2}
-                                y2={y2}
-                                stroke="#6b7280"
-                                strokeWidth="2"
-                                opacity="0.6"
-                              />
-                            );
-                          })}
-                          
-                          {/* Render nodes */}
-                          {validNodes.map((node, idx) => {
-                            const x = (node.position.x - minX) * scale + 25;
-                            const y = (node.position.y - minY) * scale + 25;
-                            const nodeType = node.data?.componentType || 'default';
-                            let color = '#6b7280'; // gray
-                            
-                            switch (nodeType) {
-                              case 'main-component': color = 'hsl(258 100% 68%)'; break; // purple
-                              case 'variant': color = 'hsl(197 100% 68%)'; break; // blue
-                              case 'sub-component': color = 'hsl(152 100% 68%)'; break; // green
-                              case 'token': color = 'hsl(45 100% 68%)'; break; // amber
-                              case 'instance': color = 'hsl(21 100% 68%)'; break; // orange
-                            }
-                            
-                            return (
-                              <g key={idx}>
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r="8"
-                                  fill={color}
-                                  stroke="#374151"
-                                  strokeWidth="2"
-                                />
-                                <text
-                                  x={x}
-                                  y={y + 20}
-                                  textAnchor="middle"
-                                  fontSize="12"
-                                  fill="#374151"
-                                  className="font-medium"
-                                >
-                                  {node.data?.label || node.id.slice(0, 8)}
-                                </text>
-                              </g>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </svg>
-                </div>
+              <div className="flex-1 bg-muted/30 border-t relative overflow-hidden">
+                <ReactFlowProvider>
+                  <ReactFlow
+                    nodes={expandedVersion.nodes}
+                    edges={expandedVersion.edges}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    fitViewOptions={{ padding: 0.1, includeHiddenNodes: false }}
+                    style={{ width: '100%', height: '100%' }}
+                    className="bg-canvas"
+                  />
+                </ReactFlowProvider>
               </div>
             </div>
           )}
-        </DialogContent>
+          </DialogPrimitive.Content>
+        </DialogPortal>
       </Dialog>
     </>
   );

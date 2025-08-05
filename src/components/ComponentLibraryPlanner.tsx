@@ -407,6 +407,7 @@ export const ComponentLibraryPlanner = ({
               setNodes(version.nodes as any);
               setEdges(version.edges as any);
             }}
+            nodeTypes={nodeTypes}
           />
         )}
         
