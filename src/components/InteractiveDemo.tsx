@@ -14,6 +14,48 @@ import {
 import '@xyflow/react/dist/style.css';
 import { ComponentNode } from '@/components/nodes/ComponentNode';
 import { ComponentType } from '@/types/component';
+import dagre from '@dagrejs/dagre';
+
+const nodeWidth = 200;
+const nodeHeight = 80;
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  // Create a fresh graph instance each time
+  const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  
+  // Configure dagre for hierarchical layout
+  dagreGraph.setGraph({ 
+    rankdir: direction,
+    ranksep: 150,  // Vertical spacing between levels
+    nodesep: 80,   // Horizontal spacing between nodes
+    edgesep: 20,   // Edge separation
+    marginx: 50,   // Margin around the graph
+    marginy: 50
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const newNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: newNodes, edges };
+};
 
 const initialNodes: Node[] = [
   // Top level - Main Component
@@ -173,8 +215,9 @@ const nodeTypes = {
 };
 
 const InteractiveDemo = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const layoutedElements = getLayoutedElements(initialNodes, initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedElements.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedElements.edges);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
