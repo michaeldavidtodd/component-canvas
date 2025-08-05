@@ -4,7 +4,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { History, Clock, User, RotateCcw, Maximize2, X } from 'lucide-react';
+import { History, Clock, User, RotateCcw, Maximize2, X, Component, Layers, Square, Palette, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -179,18 +179,39 @@ export const VersionHistory = ({
                              
                              return Object.entries(componentCounts).map(([type, count]: [string, number]) => {
                                let color = 'bg-muted';
+                               let icon = null;
                                switch (type) {
-                                 case 'main-component': color = 'bg-component-main'; break;
-                                 case 'variant': color = 'bg-component-variant'; break;
-                                 case 'sub-component': color = 'bg-component-sub'; break;
-                                 case 'token': color = 'bg-component-token'; break;
-                                 case 'instance': color = 'bg-component-instance'; break;
+                                 case 'main-component': 
+                                   color = 'bg-component-main'; 
+                                   icon = <Component className="w-3 h-3" />;
+                                   break;
+                                 case 'variant': 
+                                   color = 'bg-component-variant'; 
+                                   icon = <Layers className="w-3 h-3" />;
+                                   break;
+                                 case 'sub-component': 
+                                   color = 'bg-component-sub'; 
+                                   icon = <Square className="w-3 h-3" />;
+                                   break;
+                                 case 'token': 
+                                   color = 'bg-component-token'; 
+                                   icon = <Palette className="w-3 h-3" />;
+                                   break;
+                                 case 'instance': 
+                                   color = 'bg-component-instance'; 
+                                   icon = <Copy className="w-3 h-3" />;
+                                   break;
                                }
                                
                                return (
-                                 <span key={type} className={`px-2 py-1 rounded text-xs text-white ${color}`}>
-                                   {type.replace('-', ' ')}: {count}
-                                 </span>
+                                 <div key={type} className="flex items-center gap-2 px-2 py-1 rounded text-xs">
+                                   <div className={`p-1 rounded text-white ${color}`}>
+                                     {icon}
+                                   </div>
+                                   <span className="text-foreground">
+                                     {type.replace('-', ' ')}: {count}
+                                   </span>
+                                 </div>
                                );
                              });
                            })()}
