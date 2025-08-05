@@ -229,14 +229,6 @@ export const Toolbar = ({
 
   return (
     <div className="w-fit m-4 bg-background border border-border p-6 flex flex-col gap-8 overflow-y-auto rounded-xl">
-      {/* <div>
-        <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
-          Component Library Planner
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Design and visualize your component structure
-        </p>
-      </div> */}
       
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium text-foreground mb-1">Add Components</h3>

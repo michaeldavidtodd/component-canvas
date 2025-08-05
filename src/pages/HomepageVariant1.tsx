@@ -31,7 +31,7 @@ const HomepageVariant1 = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl flex items-center justify-center">
                 <Layout className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-black text-white tracking-tight">COMPONENT PLANNER</span>
+              <span className="text-2xl font-black text-white tracking-tight">Component Canvas</span>
             </div>
             <div className="flex items-center gap-4">
               {loading ? (
@@ -147,7 +147,7 @@ const HomepageVariant1 = () => {
                 SINCE
               </div>
               <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 leading-tight tracking-tight">
-                WHAT SETS COMPONENT PLANNER APART IS OUR RELENTLESS COMMITMENT TO DESIGN SYSTEM EXCELLENCE
+                WHAT SETS COMPONENT CANVAS APART IS OUR RELENTLESS COMMITMENT TO DESIGN SYSTEM EXCELLENCE
               </h2>
             </div>
             <div className="space-y-8">
@@ -236,7 +236,7 @@ const HomepageVariant1 = () => {
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-pink-500 rounded-lg flex items-center justify-center">
                 <Layout className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-black text-white tracking-tight">COMPONENT PLANNER</span>
+              <span className="text-xl font-black text-white tracking-tight">Component Canvas</span>
             </div>
             <p className="text-sm text-white/60">
               VISUALIZE AND ORGANIZE YOUR FIGMA COMPONENT RELATIONSHIPS.

@@ -31,7 +31,7 @@ const HomepageVariant2 = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
                 <Ship className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-black text-gray-900 tracking-tight">COMPONENT PLANNER</span>
+              <span className="text-2xl font-black text-gray-900 tracking-tight">Component Canvas</span>
             </div>
             <div className="flex items-center gap-4">
               {loading ? (
@@ -135,7 +135,7 @@ const HomepageVariant2 = () => {
             <h2 className="text-lg font-bold text-orange-400 mb-8 tracking-wider uppercase">MAKE COMPONENT PLANNING JUST WORK</h2>
             <p className="text-3xl lg:text-4xl leading-relaxed font-medium">
               If design teams have to struggle with it, we don't ship it. An effortless planning experience takes effort on 
-              our part. But when we get it right, Component Planner works like magic. So make sure everything 
+              our part. But when we get it right, Component Canvas works like magic. So make sure everything 
               passes the no-stress test: keep it <span className="underline decoration-orange-400">intuitive</span> and <span className="underline decoration-orange-400">friction-free</span>.
             </p>
           </div>
@@ -256,7 +256,7 @@ const HomepageVariant2 = () => {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
                 <Ship className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-black text-gray-900 tracking-tight">COMPONENT PLANNER</span>
+              <span className="text-xl font-black text-gray-900 tracking-tight">Component Canvas</span>
             </div>
             <p className="text-sm text-gray-600">
               Visualize and organize your Figma component relationships with intuitive planning tools.

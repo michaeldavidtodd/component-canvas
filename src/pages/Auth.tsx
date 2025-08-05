@@ -97,7 +97,7 @@ const Auth = () => {
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Component Library Planner</h1>
+          <h1 className="text-2xl font-bold">Component Canvas</h1>
           <p className="text-muted-foreground mt-2">Sign in to save your work</p>
         </div>
 

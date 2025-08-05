@@ -14,7 +14,7 @@ interface OnboardingFlowProps {
 const onboardingSteps = [
   {
     id: 'welcome',
-    title: 'Welcome to Component Library Planner!',
+    title: 'Welcome to Component Canvas!',
     description: '',
     content: (
       <div className="space-y-4">

@@ -520,7 +520,7 @@ export const ComponentLibraryPlanner = ({
             <Controls className="bg-workspace border border-border" />
             <div className="absolute top-4 left-4 w-fit h-fit">
               <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
-                Component Library Planner
+                Component Canvas
               </h2>
               <p className="text-xs text-muted-foreground">
                 Design and visualize your component structure

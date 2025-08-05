@@ -30,7 +30,7 @@ const Homepage = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Layout className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">Component Planner</span>
+              <span className="text-xl font-semibold text-foreground">Component Canvas</span>
             </div>
             <div className="flex items-center gap-4">
               {loading ? (
@@ -283,7 +283,7 @@ const Homepage = () => {
               <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
                 <Layout className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold text-foreground">Component Planner</span>
+              <span className="text-lg font-semibold text-foreground">Component Canvas</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Built for design system teams who value structure and collaboration.
