@@ -44,6 +44,8 @@ interface ToolbarProps {
   onToggleAutoSave?: () => void;
   onSmartLayout?: () => void;
   onCleanupLayout?: () => void;
+  autoSmartLayout?: boolean;
+  onToggleAutoSmartLayout?: () => void;
 }
 
 const nodeTypes: { type: ComponentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -91,7 +93,9 @@ export const Toolbar = ({
   autoSaveEnabled,
   onToggleAutoSave,
   onSmartLayout,
-  onCleanupLayout
+  onCleanupLayout,
+  autoSmartLayout,
+  onToggleAutoSmartLayout
 }: ToolbarProps) => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -227,6 +231,19 @@ export const Toolbar = ({
           <Layout className="w-4 h-4" />
           Clean Up
         </Button>
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            onClick={onToggleAutoSmartLayout}
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {autoSmartLayout ? (
+              <ToggleRight className="h-4 w-4 text-green-600" />
+            ) : (
+              <ToggleLeft className="h-4 w-4" />
+            )}
+            Auto Smart Layout
+          </button>
+        </div>
       </div>
       
       {/* Save functionality - only show for authenticated users */}

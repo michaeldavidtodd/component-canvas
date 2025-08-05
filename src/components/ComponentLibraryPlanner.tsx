@@ -88,6 +88,56 @@ const edgeTypes = {
   default: SimpleDeleteEdge,
 };
 
+// Component for auto layout functionality
+const AutoLayoutHandler = ({ 
+  autoSmartLayout, 
+  onLayout 
+}: { 
+  autoSmartLayout: boolean; 
+  onLayout: (direction?: string) => void; 
+}) => {
+  const reactFlowInstance = useReactFlow();
+  const lastNodeCountRef = useRef(0);
+
+  // Auto layout when nodes are added
+  useEffect(() => {
+    if (autoSmartLayout && reactFlowInstance) {
+      const currentNodes = reactFlowInstance.getNodes();
+      const currentCount = currentNodes.length;
+      
+      // Only trigger if nodes were added (not removed or just position changes)
+      if (currentCount > lastNodeCountRef.current && currentCount > 0) {
+        setTimeout(() => {
+          onLayout('TB');
+          // Focus on the newest node after layout
+          setTimeout(() => {
+            const nodes = reactFlowInstance.getNodes();
+            if (nodes.length > 0) {
+              // Get the most recently created node (highest timestamp in ID)
+              const newestNode = nodes.reduce((newest, node) => {
+                const currentId = parseInt(node.id.split('-')[1] || '0');
+                const newestId = parseInt(newest.id.split('-')[1] || '0');
+                return currentId > newestId ? node : newest;
+              });
+              
+              // Fit view to just the new node
+              reactFlowInstance.fitView({
+                nodes: [newestNode],
+                padding: 0.3,
+                includeHiddenNodes: false
+              });
+            }
+          }, 100);
+        }, 100);
+      }
+      
+      lastNodeCountRef.current = currentCount;
+    }
+  }, [autoSmartLayout, reactFlowInstance, onLayout]);
+
+  return null;
+};
+
 
 
 export const ComponentLibraryPlanner = ({ 
@@ -102,6 +152,7 @@ export const ComponentLibraryPlanner = ({
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isProjectInitialized, setIsProjectInitialized] = useState(false);
+  const [autoSmartLayout, setAutoSmartLayout] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
   
@@ -351,6 +402,8 @@ export const ComponentLibraryPlanner = ({
     });
   }, [setNodes]);
 
+
+
   // Handle project data loading
   const handleProjectLoaded = useCallback((loadedNodes: Node[], loadedEdges: Edge[]) => {
     console.log('📋 Loading project data:', { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
@@ -394,6 +447,8 @@ export const ComponentLibraryPlanner = ({
             onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)}
             onSmartLayout={() => onLayout('TB')}
             onCleanupLayout={cleanupLayout}
+            autoSmartLayout={autoSmartLayout}
+            onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)}
           />
         )}
         
@@ -456,6 +511,11 @@ export const ComponentLibraryPlanner = ({
                 onAutoSave={autoSave}
               />
             )}
+            {/* Auto layout handler */}
+            <AutoLayoutHandler
+              autoSmartLayout={autoSmartLayout}
+              onLayout={onLayout}
+            />
           </ReactFlow>
           <ConnectionLegend />
         </div>
