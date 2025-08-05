@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch } from "lucide-react";
 import { Link } from "react-router-dom";
+import InteractiveDemo from "@/components/InteractiveDemo";
 
 const Homepage = () => {
   return (
@@ -189,144 +190,8 @@ const Homepage = () => {
               </div>
             </div>
             
-            <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-canvas to-background border-2 border-border rounded-2xl p-6 relative overflow-hidden shadow-2xl">
-                {/* Interactive Demo Container */}
-                <div className="absolute inset-0 p-6">
-                  
-                  {/* Main Button Component */}
-                  <div className="absolute top-8 left-1/2 transform -translate-x-1/2 group cursor-pointer">
-                    <div className="w-32 h-20 bg-gradient-to-r from-primary to-primary-hover rounded-xl flex items-center justify-center shadow-lg hover:scale-105 transition-all duration-300">
-                      <span className="text-sm font-bold text-white">Button</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-brand-pink rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">M</span>
-                    </div>
-                  </div>
-
-                  {/* Primary Variant */}
-                  <div className="absolute top-8 right-8 group cursor-pointer">
-                    <div className="w-24 h-16 bg-gradient-to-r from-brand-blue to-accent rounded-lg flex items-center justify-center shadow-md hover:scale-105 transition-all duration-300">
-                      <span className="text-xs font-semibold text-white">Primary</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-brand-green rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">V</span>
-                    </div>
-                  </div>
-
-                  {/* Secondary Variant */}
-                  <div className="absolute bottom-20 left-8 group cursor-pointer">
-                    <div className="w-24 h-16 bg-gradient-to-r from-brand-green to-brand-yellow rounded-lg flex items-center justify-center shadow-md hover:scale-105 transition-all duration-300">
-                      <span className="text-xs font-semibold text-white">Secondary</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">V</span>
-                    </div>
-                  </div>
-
-                  {/* Ghost Variant */}
-                  <div className="absolute bottom-8 right-8 group cursor-pointer">
-                    <div className="w-24 h-16 bg-gradient-to-r from-muted to-secondary rounded-lg flex items-center justify-center shadow-md hover:scale-105 transition-all duration-300 border-2 border-border">
-                      <span className="text-xs font-semibold text-foreground">Ghost</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-brand-pink rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">V</span>
-                    </div>
-                  </div>
-
-                  {/* Icon Component */}
-                  <div className="absolute bottom-20 right-1/4 group cursor-pointer">
-                    <div className="w-20 h-16 bg-gradient-to-r from-brand-orange to-brand-pink rounded-lg flex items-center justify-center shadow-md hover:scale-105 transition-all duration-300">
-                      <span className="text-xs font-semibold text-white">Icon</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-brand-blue rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">C</span>
-                    </div>
-                  </div>
-
-                  {/* Connection Lines */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                    {/* Main to Primary */}
-                    <path
-                      d="M 50% 28% Q 65% 28% 80% 28%"
-                      stroke="url(#gradient1)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeDasharray="0"
-                      className="animate-pulse"
-                    />
-                    {/* Main to Secondary */}
-                    <path
-                      d="M 50% 36% Q 35% 50% 20% 65%"
-                      stroke="url(#gradient2)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeDasharray="0"
-                      className="animate-pulse"
-                    />
-                    {/* Main to Ghost */}
-                    <path
-                      d="M 50% 36% Q 65% 60% 80% 75%"
-                      stroke="url(#gradient3)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeDasharray="0"
-                      className="animate-pulse"
-                    />
-                    {/* Main to Icon */}
-                    <path
-                      d="M 50% 36% Q 55% 50% 60% 65%"
-                      stroke="url(#gradient4)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeDasharray="0"
-                      className="animate-pulse"
-                    />
-                    
-                    {/* Gradient Definitions */}
-                    <defs>
-                      <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(var(--brand-blue))" />
-                      </linearGradient>
-                      <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(var(--brand-green))" />
-                      </linearGradient>
-                      <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(var(--brand-pink))" />
-                      </linearGradient>
-                      <linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(var(--brand-orange))" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-
-                  {/* Legend */}
-                  <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1 mb-1">
-                      <div className="w-3 h-3 bg-brand-pink rounded-full"></div>
-                      <span>Main</span>
-                    </div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <div className="w-3 h-3 bg-brand-green rounded-full"></div>
-                      <span>Variant</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 bg-brand-blue rounded-full"></div>
-                      <span>Component</span>
-                    </div>
-                  </div>
-
-                  {/* Interactive Hint */}
-                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1">
-                    <span className="text-xs font-medium text-foreground">Interactive Demo</span>
-                  </div>
-
-                </div>
-              </div>
+            <div className="relative h-[500px]">
+              <InteractiveDemo />
             </div>
           </div>
         </div>
