@@ -22,7 +22,7 @@ const onboardingSteps = [
           </div>
         </div>
         <p className="text-center text-muted-foreground">
-          Create interactive diagrams to plan your Figma component relationships, track changes, and share your designs with your team. This tool helps you organize your design system without using AI.
+          Create interactive diagrams to plan your Figma component relationships, track changes, and share your designs with your team. This tool helps you organize your design system.
         </p>
       </div>
     ),
