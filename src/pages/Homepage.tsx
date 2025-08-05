@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import InteractiveDemo from "@/components/InteractiveDemo";
+import { useState } from "react";
 
 const Homepage = () => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -61,11 +64,36 @@ const Homepage = () => {
                   <ArrowRight className="ml-3 w-6 h-6" />
                 </Button>
               </Link>
-              <Link to="/share/demo">
-                <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-foreground bg-background/10 hover:bg-background/20 font-bold rounded-xl backdrop-blur-sm">
-                  VIEW DEMO
-                </Button>
-              </Link>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg" className="text-lg px-10 py-6 border-2 border-white/30 text-foreground bg-background/10 hover:bg-background/20 font-bold rounded-xl backdrop-blur-sm">
+                    VIEW DEMO
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-canvas">
+                  <div className="relative w-full h-full">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <div className="w-full h-full p-8">
+                      <div className="text-center mb-6">
+                        <h2 className="text-3xl font-bold text-foreground mb-2">Interactive Component Library Demo</h2>
+                        <p className="text-muted-foreground">
+                          Drag nodes, zoom, and explore the component hierarchy. This is a fully interactive preview of the planning interface.
+                        </p>
+                      </div>
+                      <div className="w-full h-[calc(100vh-200px)]">
+                        <InteractiveDemo />
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
