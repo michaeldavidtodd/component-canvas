@@ -1,0 +1,8 @@
+/* Override Vaul drawer's ::after pseudo-element */
+[data-vaul-drawer][data-vaul-drawer-direction="bottom"]::after {
+  display: none;
+}
+
+.react-flow__attribution {
+  display: none;
+}
