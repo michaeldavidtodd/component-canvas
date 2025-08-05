@@ -90,7 +90,9 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				'display': ['Boldonse', 'serif'],
+				'display': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+				'sans': ['Inter', 'system-ui', 'sans-serif'],
+				'mono': ['JetBrains Mono', 'monospace'],
 			},
 			keyframes: {
 				'accordion-down': {
