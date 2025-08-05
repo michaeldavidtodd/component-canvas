@@ -130,7 +130,7 @@ const onboardingSteps = [
           </div>
         </div>
         <p className="text-center text-muted-foreground">
-          Add your first component by clicking any of the component buttons in the toolbar, or drag existing ones to create connections.
+          Add your first component by clicking any of the component buttons in the toolbar.
         </p>
         <div className="flex items-center justify-center">
           <Badge className="bg-gradient-to-r from-primary to-primary/80">
