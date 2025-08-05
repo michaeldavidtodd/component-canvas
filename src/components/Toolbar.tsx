@@ -128,6 +128,7 @@ export const Toolbar = ({
   const [copied, setCopied] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const { toggleProjectPublic, updateProject } = useProjectPersistence();
   const { toast } = useToast();
 
@@ -207,6 +208,23 @@ export const Toolbar = ({
   const handleCancelEdit = () => {
     setEditingName(false);
     setNewName('');
+  };
+
+  const handleSignOut = async () => {
+    if (!onSignOut) return;
+    
+    setIsSigningOut(true);
+    try {
+      await onSignOut();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   return (
@@ -536,10 +554,15 @@ export const Toolbar = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onSignOut}
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
                   >
-                    <LogOut className="h-4 w-4" />
-                    Sign out
+                    {isSigningOut ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )}
+                    {isSigningOut ? "Signing out..." : "Sign out"}
                   </Button>
                 </div>
               </div>
