@@ -2,14 +2,24 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch, X } from "lucide-react";
+import { ArrowRight, Layout, History, Share2, Users, Zap, GitBranch, X, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import InteractiveDemo from "@/components/InteractiveDemo";
 import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const Homepage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { user, isAnonymous, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && (user || isAnonymous)) {
+      navigate('/app');
+    }
+  }, [user, isAnonymous, loading, navigate]);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -23,15 +33,35 @@ const Homepage = () => {
               <span className="text-xl font-semibold text-foreground">Component Planner</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link to="/auth">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link to="/app">
-                <Button>
-                  Get Started
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
+              {loading ? (
+                <div className="w-16 h-9 bg-muted rounded animate-pulse" />
+              ) : user ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="w-4 h-4" />
+                    <span>{user.email}</span>
+                  </div>
+                  <Button variant="ghost" onClick={signOut}>Sign Out</Button>
+                  <Link to="/app">
+                    <Button>
+                      Open App
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button variant="ghost">Sign In</Button>
+                  </Link>
+                  <Link to="/app">
+                    <Button>
+                      Get Started
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
