@@ -5,7 +5,7 @@ import { ArrowRight, Layout, History, Share2, X, User, Target, Grid3X3 } from "l
 import { Link } from "react-router-dom";
 import InteractiveDemo from "@/components/InteractiveDemo";
 import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +13,35 @@ const HomepageVariant3 = () => {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const { user, isAnonymous, loading, signOut } = useAuth();
 	const navigate = useNavigate();
+	const [visibleSections, setVisibleSections] = useState(new Set());
+	const sectionsRef = useRef<{ [key: string]: HTMLElement | null }>({});
+
+	// Scroll animation observer
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					const sectionId = entry.target.getAttribute('data-section');
+					if (sectionId) {
+						setVisibleSections(prev => {
+							const newSet = new Set(prev);
+							if (entry.isIntersecting) {
+								newSet.add(sectionId);
+							}
+							return newSet;
+						});
+					}
+				});
+			},
+			{ threshold: 0.1, rootMargin: '-50px' }
+		);
+
+		Object.values(sectionsRef.current).forEach(section => {
+			if (section) observer.observe(section);
+		});
+
+		return () => observer.disconnect();
+	}, []);
 
 	useEffect(() => {
 		if (!loading && (user || isAnonymous)) {
@@ -21,13 +50,118 @@ const HomepageVariant3 = () => {
 	}, [user, isAnonymous, loading, navigate]);
 
 	return (
-		<div className="min-h-screen bg-black text-white overflow-x-hidden">
+		<>
+			<style>{`
+				@keyframes floatUp {
+					0% {
+						transform: translateY(60px);
+						opacity: 0;
+					}
+					100% {
+						transform: translateY(0);
+						opacity: 1;
+					}
+				}
+				
+				@keyframes floatGentle {
+					0%, 100% {
+						transform: translateY(0px) rotate(var(--rotation, 0deg));
+					}
+					50% {
+						transform: translateY(-10px) rotate(var(--rotation, 0deg));
+					}
+				}
+				
+				@keyframes bobFloat {
+					0%, 100% {
+						transform: translateY(0px) rotate(var(--rotation, 0deg));
+					}
+					50% {
+						transform: translateY(-8px) rotate(var(--rotation, 0deg));
+					}
+				}
+				
+				@keyframes pulseGlow {
+					0%, 100% {
+						box-shadow: 0 0 20px rgba(var(--glow-color, 255, 100, 150), 0.3);
+					}
+					50% {
+						box-shadow: 0 0 40px rgba(var(--glow-color, 255, 100, 150), 0.6);
+					}
+				}
+				
+				@keyframes hueShift {
+					0% {
+						filter: hue-rotate(0deg);
+					}
+					33% {
+						filter: hue-rotate(15deg);
+					}
+					66% {
+						filter: hue-rotate(-10deg);
+					}
+					100% {
+						filter: hue-rotate(0deg);
+					}
+				}
+				
+				@keyframes textReveal {
+					0% {
+						transform: translateY(30px);
+						opacity: 0;
+					}
+					100% {
+						transform: translateY(0);
+						opacity: 1;
+					}
+				}
+				
+				.animate-float-up {
+					animation: floatUp 0.8s ease-out forwards;
+				}
+				
+				.animate-float-gentle {
+					animation: floatGentle 6s ease-in-out infinite;
+				}
+				
+				.animate-bob-float {
+					animation: bobFloat 4s ease-in-out infinite;
+				}
+				
+				.animate-pulse-glow {
+					animation: pulseGlow 3s ease-in-out infinite;
+				}
+				
+				.animate-hue-shift {
+					animation: hueShift 8s ease-in-out infinite;
+				}
+				
+				.animate-text-reveal {
+					animation: textReveal 0.6s ease-out forwards;
+				}
+				
+				.animate-text-reveal-delay-1 {
+					animation: textReveal 0.6s ease-out 0.1s forwards;
+					opacity: 0;
+				}
+				
+				.animate-text-reveal-delay-2 {
+					animation: textReveal 0.6s ease-out 0.2s forwards;
+					opacity: 0;
+				}
+				
+				.animate-text-reveal-delay-3 {
+					animation: textReveal 0.6s ease-out 0.3s forwards;
+					opacity: 0;
+				}
+			`}</style>
+			<div className="min-h-screen bg-black text-white overflow-x-hidden">
 			{/* Navigation */}
 			<nav className="border-b border-brand-pink/20 bg-black/90 backdrop-blur-xl sticky top-0 z-50">
 				<div className=" mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex justify-between items-center h-20 gap-8">
 						<div className="flex items-center gap-4">
-							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12">
+							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as any}>
 								<Layout className="w-7 h-7 text-white transform -rotate-12 flex-shrink-0" />
 							</div>
 							<span className="text-lg md:text-2xl font-black text-white leading-none tracking-tighter inline-block">Component Canvas</span>
@@ -72,9 +206,13 @@ const HomepageVariant3 = () => {
 			</nav>
 
 			{/* Hero Section */}
-			<section className="relative overflow-hidden bg-black">
+			<section 
+				className="relative overflow-hidden bg-black"
+				data-section="hero"
+				ref={el => sectionsRef.current.hero = el}
+			>
 				<div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-					<div className="grid md:grid-cols-2 gap-16 items-center">
+					<div className={`grid md:grid-cols-2 gap-16 items-center transition-all duration-1000 ${visibleSections.has('hero') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`}>
 						{/* Left Column - Typography & CTA */}
 						<div className="relative z-10">
 							{/* Badge */}
@@ -86,12 +224,12 @@ const HomepageVariant3 = () => {
 							{/* Main Headline */}
 							<div className="space-y-6 mb-16">
 								<h1 className="text-[19vw] md:text-[9vw] xl:text-9xl font-display font-black leading-none tracking-tighter">
-									<span className="block text-white">DESIGN</span>
-									<span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-pink via-brand-orange to-brand-yellow">
+									<span className={`block text-white ${visibleSections.has('hero') ? 'animate-text-reveal' : 'opacity-0'}`}>DESIGN</span>
+									<span className={`block text-transparent bg-clip-text bg-gradient-to-r from-brand-pink via-brand-orange to-brand-yellow animate-hue-shift ${visibleSections.has('hero') ? 'animate-text-reveal-delay-1' : 'opacity-0'}`}>
 										SYSTEMS
 									</span>
-									<span className="block text-white">THAT</span>
-									<span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-green via-brand-blue to-brand-pink transform rotate-1">
+									<span className={`block text-white ${visibleSections.has('hero') ? 'animate-text-reveal-delay-2' : 'opacity-0'}`}>THAT</span>
+									<span className={`block text-transparent bg-clip-text bg-gradient-to-r from-brand-green via-brand-blue to-brand-pink transform rotate-1 animate-hue-shift ${visibleSections.has('hero') ? 'animate-text-reveal-delay-3' : 'opacity-0'}`}>
 										SCALE
 									</span>
 								</h1>
@@ -138,7 +276,7 @@ const HomepageVariant3 = () => {
 						</div>
 						
 						{/* Right Column - Interactive Demo */}
-						<div className="relative">
+						<div className="relative animate-bob-float">
 							{/* Demo Container */}
 							<div className="relative bg-gradient-to-br from-brand-blue/20 to-brand-pink/20 p-4 xl:p-8 rounded-3xl backdrop-blur-sm border border-white/10 transform rotate-1">
 								<div className="aspect-[3/4] xl:aspect-[4/3] relative">
@@ -164,26 +302,30 @@ const HomepageVariant3 = () => {
 				
 				{/* Background Elements */}
 				<div className="absolute inset-0 overflow-hidden pointer-events-none">
-					<div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-pink/10 rounded-full blur-3xl"></div>
-					<div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl"></div>
-					<div className="absolute top-1/2 right-1/3 w-64 h-64 bg-brand-green/10 rounded-full blur-3xl"></div>
+					<div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-pink/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '0s' } as any}></div>
+					<div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
+					<div className="absolute top-1/2 right-1/3 w-64 h-64 bg-brand-green/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '4s' } as any}></div>
 				</div>
 			</section>
 
 			{/* Philosophy Section */}
-			<section className="py-24 bg-gradient-to-br from-brand-green via-brand-blue to-brand-pink relative">
+			<section 
+				className="py-24 bg-gradient-to-br from-brand-green via-brand-blue to-brand-pink relative animate-hue-shift"
+				data-section="philosophy"
+				ref={el => sectionsRef.current.philosophy = el}
+			>
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-					<div className="max-w-5xl mx-auto">
+					<div className={`max-w-5xl mx-auto transition-all duration-1000 ${visibleSections.has('philosophy') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`}>
 						<h2 className="text-[10vw] lg:text-8xl font-display font-black text-white mb-12 leading-tight tracking-tighter">
-							WE BELIEVE THAT 
-							<span className="block text-black">COMPONENT PLANNING</span>
-							<span className="block text-white">IS MORE THAN JUST</span>
-							<span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-yellow to-brand-orange">
+							<span className={`${visibleSections.has('philosophy') ? 'animate-text-reveal' : 'opacity-0'}`}>WE BELIEVE THAT</span> 
+							<span className={`block text-black ${visibleSections.has('philosophy') ? 'animate-text-reveal-delay-1' : 'opacity-0'}`}>COMPONENT PLANNING</span>
+							<span className={`block text-white ${visibleSections.has('philosophy') ? 'animate-text-reveal-delay-2' : 'opacity-0'}`}>IS MORE THAN JUST</span>
+							<span className={`block text-transparent bg-clip-text bg-gradient-to-r from-brand-yellow to-brand-orange animate-hue-shift ${visibleSections.has('philosophy') ? 'animate-text-reveal-delay-3' : 'opacity-0'}`}>
 								ORGANIZATION
 							</span>
 						</h2>
 						
-						<div className="bg-brand-yellow p-12 rounded-3xl transform -rotate-1 mt-16">
+						<div className={`bg-brand-yellow p-12 rounded-3xl transform -rotate-1 mt-16 transition-all duration-700 ${visibleSections.has('philosophy') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '-1deg', animationDelay: '0.5s' } as any}>
 							<p className="text-3xl lg:text-4xl text-black font-black leading-tight tracking-tight">
 								It's a form of strategic thinking that allows teams to 
 								<span className="underline decoration-4 decoration-brand-pink"> build better systems</span> & 
@@ -195,9 +337,9 @@ const HomepageVariant3 = () => {
 				</div>
 				
 				{/* Decorative Elements */}
-				<div className="absolute top-16 left-16 w-32 h-32 bg-brand-yellow rounded-full transform rotate-45"></div>
-				<div className="absolute bottom-16 right-16 w-24 h-24 bg-brand-orange rounded-full"></div>
-				<div className="absolute top-1/2 left-8 w-16 h-16 bg-brand-pink rounded-full transform rotate-12"></div>
+				<div className="absolute top-16 left-16 w-32 h-32 bg-brand-yellow rounded-full transform rotate-45 animate-bob-float" style={{ '--rotation': '45deg', animationDelay: '1s' } as any}></div>
+				<div className="absolute bottom-16 right-16 w-24 h-24 bg-brand-orange rounded-full animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
+				<div className="absolute top-1/2 left-8 w-16 h-16 bg-brand-pink rounded-full transform rotate-12 animate-bob-float" style={{ '--rotation': '12deg', animationDelay: '3s' } as any}></div>
 			</section>
 
 			{/* What Sets Us Apart Section */}
@@ -234,12 +376,16 @@ const HomepageVariant3 = () => {
 			</section> */}
 
 			{/* Features Grid */}
-			<section className="py-24 bg-black relative">
+			<section 
+				className="py-24 bg-black relative"
+				data-section="features"
+				ref={el => sectionsRef.current.features = el}
+			>
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="text-center mb-20">
+					<div className={`text-center mb-20 transition-all duration-1000 ${visibleSections.has('features') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`}>
 						<h2 className="text-5xl lg:text-7xl font-display font-black text-white mb-8 tracking-tight">
-							BUILT FOR
-							<span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-pink to-brand-blue">
+							<span className={`${visibleSections.has('features') ? 'animate-text-reveal' : 'opacity-0'}`}>BUILT FOR</span>
+							<span className={`block text-transparent bg-clip-text bg-gradient-to-r from-brand-pink to-brand-blue animate-hue-shift ${visibleSections.has('features') ? 'animate-text-reveal-delay-1' : 'opacity-0'}`}>
 								MODERN TEAMS
 							</span>
 						</h2>
@@ -247,8 +393,8 @@ const HomepageVariant3 = () => {
 
 					<div className="grid md:grid-cols-3 gap-8">
 						{/* Feature 1 */}
-						<div className="group relative transform -rotate-2">
-							<div className="bg-gradient-to-br from-brand-pink to-brand-orange rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:rotate-1">
+						<div className={`group relative transform -rotate-2 transition-all duration-700 ${visibleSections.has('features') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`} style={{ animationDelay: '0.2s' }}>
+							<div className="bg-gradient-to-br from-brand-pink to-brand-orange rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:rotate-1 animate-hue-shift">
 								<div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
 									<Layout className="w-12 h-12 text-white" />
 								</div>
@@ -266,8 +412,8 @@ const HomepageVariant3 = () => {
 						</div>
 
 						{/* Feature 2 */}
-						<div className="group relative transform translate-y-3">
-							<div className="bg-gradient-to-br from-brand-green to-brand-blue rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:-rotate-1">
+						<div className={`group relative transform translate-y-3 transition-all duration-700 ${visibleSections.has('features') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`} style={{ animationDelay: '0.4s' }}>
+							<div className="bg-gradient-to-br from-brand-green to-brand-blue rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:-rotate-1 animate-hue-shift">
 								<div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
 									<History className="w-12 h-12 text-white" />
 								</div>
@@ -285,8 +431,8 @@ const HomepageVariant3 = () => {
 						</div>
 
 						{/* Feature 3 */}
-						<div className="group relative transform rotate-2">
-							<div className="bg-gradient-to-br from-brand-blue to-brand-pink rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:rotate-1">
+						<div className={`group relative transform rotate-2 transition-all duration-700 ${visibleSections.has('features') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`} style={{ animationDelay: '0.6s' }}>
+							<div className="bg-gradient-to-br from-brand-blue to-brand-pink rounded-3xl p-8 text-center transform hover:scale-105 transition-all duration-300 hover:rotate-1 animate-hue-shift">
 								<div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300">
 									<Share2 className="w-12 h-12 text-white" />
 								</div>
@@ -318,18 +464,22 @@ const HomepageVariant3 = () => {
 			</section>
 
 			{/* CTA Section */}
-			<section className="py-32 bg-gradient-to-r from-brand-yellow via-brand-orange to-brand-pink relative overflow-hidden">
+			<section 
+				className="py-32 bg-gradient-to-r from-brand-yellow via-brand-orange to-brand-pink relative overflow-hidden animate-hue-shift"
+				data-section="cta"
+				ref={el => sectionsRef.current.cta = el}
+			>
 				<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-					<div className="mb-16">
+					<div className={`mb-16 transition-all duration-1000 ${visibleSections.has('cta') ? 'animate-float-up' : 'opacity-0 translate-y-12'}`}>
 						<h2 className="text-[10vw] lg:text-8xl font-display font-black text-black mb-8 tracking-tight leading-none">
-							JOIN THE
-							<span className="block text-white">COMPONENT</span>
-							<span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-green">
+							<span className={`${visibleSections.has('cta') ? 'animate-text-reveal' : 'opacity-0'}`}>JOIN THE</span>
+							<span className={`block text-white ${visibleSections.has('cta') ? 'animate-text-reveal-delay-1' : 'opacity-0'}`}>COMPONENT</span>
+							<span className={`block text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-green animate-hue-shift ${visibleSections.has('cta') ? 'animate-text-reveal-delay-2' : 'opacity-0'}`}>
 								REVOLUTION
 							</span>
 						</h2>
 						
-						<div className="bg-black p-8 rounded-3xl transform rotate-1 inline-block">
+						<div className={`bg-black p-8 rounded-3xl transform rotate-1 inline-block transition-all duration-700 ${visibleSections.has('cta') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '1deg', animationDelay: '0.5s' } as any}>
 							<p className="text-2xl lg:text-3xl text-white font-black leading-tight tracking-tight max-w-3xl">
 								PLAN YOUR LIBRARY. ORGANIZE YOUR HIERARCHY. 
 								<span className="text-brand-yellow"> REVOLUTIONIZE YOUR DESIGN SYSTEM.</span>
@@ -347,10 +497,10 @@ const HomepageVariant3 = () => {
 				
 				{/* Background Shapes */}
 				<div className="absolute inset-0 overflow-hidden">
-					<div className="absolute top-1/4 left-1/4 w-72 h-72 bg-brand-blue/20 rounded-full blur-3xl transform rotate-45"></div>
-					<div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-brand-green/20 rounded-full blur-3xl"></div>
-					<div className="absolute top-0 right-0 w-96 h-96 bg-black/10 rounded-full transform rotate-12"></div>
-					<div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full"></div>
+					<div className="absolute top-1/4 left-1/4 w-72 h-72 bg-brand-blue/20 rounded-full blur-3xl transform rotate-45 animate-float-gentle" style={{ '--rotation': '45deg', animationDelay: '1s' } as any}></div>
+					<div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-brand-green/20 rounded-full blur-3xl animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
+					<div className="absolute top-0 right-0 w-96 h-96 bg-black/10 rounded-full transform rotate-12 animate-float-gentle" style={{ '--rotation': '12deg', animationDelay: '3s' } as any}></div>
+					<div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '4s' } as any}></div>
 				</div>
 			</section>
 
@@ -359,7 +509,7 @@ const HomepageVariant3 = () => {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 					<div className="text-center">
 						<div className="flex items-center justify-center gap-4 mb-6">
-							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12">
+							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as any}>
 								<Layout className="w-7 h-7 text-white transform -rotate-12" />
 							</div>
 							<span className="text-3xl font-black text-white tracking-tighter">Component Canvas</span>
@@ -383,7 +533,8 @@ const HomepageVariant3 = () => {
 					</div>
 				</div>
 			</footer>
-		</div>
+			</div>
+		</>
 	);
 };
 
