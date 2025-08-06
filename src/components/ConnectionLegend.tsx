@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 
 export const ConnectionLegend = () => {
   return (
-    <Card className="absolute top-8 right-4 p-4 bg-background/95 backdrop-blur-sm border shadow-lg z-10">
+    <Card className="hidden xl:block absolute top-8 right-4 p-4 bg-background/95 backdrop-blur-sm border shadow-lg z-10">
       <h3 className="text-sm font-semibold mb-3 text-foreground">Connection Types</h3>
       <div className="space-y-2">
         <div className="flex items-center gap-2">

@@ -32,6 +32,10 @@ import { ComponentNodeData, ComponentType } from '@/types/component';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const nodeWidth = 172;
 const nodeHeight = 36;
@@ -154,7 +158,7 @@ export const ComponentLibraryPlanner = ({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { user, isAnonymous, signOut } = useAuth();
   const navigate = useNavigate();
-  
+  const isMobile = useIsMobile();
 
   
   const {
@@ -463,7 +467,7 @@ export const ComponentLibraryPlanner = ({
         />
       )}
       <div className="flex h-screen bg-canvas">
-        {!isSharedView && (
+        {!isSharedView && !isMobile && (
           <Toolbar 
             onAddNode={addNode}
             user={user}
@@ -498,23 +502,38 @@ export const ComponentLibraryPlanner = ({
           />
         )}
         
-        <div className="flex-1 py-4 relative">
+        <div className="flex-1 py-2 xl:py-4 relative">
+          {/* Mobile Sign-out Button */}
+          {isMobile && !isSharedView && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={isAnonymous ? () => navigate('/auth') : handleSignOut}
+                className="bg-background/80 backdrop-blur-sm border shadow-lg"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {isAnonymous ? 'Sign In' : 'Sign Out'}
+              </Button>
+            </div>
+          )}
+          
           <ReactFlow
             nodes={nodes}
             edges={edges}
-            onNodesChange={isSharedView ? undefined : onNodesChange}
-            onEdgesChange={isSharedView ? undefined : onEdgesChange}
-            onConnect={isSharedView ? undefined : onConnect}
+            onNodesChange={isSharedView || isMobile ? undefined : onNodesChange}
+            onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange}
+            onConnect={isSharedView || isMobile ? undefined : onConnect}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            onNodeClick={isSharedView ? undefined : (_, node) => handleNodeSelect(node)}
-            onPaneClick={isSharedView ? undefined : () => handleNodeSelect(null)}
-            nodesDraggable={!isSharedView}
-            nodesConnectable={!isSharedView}
-            elementsSelectable={!isSharedView}
+            onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node)}
+            onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)}
+            nodesDraggable={!isSharedView && !isMobile}
+            nodesConnectable={!isSharedView && !isMobile}
+            elementsSelectable={!isSharedView && !isMobile}
             fitView={nodes.length > 0}
             fitViewOptions={{ padding: 0.2, includeHiddenNodes: false, minZoom: 0.5, maxZoom: 2 }}
-            className="bg-canvas rounded-xl overflow-hidden border border-border"
+            className="bg-canvas md:rounded-xl overflow-hidden md:border border-border"
           >
             <Background className="[&>*]:!stroke-border" gap={16} />
             <Controls className="bg-workspace border border-border" />
@@ -525,9 +544,12 @@ export const ComponentLibraryPlanner = ({
               <p className="text-xs text-muted-foreground">
                 Design and visualize your component structure
               </p>
+              <Badge variant="default" className="mt-4">
+                Read-only on mobile
+              </Badge>
             </div>
             <MiniMap 
-              className="bg-workspace border border-border"
+              className="hidden md:block bg-workspace border border-border"
               nodeColor={(node) => {
                 const data = node.data as ComponentNodeData;
                 switch (data.componentType) {
@@ -560,7 +582,7 @@ export const ComponentLibraryPlanner = ({
           <ConnectionLegend />
         </div>
 
-        {!isSharedView && (
+        {!isSharedView && !isMobile && (
           <PropertiesPanel
             selectedNode={selectedNode}
             onUpdateNode={updateNodeData}

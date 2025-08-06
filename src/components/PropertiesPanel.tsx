@@ -28,7 +28,7 @@ export const PropertiesPanel = ({
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
-      <div className="w-80 m-4 bg-background border border-border p-6 overflow-y-auto rounded-xl">
+      <div className="w-80 m-2 xl:m-4 bg-background border border-border p-6 overflow-y-auto rounded-xl">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -102,7 +102,7 @@ export const PropertiesPanel = ({
   };
 
   return (
-    <div className="w-80 m-4 bg-background border border-border p-6 flex flex-col gap-4 overflow-y-auto rounded-xl">
+    <div className="w-60 md:w-80 m-2 xl:m-4 bg-background border border-border p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto rounded-xl">
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-1">Properties</h3>
         <p className="text-sm text-muted-foreground">
