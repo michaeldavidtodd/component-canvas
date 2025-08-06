@@ -250,6 +250,7 @@ const InteractiveDemo = () => {
           gap={20}
         />
         <MiniMap 
+          className='hidden'
           style={{ 
             background: 'hsl(var(--background))', 
             border: '1px solid hsl(var(--border))',
@@ -272,7 +273,7 @@ const InteractiveDemo = () => {
       </ReactFlow>
       
       {/* Demo Instructions */}
-      <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-xs">
+      {/* <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-xs">
         <h4 className="font-bold text-sm text-foreground mb-2">Interactive Demo</h4>
         <p className="text-xs text-muted-foreground">
           • Drag nodes to reorganize<br/>
@@ -280,7 +281,7 @@ const InteractiveDemo = () => {
           • Connect components by dragging from edges<br/>
           • Hover over nodes to add new ones
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };
