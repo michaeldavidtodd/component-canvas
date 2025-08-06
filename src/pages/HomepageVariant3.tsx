@@ -188,7 +188,7 @@ const HomepageVariant3 = () => {
 							) : (
 								<>
 									<Link to="/auth" className="hidden md:block">
-										<Button variant="ghost" className="text-white border-white/20 hover:bg-white/10">
+										<Button variant="ghost" className="text-white border-white/20">
 											Sign In
 										</Button>
 									</Link>
