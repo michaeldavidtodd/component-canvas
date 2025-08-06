@@ -155,7 +155,7 @@ const HomepageVariant3 = () => {
 					opacity: 0;
 				}
 			`}</style>
-			<div className="min-h-screen bg-black text-white overflow-x-hidden">
+			<div className="min-h-dvh bg-black text-white overflow-x-hidden">
 			{/* Navigation */}
 			<nav className="border-b border-brand-pink/20 bg-black/90 backdrop-blur-xl sticky top-0 z-50">
 				<div className=" mx-auto px-4 sm:px-6 lg:px-8">
@@ -258,7 +258,7 @@ const HomepageVariant3 = () => {
 											VIEW DEMO
 										</Button>
 									</DialogTrigger>
-									<DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-background">
+									<DialogContent className="max-w-none w-screen h-dvh p-0 border-0 bg-background">
 										<div className="relative w-full h-full">
 											<Button
 												variant="outline"

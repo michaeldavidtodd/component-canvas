@@ -37,7 +37,7 @@ const SharedProject = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading shared project...</p>
@@ -48,7 +48,7 @@ const SharedProject = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold text-foreground">Project Not Found</h1>
           <p className="text-muted-foreground">{error}</p>
@@ -62,7 +62,7 @@ const SharedProject = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Header for shared project */}
       <div className="border-b border-border bg-workspace">
         <div className="flex items-center justify-between p-4">

@@ -22,7 +22,7 @@ const HomepageVariant1 = () => {
   }, [user, isAnonymous, loading, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-dvh bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
       {/* Navigation */}
       <nav className="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -105,7 +105,7 @@ const HomepageVariant1 = () => {
                       VIEW DEMO
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-background">
+                  <DialogContent className="max-w-none w-screen h-dvh p-0 border-0 bg-background">
                     <div className="relative w-full h-full">
                       <Button
                         variant="outline"
