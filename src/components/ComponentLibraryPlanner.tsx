@@ -11,8 +11,6 @@ import {
   Controls,
   MiniMap,
   Node,
-  NodeChange,
-  EdgeChange,
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -466,7 +464,7 @@ export const ComponentLibraryPlanner = ({
           onInitialized={setIsProjectInitialized}
         />
       )}
-      <div className="flex h-screen bg-canvas">
+      <div className="flex h-dvh bg-canvas">
         {!isSharedView && !isMobile && (
           <Toolbar 
             onAddNode={addNode}
@@ -536,7 +534,7 @@ export const ComponentLibraryPlanner = ({
             className="bg-canvas md:rounded-xl overflow-hidden md:border border-border"
           >
             <Background className="[&>*]:!stroke-border" gap={16} />
-            <Controls className="bg-workspace border border-border" />
+            <Controls className="hidden md:block bg-workspace border border-border" />
             <div className="absolute top-4 left-4 w-fit h-fit">
               <h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">
                 Component Canvas
