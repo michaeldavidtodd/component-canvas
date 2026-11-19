@@ -1,18 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from "next-themes"
 import { type ThemeProviderProps } from "next-themes/dist/types"
+import type { User } from "@supabase/supabase-js"
 import { useAuth } from "@/hooks/useAuth"
+import { ThemeContext, type Theme } from "@/hooks/useTheme"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-
-type Theme = "dark" | "light" | "system"
-
-interface ThemeContextType {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const { user } = useAuth()
@@ -33,33 +26,36 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   )
 }
 
-function ThemeProviderInner({ children, user, toast }: { children: React.ReactNode, user: any, toast: any }) {
-  const { theme: nextTheme, setTheme: setNextTheme } = useNextTheme() as any
-  const [isLoaded, setIsLoaded] = useState(false)
+function ThemeProviderInner({ children, user, toast }: { children: ReactNode, user: User | null, toast: ReturnType<typeof useToast>["toast"] }) {
+  const { theme: nextTheme, setTheme: setNextTheme } = useNextTheme()
+  const loadedForUser = useRef<string | null>(null)
 
-  // Load theme preference from user profile
+  // Load theme preference from user profile once per user. Keying this on the
+  // user (not the current theme) avoids a race where a freshly saved theme is
+  // overwritten by a stale profile fetch.
   useEffect(() => {
     const loadUserTheme = async () => {
-      if (user) {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('theme_preference')
-            .eq('user_id', user.id)
-            .single()
+      if (!user) return
+      if (loadedForUser.current === user.id) return
+      loadedForUser.current = user.id
 
-          if (profile?.theme_preference && profile.theme_preference !== nextTheme) {
-            setNextTheme(profile.theme_preference)
-          }
-        } catch (error) {
-          console.error('Error loading user theme preference:', error)
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('theme_preference')
+          .eq('user_id', user.id)
+          .single()
+
+        if (profile?.theme_preference) {
+          setNextTheme(profile.theme_preference)
         }
+      } catch (error) {
+        console.error('Error loading user theme preference:', error)
       }
-      setIsLoaded(true)
     }
 
     loadUserTheme()
-  }, [user, setNextTheme, nextTheme])
+  }, [user, setNextTheme])
 
   // Save theme preference to user profile
   const setTheme = async (newTheme: Theme) => {
@@ -87,16 +83,8 @@ function ThemeProviderInner({ children, user, toast }: { children: React.ReactNo
   }
 
   return (
-    <ThemeContext.Provider value={{ theme: nextTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme: (nextTheme ?? "system") as Theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeContext)
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
-  }
-  return context
 }

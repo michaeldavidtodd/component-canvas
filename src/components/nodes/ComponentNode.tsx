@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, useRef } from 'react';
-import { Handle, Position, useReactFlow, useStore, NodeResizer } from '@xyflow/react';
-import { ComponentType } from '@/types/component';
+import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type NodeProps } from '@xyflow/react';
+import { ComponentType, ComponentNodeData } from '@/types/component';
 import { 
   Component, 
   Layers, 
@@ -62,7 +62,7 @@ const getBorderColor = (type: ComponentType) => {
   }
 };
 
-export const ComponentNode = memo(({ data, selected, id }: any) => {
+export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<ComponentNodeData>>) => {
   const [hoveredSide, setHoveredSide] = useState<'top' | 'bottom' | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
@@ -75,7 +75,7 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
     console.log('ADD NODE CALLED!', side);
     const nodes = getNodes();
     const edges = getEdges();
-    const currentNode = nodes.find(n => n.data === data);
+    const currentNode = nodes.find(n => n.id === id);
     
     if (!currentNode) return;
 
@@ -124,21 +124,17 @@ export const ComponentNode = memo(({ data, selected, id }: any) => {
       style: { stroke: strokeColor },
     };
 
-    // Sanitize to remove any selectable property
-    const { selectable: _, ...sanitizedNewNode } = newNode as any;
-    const { selectable: __, ...sanitizedNewEdge } = newEdge as any;
-
     // Deselect all existing nodes and add the new selected node
-    setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), sanitizedNewNode]);
-    setEdges((edges) => [...edges, sanitizedNewEdge]);
+    setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), newNode]);
+    setEdges((edges) => [...edges, newEdge]);
     
     // Dispatch custom event to notify parent component of selection
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('nodeCreated', { 
-        detail: { node: sanitizedNewNode } 
+        detail: { node: newNode } 
       }));
     }, 0);
-  }, [data, setNodes, setEdges, getNodes, getEdges]);
+  }, [id, setNodes, setEdges, getNodes, getEdges]);
 
   const handleMouseEnter = (side: 'top' | 'bottom') => {
     if (timeoutRef.current) {

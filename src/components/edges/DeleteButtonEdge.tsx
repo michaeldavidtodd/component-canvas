@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   useReactFlow,
+  type EdgeProps,
 } from '@xyflow/react';
 import { X } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export default function DeleteButtonEdge({
   targetPosition,
   style = {},
   markerEnd,
-}: any) {
+}: EdgeProps) {
   const { setEdges } = useReactFlow();
   
   console.log('DeleteButtonEdge rendering for edge:', id);

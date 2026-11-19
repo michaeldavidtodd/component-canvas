@@ -3,7 +3,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
-import { useTheme } from "./theme-provider"
+import { useTheme } from "@/hooks/useTheme"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()

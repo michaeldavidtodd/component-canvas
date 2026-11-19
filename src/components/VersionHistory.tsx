@@ -6,20 +6,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { History, Clock, User, RotateCcw, Maximize2, X, Component, Layers, Square, Palette, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider, type NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-
-interface ProjectVersion {
-  id: string;
-  project_id: string;
-  version_number: number;
-  name?: string;
-  nodes: any[];
-  edges: any[];
-  viewport?: any;
-  is_auto_save: boolean;
-  created_at: string;
-}
+import type { ProjectVersion } from '@/types/project';
 
 interface VersionHistoryProps {
   open: boolean;
@@ -28,7 +17,7 @@ interface VersionHistoryProps {
   onLoadVersion: (versionId: string) => Promise<ProjectVersion | null>;
   onDeleteVersion?: (versionId: string) => void;
   onVersionLoaded?: (version: ProjectVersion) => void;
-  nodeTypes?: any;
+  nodeTypes?: NodeTypes;
 }
 
 export const VersionHistory = ({
@@ -172,7 +161,7 @@ export const VersionHistory = ({
                          <div className="flex flex-wrap gap-1">
                            {(() => {
                              const componentCounts = version.nodes.reduce((acc, node) => {
-                               const type = node.data?.componentType || 'unknown';
+                               const type = (node.data?.componentType as string) || 'unknown';
                                acc[type] = (acc[type] || 0) + 1;
                                return acc;
                              }, {} as Record<string, number>);

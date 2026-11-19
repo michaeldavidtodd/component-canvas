@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { useReactFlow, Node, Edge } from '@xyflow/react';
+import { useReactFlow, Node, Edge, Viewport } from '@xyflow/react';
+import type { Project } from '@/types/project';
 
 interface AutoSaveHandlerProps {
-  currentProject: any;
+  currentProject: Project;
   autoSaveEnabled: boolean;
   isInitialized: boolean;
   nodes: Node[];
   edges: Edge[];
-  onAutoSave: (projectId: string, nodes: Node[], edges: Edge[], viewport?: any) => void;
+  onAutoSave: (projectId: string, nodes: Node[], edges: Edge[], viewport?: Viewport) => void;
 }
 
 export const AutoSaveHandler = ({

@@ -5,7 +5,7 @@ import { ArrowRight, Layout, History, Share2, X, User, Target, Grid3X3 } from "l
 import { Link } from "react-router-dom";
 import InteractiveDemo from "@/components/InteractiveDemo";
 import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
@@ -161,7 +161,7 @@ const HomepageVariant3 = () => {
 				<div className=" mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex justify-between items-center h-20 gap-8">
 						<div className="flex items-center gap-4">
-							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as any}>
+							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as CSSProperties}>
 								<Layout className="w-7 h-7 text-white transform -rotate-12 flex-shrink-0" />
 							</div>
 							<span className="text-lg md:text-2xl font-black text-white leading-none tracking-tighter inline-block">Component Canvas</span>
@@ -302,9 +302,9 @@ const HomepageVariant3 = () => {
 				
 				{/* Background Elements */}
 				<div className="absolute inset-0 overflow-hidden pointer-events-none">
-					<div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-pink/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '0s' } as any}></div>
-					<div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
-					<div className="absolute top-1/2 right-1/3 w-64 h-64 bg-brand-green/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '4s' } as any}></div>
+					<div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-pink/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '0s' } as CSSProperties}></div>
+					<div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as CSSProperties}></div>
+					<div className="absolute top-1/2 right-1/3 w-64 h-64 bg-brand-green/10 rounded-full blur-3xl animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '4s' } as CSSProperties}></div>
 				</div>
 			</section>
 
@@ -325,7 +325,7 @@ const HomepageVariant3 = () => {
 							</span>
 						</h2>
 						
-						<div className={`bg-brand-yellow p-12 rounded-3xl transform -rotate-1 mt-16 transition-all duration-700 ${visibleSections.has('philosophy') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '-1deg', animationDelay: '0.5s' } as any}>
+						<div className={`bg-brand-yellow p-12 rounded-3xl transform -rotate-1 mt-16 transition-all duration-700 ${visibleSections.has('philosophy') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '-1deg', animationDelay: '0.5s' } as CSSProperties}>
 							<p className="text-3xl lg:text-4xl text-black font-black leading-tight tracking-tight">
 								It's a form of strategic thinking that allows teams to 
 								<span className="underline decoration-4 decoration-brand-pink"> build better systems</span> & 
@@ -337,9 +337,9 @@ const HomepageVariant3 = () => {
 				</div>
 				
 				{/* Decorative Elements */}
-				<div className="absolute top-16 left-16 w-32 h-32 bg-brand-yellow rounded-full transform rotate-45 animate-bob-float" style={{ '--rotation': '45deg', animationDelay: '1s' } as any}></div>
-				<div className="absolute bottom-16 right-16 w-24 h-24 bg-brand-orange rounded-full animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
-				<div className="absolute top-1/2 left-8 w-16 h-16 bg-brand-pink rounded-full transform rotate-12 animate-bob-float" style={{ '--rotation': '12deg', animationDelay: '3s' } as any}></div>
+				<div className="absolute top-16 left-16 w-32 h-32 bg-brand-yellow rounded-full transform rotate-45 animate-bob-float" style={{ '--rotation': '45deg', animationDelay: '1s' } as CSSProperties}></div>
+				<div className="absolute bottom-16 right-16 w-24 h-24 bg-brand-orange rounded-full animate-float-gentle" style={{ '--rotation': '0deg', animationDelay: '2s' } as CSSProperties}></div>
+				<div className="absolute top-1/2 left-8 w-16 h-16 bg-brand-pink rounded-full transform rotate-12 animate-bob-float" style={{ '--rotation': '12deg', animationDelay: '3s' } as CSSProperties}></div>
 			</section>
 
 			{/* What Sets Us Apart Section */}
@@ -479,7 +479,7 @@ const HomepageVariant3 = () => {
 							</span>
 						</h2>
 						
-						<div className={`bg-black p-8 rounded-3xl transform rotate-1 inline-block transition-all duration-700 ${visibleSections.has('cta') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '1deg', animationDelay: '0.5s' } as any}>
+						<div className={`bg-black p-8 rounded-3xl transform rotate-1 inline-block transition-all duration-700 ${visibleSections.has('cta') ? 'animate-bob-float' : 'scale-95 opacity-60'}`} style={{ '--rotation': '1deg', animationDelay: '0.5s' } as CSSProperties}>
 							<p className="text-2xl lg:text-3xl text-white font-black leading-tight tracking-tight max-w-3xl">
 								PLAN YOUR LIBRARY. ORGANIZE YOUR HIERARCHY. 
 								<span className="text-brand-yellow"> REVOLUTIONIZE YOUR DESIGN SYSTEM.</span>
@@ -497,10 +497,10 @@ const HomepageVariant3 = () => {
 				
 				{/* Background Shapes */}
 				<div className="absolute inset-0 overflow-hidden">
-					<div className="absolute top-1/4 left-1/4 w-72 h-72 bg-brand-blue/20 rounded-full blur-3xl transform rotate-45 animate-float-gentle" style={{ '--rotation': '45deg', animationDelay: '1s' } as any}></div>
-					<div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-brand-green/20 rounded-full blur-3xl animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '2s' } as any}></div>
-					<div className="absolute top-0 right-0 w-96 h-96 bg-black/10 rounded-full transform rotate-12 animate-float-gentle" style={{ '--rotation': '12deg', animationDelay: '3s' } as any}></div>
-					<div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '4s' } as any}></div>
+					<div className="absolute top-1/4 left-1/4 w-72 h-72 bg-brand-blue/20 rounded-full blur-3xl transform rotate-45 animate-float-gentle" style={{ '--rotation': '45deg', animationDelay: '1s' } as CSSProperties}></div>
+					<div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-brand-green/20 rounded-full blur-3xl animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '2s' } as CSSProperties}></div>
+					<div className="absolute top-0 right-0 w-96 h-96 bg-black/10 rounded-full transform rotate-12 animate-float-gentle" style={{ '--rotation': '12deg', animationDelay: '3s' } as CSSProperties}></div>
+					<div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full animate-bob-float" style={{ '--rotation': '0deg', animationDelay: '4s' } as CSSProperties}></div>
 				</div>
 			</section>
 
@@ -509,7 +509,7 @@ const HomepageVariant3 = () => {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 					<div className="text-center">
 						<div className="flex items-center justify-center gap-4 mb-6">
-							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as any}>
+							<div className="w-12 h-12 bg-gradient-to-br from-brand-pink to-brand-blue rounded-2xl flex items-center justify-center transform rotate-12 animate-pulse-glow animate-bob-float" style={{ '--glow-color': '255, 100, 150', '--rotation': '12deg' } as CSSProperties}>
 								<Layout className="w-7 h-7 text-white transform -rotate-12" />
 							</div>
 							<span className="text-3xl font-black text-white tracking-tighter">Component Canvas</span>

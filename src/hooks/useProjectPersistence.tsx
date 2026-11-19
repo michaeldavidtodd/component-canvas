@@ -3,44 +3,17 @@ import { Node, Edge, Viewport } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
+import type { Json } from '@/integrations/supabase/types';
+import type { Project, ProjectVersion } from '@/types/project';
 
-type ProjectRow = Database['public']['Tables']['projects']['Row'];
-type ProjectVersionRow = Database['public']['Tables']['project_versions']['Row'];
-
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  is_public?: boolean;
-  share_token?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ProjectVersion {
-  id: string;
-  project_id: string;
-  version_number: number;
-  name?: string;
-  nodes: Node[];
-  edges: Edge[];
-  viewport?: Viewport;
-  is_auto_save: boolean;
-  created_at: string;
-}
+export type { Project, ProjectVersion };
 
 export const useProjectPersistence = () => {
   const { user, isAnonymous } = useAuth();
   const { toast } = useToast();
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const currentProjectRef = useRef<Project | null>(null);
-  
-  // Initialize ref with current project
-  useEffect(() => {
-    currentProjectRef.current = currentProject;
-    console.log('🎯 Initial ref setup:', currentProjectRef.current);
-  }, []);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -185,12 +158,13 @@ export const useProjectPersistence = () => {
       console.log('🔄 Database update successful:', updatedProject);
       
       setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
-      
-      // Always update the currentProject state if the project ID matches
-      // This ensures the UI updates even if the ref is not working properly
-      console.log('🔄 Updating currentProject state to:', updatedProject.name);
-      // Create a new object reference to ensure React detects the change
-      setCurrentProjectState({ ...updatedProject });
+
+      // Keep currentProject in sync when the project being edited is the open one
+      if (currentProjectRef.current?.id === projectId) {
+        console.log('🔄 Updating currentProject state to:', updatedProject.name);
+        // Create a new object reference to ensure React detects the change
+        setCurrentProjectState({ ...updatedProject });
+      }
       
       toast({
         title: "Success",
@@ -241,9 +215,9 @@ export const useProjectPersistence = () => {
           project_id: projectId,
           version_number: versionNumber,
           name: versionName,
-          nodes: nodes as any,
-          edges: edges as any,
-          viewport: viewport as any,
+          nodes: nodes as unknown as Json,
+          edges: edges as unknown as Json,
+          viewport: (viewport ?? null) as unknown as Json,
           is_auto_save: isAutoSave
         })
         .select()
@@ -393,9 +367,9 @@ export const useProjectPersistence = () => {
       if (error) throw error;
 
       // Update local state
-      setProjects(projects.map(p => 
-        p.id === projectId 
-          ? { ...p, is_public: isPublic } 
+      setProjects(prev => prev.map(p =>
+        p.id === projectId
+          ? { ...p, is_public: isPublic }
           : p
       ));
 
@@ -413,7 +387,7 @@ export const useProjectPersistence = () => {
       });
       throw error;
     }
-  }, [user, isAnonymous, projects, currentProject, toast]);
+  }, [user, isAnonymous, toast]);
 
   const getPublicProject = useCallback(async (shareToken: string) => {
     try {
@@ -434,7 +408,19 @@ export const useProjectPersistence = () => {
 
       if (versionsError) throw versionsError;
 
-      return { project, versions };
+      const transformedVersions: ProjectVersion[] = (versions || []).map(row => ({
+        id: row.id,
+        project_id: row.project_id,
+        version_number: row.version_number,
+        name: row.name || undefined,
+        nodes: (row.nodes as unknown as Node[]) || [],
+        edges: (row.edges as unknown as Edge[]) || [],
+        viewport: (row.viewport as unknown as Viewport) || undefined,
+        is_auto_save: row.is_auto_save,
+        created_at: row.created_at
+      }));
+
+      return { project, versions: transformedVersions };
     } catch (error) {
       console.error('Error loading public project:', error);
       throw error;

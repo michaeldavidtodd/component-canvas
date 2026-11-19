@@ -14,6 +14,7 @@ import { AutoSaveHandler } from "./AutoSaveHandler";
 import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
+import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
 import { useNavigate } from "react-router-dom";
@@ -171,11 +172,11 @@ export const ComponentLibraryPlanner = ({
 	sharedProjectData = null,
 }: {
 	isSharedView?: boolean;
-	sharedProjectData?: any;
+	sharedProjectData?: SharedProjectData | null;
 } = {}) => {
 	const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
 	const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
-	const [selectedNode, setSelectedNode] = useState<any>(null);
+	const [selectedNode, setSelectedNode] = useState<Node<ComponentNodeData> | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
 	const [autoSmartLayout, setAutoSmartLayout] = useState(false);
@@ -200,8 +201,8 @@ export const ComponentLibraryPlanner = ({
 			console.log("📋 Loading shared project data:", sharedProjectData);
 			const latestVersion = sharedProjectData.versions[0];
 			if (latestVersion) {
-				setNodes(latestVersion.nodes as any);
-				setEdges(latestVersion.edges as any);
+				setNodes(latestVersion.nodes as Node<ComponentNodeData>[]);
+				setEdges(latestVersion.edges);
 			}
 			setIsProjectInitialized(true);
 		}
@@ -230,7 +231,7 @@ export const ComponentLibraryPlanner = ({
 				type: "default",
 			})),
 		);
-	}, []); // Run once on mount
+	}, [setEdges]); // Run once on mount
 
 	// Debug logging
 	console.log("🔍 ComponentLibraryPlanner state:", {
@@ -299,13 +300,13 @@ export const ComponentLibraryPlanner = ({
 		[nodes, setEdges, getEdgeColor],
 	);
 
-	const handleNodeSelect = useCallback((node: any) => {
+	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null) => {
 		setSelectedNode(node);
 	}, []);
 
 	// Listen for custom nodeCreated events to update selection
 	useEffect(() => {
-		const handleNodeCreated = (event: CustomEvent) => {
+		const handleNodeCreated = (event: CustomEvent<{ node: Node<ComponentNodeData> }>) => {
 			const newNode = event.detail.node;
 			setSelectedNode(newNode);
 		};
@@ -368,7 +369,7 @@ export const ComponentLibraryPlanner = ({
 				newNodes: layoutedNodes.map((n) => ({ id: n.id, pos: n.position })),
 			});
 
-			setNodes([...layoutedNodes] as any);
+			setNodes([...layoutedNodes]);
 			setEdges([...layoutedEdges]);
 		},
 		[nodes, edges, setNodes, setEdges],
@@ -428,8 +429,8 @@ export const ComponentLibraryPlanner = ({
 	const handleProjectLoaded = useCallback(
 		(loadedNodes: Node[], loadedEdges: Edge[]) => {
 			console.log("📋 Loading project data:", { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
-			setNodes(loadedNodes as any);
-			setEdges(loadedEdges as any);
+			setNodes(loadedNodes);
+			setEdges(loadedEdges);
 		},
 		[setNodes, setEdges],
 	);
@@ -472,8 +473,8 @@ export const ComponentLibraryPlanner = ({
 						versions={versions}
 						onLoadVersion={loadVersion}
 						onVersionLoaded={(version) => {
-							setNodes(version.nodes as any);
-							setEdges(version.edges as any);
+							setNodes(version.nodes as Node<ComponentNodeData>[]);
+							setEdges(version.edges);
 						}}
 						nodeTypes={nodeTypes}
 					/>
@@ -503,7 +504,7 @@ export const ComponentLibraryPlanner = ({
 						</div>
 					)}
 
-					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node)} onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border border-border">
+					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border border-border">
 						<Background className="[&>*]:!stroke-border" gap={16} />
 						<div className="max-xl:hidden z-10 absolute right-4 top-4 flex items-start gap-4">
 							<DockAwareControls dockVisible={!isSharedView && !isMobile} />

@@ -9,7 +9,7 @@ import { Trash2, FileText } from 'lucide-react';
 import { Card } from './ui/card';
 
 interface PropertiesPanelProps {
-  selectedNode: any;
+  selectedNode: Node<ComponentNodeData> | null;
   onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
   onDeleteNode: () => void;
 }

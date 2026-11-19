@@ -4,12 +4,13 @@ import { ComponentLibraryPlanner } from "@/components/ComponentLibraryPlanner";
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
+import type { SharedProjectData } from '@/types/project';
 
 const SharedProject = () => {
   const { shareToken } = useParams<{ shareToken: string }>();
   const navigate = useNavigate();
   const { getPublicProject } = useProjectPersistence();
-  const [sharedData, setSharedData] = useState<any>(null);
+  const [sharedData, setSharedData] = useState<SharedProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

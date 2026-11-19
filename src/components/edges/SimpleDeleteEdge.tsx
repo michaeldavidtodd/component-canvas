@@ -4,10 +4,11 @@ import {
   EdgeLabelRenderer,
   getBezierPath,
   useReactFlow,
+  type EdgeProps,
 } from '@xyflow/react';
 import { X } from 'lucide-react';
 
-export default function SimpleDeleteEdge(props: any) {
+export default function SimpleDeleteEdge(props: EdgeProps) {
   const { setEdges } = useReactFlow();
   const [isHovered, setIsHovered] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
@@ -29,7 +30,7 @@ export default function SimpleDeleteEdge(props: any) {
   };
 
   // Only pass safe props to BaseEdge
-  const { id, source, target, sourceX, sourceY, targetX, targetY, selected, style, ...safeProps } = props;
+  const { style } = props;
 
   return (
     <>

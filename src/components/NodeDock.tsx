@@ -1,5 +1,6 @@
 import { ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { useReactFlow, useStore } from '@xyflow/react';
+import type { User as AuthUser } from '@supabase/supabase-js';
 import {
   Component,
   Layers,
@@ -24,6 +25,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { ComponentType } from '@/types/component';
+import type { Project } from '@/types/project';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -167,10 +169,10 @@ interface NodeDockProps {
   autoSmartLayout?: boolean;
   onToggleAutoSmartLayout?: () => void;
   // Project
-  user?: any;
+  user?: AuthUser | null;
   isAnonymous?: boolean;
-  currentProject?: any;
-  onProjectUpdate?: (updatedProject: any) => void;
+  currentProject?: Project | null;
+  onProjectUpdate?: (updatedProject: Project) => void;
   onSave?: () => void;
   onShowVersions?: () => void;
   autoSaveEnabled?: boolean;
@@ -271,6 +273,10 @@ export const NodeDock = ({
       const shareToken = await toggleProjectPublic(currentProject.id, true);
       const shareUrl = `${window.location.origin}/share/${shareToken}`;
 
+      // The persistence hook that owns `currentProject` lives in a parent, so
+      // push the updated sharing state up for an immediate UI refresh.
+      onProjectUpdate?.({ ...currentProject, is_public: true, share_token: shareToken });
+
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -293,6 +299,7 @@ export const NodeDock = ({
 
     try {
       await toggleProjectPublic(currentProject.id, false);
+      onProjectUpdate?.({ ...currentProject, is_public: false });
       setShareDialogOpen(false);
 
       toast({

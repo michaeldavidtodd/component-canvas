@@ -34,7 +34,7 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
       setIsInitialized(false);
       initializingRef.current = false;
     }
-  }, [user?.id, isAnonymous]); // Reset when user changes
+  }, [user, isAnonymous, loading]); // Reset when user changes
 
   // Step 1: Initialize project when user is ready AND projects are loaded
   useEffect(() => {
@@ -103,7 +103,7 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
     if (versions.length > 0) {
       const latestVersion = versions[0];
       console.log('🎯 Loading version:', latestVersion.name || 'Auto-save');
-      onProjectLoaded(latestVersion.nodes as any, latestVersion.edges as any);
+      onProjectLoaded(latestVersion.nodes, latestVersion.edges);
     } else {
       console.log('🎯 Loading default nodes');
       onProjectLoaded(initialNodes, initialEdges);
@@ -118,7 +118,7 @@ export const ProjectManager = ({ onProjectLoaded, onInitialized }: ProjectManage
       setIsInitialized(true);
       onInitialized(true);
     }
-  }, [user, isAnonymous, loading, isInitialized, onProjectLoaded]);
+  }, [user, isAnonymous, loading, isInitialized, onProjectLoaded, onInitialized]);
 
   return null; // This component only manages logic, no UI
 };
