@@ -1,73 +1,55 @@
-# Welcome to your Lovable project
+# Component Canvas
 
-## Project info
+Visualize and organize your Figma component relationships. Plan hierarchies, manage variants, and collaborate on design system architecture.
 
-**URL**: https://lovable.dev/projects/ee4c791c-1f2d-42df-8c29-0f47522e2016
+## Getting started
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/ee4c791c-1f2d-42df-8c29-0f47522e2016) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires [Node.js](https://nodejs.org/) (or [Bun](https://bun.sh/)) and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Install dependencies
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the dev server at http://localhost:8080
 npm run dev
+
+# Production build into dist/
+npm run build
+
+# Preview the production build
+npm run preview
+
+# Lint
+npm run lint
 ```
 
-**Edit a file directly in GitHub**
+## Tech stack
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- [Vite](https://vitejs.dev/) + TypeScript
+- [React](https://react.dev/)
+- [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- [React Flow](https://reactflow.dev/) for the canvas
+- [Supabase](https://supabase.com/) for auth and project persistence
 
-**Use GitHub Codespaces**
+## Backend
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Database schema lives in `supabase/migrations`. The Supabase client and generated types are in `src/integrations/supabase`. To point the app at your own Supabase project, update the project URL and publishable (anon) key in `src/integrations/supabase/client.ts` and apply the migrations in `supabase/migrations`.
 
-## What technologies are used for this project?
+## Project structure
 
-This project is built with:
+```
+src/
+  components/          Feature components (canvas, dock, panels, version history)
+  components/ui/       shadcn/ui primitives
+  hooks/               Auth, persistence, and toast hooks
+  integrations/        Supabase client and generated database types
+  lib/                 Utilities and initial canvas data
+  pages/               Route-level pages (homepage variants, auth, shared projects)
+  types/               Shared TypeScript types
+public/                Static assets (favicon, robots.txt)
+supabase/              Local Supabase config and migrations
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Deployment
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/ee4c791c-1f2d-42df-8c29-0f47522e2016) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+`npm run build` produces a static bundle in `dist/` that can be served by any static host (Netlify, Vercel, Cloudflare Pages, S3 + CDN, etc.). The app uses client-side routing, so configure the host to rewrite unknown paths to `index.html`.
