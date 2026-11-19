@@ -72,7 +72,7 @@ export const VersionHistory = ({
               Version History
             </DialogTitle>
           </DialogHeader>
-          
+
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-3">
               {versions.length === 0 ? (
@@ -96,7 +96,7 @@ export const VersionHistory = ({
                              <User className="h-4 w-4" />
                            )}
                          </div>
-                         
+
                          <div className="flex flex-col flex-1">
                            <div className="flex items-center gap-2">
                              <span className="font-medium text-sm">
@@ -113,7 +113,7 @@ export const VersionHistory = ({
                                </Badge>
                              )}
                            </div>
-                           
+
                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                              <span>
                                {formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
@@ -125,7 +125,7 @@ export const VersionHistory = ({
                            </div>
                          </div>
                        </div>
-                       
+
                        <div className="flex items-center gap-2">
                          <Button
                            variant="outline"
@@ -136,7 +136,7 @@ export const VersionHistory = ({
                            <Maximize2 className="h-3 w-3" />
                            Preview
                          </Button>
-                         
+
                          <Button
                            variant="outline"
                            size="sm"
@@ -147,7 +147,7 @@ export const VersionHistory = ({
                            <RotateCcw className="h-3 w-3" />
                            {loading === version.id ? 'Loading...' : 'Restore'}
                          </Button>
-                         
+
                          {onDeleteVersion && !version.is_auto_save && index !== 0 && (
                            <Button
                              variant="outline"
@@ -160,7 +160,7 @@ export const VersionHistory = ({
                          )}
                        </div>
                      </div>
-                     
+
                    {/* Simple preview */}
                    {version.nodes && version.nodes.length > 0 && (
                      <div className="mt-3 p-3 bg-muted/30 rounded border">
@@ -176,33 +176,33 @@ export const VersionHistory = ({
                                acc[type] = (acc[type] || 0) + 1;
                                return acc;
                              }, {} as Record<string, number>);
-                             
+
                              return Object.entries(componentCounts).map(([type, count]: [string, number]) => {
                                let color = 'bg-muted';
                                let icon = null;
                                switch (type) {
-                                 case 'main-component': 
-                                   color = 'bg-component-main'; 
+                                 case 'main-component':
+                                   color = 'bg-component-main';
                                    icon = <Component className="w-3 h-3" />;
                                    break;
-                                 case 'variant': 
-                                   color = 'bg-component-variant'; 
+                                 case 'variant':
+                                   color = 'bg-component-variant';
                                    icon = <Layers className="w-3 h-3" />;
                                    break;
-                                 case 'sub-component': 
-                                   color = 'bg-component-sub'; 
+                                 case 'sub-component':
+                                   color = 'bg-component-sub';
                                    icon = <Square className="w-3 h-3" />;
                                    break;
-                                 case 'token': 
-                                   color = 'bg-component-token'; 
+                                 case 'token':
+                                   color = 'bg-component-token';
                                    icon = <Palette className="w-3 h-3" />;
                                    break;
-                                 case 'instance': 
-                                   color = 'bg-component-instance'; 
+                                 case 'instance':
+                                   color = 'bg-component-instance';
                                    icon = <Copy className="w-3 h-3" />;
                                    break;
                                }
-                               
+
                                return (
                                  <div key={type} className="flex items-center gap-2 px-2 py-1 rounded text-xs">
                                    <div className={`p-1 rounded text-white ${color}`}>
@@ -263,7 +263,7 @@ export const VersionHistory = ({
                 </div>
               </DialogTitle>
             </DialogHeader>
-          
+
           {expandedVersion && (
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-4 text-sm text-muted-foreground p-6 pb-4">
@@ -279,7 +279,7 @@ export const VersionHistory = ({
                   </>
                 )}
               </div>
-              
+
               <div className="flex-1 bg-muted/30 border-t relative overflow-hidden">
                 <ReactFlowProvider>
                   <ReactFlow

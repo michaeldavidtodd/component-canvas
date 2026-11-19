@@ -89,6 +89,10 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			transitionTimingFunction: {
+				// Subtle spring: a slight overshoot as the dock grows and settles.
+				spring: 'cubic-bezier(0.34, 1.4, 0.64, 1)'
+			},
 			fontFamily: {
 				'display': ['Boldonse', 'Inter', 'system-ui', 'sans-serif'],
 				'sans': ['Inter', 'system-ui', 'sans-serif'],

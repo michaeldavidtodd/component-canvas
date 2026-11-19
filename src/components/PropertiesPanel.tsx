@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, FileText } from 'lucide-react';
+import { Card } from './ui/card';
 
 interface PropertiesPanelProps {
   selectedNode: any;
@@ -21,14 +22,14 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
   { value: 'instance', label: 'Instance' },
 ];
 
-export const PropertiesPanel = ({ 
-  selectedNode, 
-  onUpdateNode, 
+export const PropertiesPanel = ({
+  selectedNode,
+  onUpdateNode,
   onDeleteNode
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
-      <div className="w-80 m-2 xl:m-4 bg-background border border-border p-6 overflow-y-auto rounded-xl">
+      <Card className="flex-1 bg-background border border-border p-6 overflow-y-auto rounded-xl">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -38,7 +39,7 @@ export const PropertiesPanel = ({
             </p>
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -59,7 +60,7 @@ export const PropertiesPanel = ({
   };
 
   const handleTokenTypeChange = (value: TokenType) => {
-    onUpdateNode(selectedNode.id, { 
+    onUpdateNode(selectedNode.id, {
       tokenType: value,
       tokenSubType: undefined // Reset sub-type when main type changes
     });
@@ -102,7 +103,7 @@ export const PropertiesPanel = ({
   };
 
   return (
-    <div className="w-60 md:w-80 m-2 xl:m-4 bg-background border border-border p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto rounded-xl">
+    <Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto">
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-1">Properties</h3>
         <p className="text-sm text-muted-foreground">
@@ -205,8 +206,8 @@ export const PropertiesPanel = ({
             {selectedNode.data.tokenType && getTokenSubTypeOptions(selectedNode.data.tokenType).length > 0 && (
               <div className="ml-4">
                 <Label htmlFor="token-subtype" className="text-sm font-medium text-muted-foreground">
-                  {selectedNode.data.tokenType === 'color' ? 'Color Usage' : 
-                   selectedNode.data.tokenType === 'spacing' ? 'Spacing Type' : 
+                  {selectedNode.data.tokenType === 'color' ? 'Color Usage' :
+                   selectedNode.data.tokenType === 'spacing' ? 'Spacing Type' :
                    selectedNode.data.tokenType === 'size' ? 'Size Type' : 'Subtype'}
                 </Label>
                 <Select
@@ -241,6 +242,6 @@ export const PropertiesPanel = ({
            Delete Component
          </Button>
       </div>
-    </div>
+    </Card>
   );
 };

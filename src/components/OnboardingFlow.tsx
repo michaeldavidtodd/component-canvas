@@ -172,7 +172,7 @@ const onboardingSteps = [
             <span className="text-sm">Focuses view on newly added components</span>
           </div>
         </div>
-        <Badge variant="secondary" className="mx-auto">Toggle "Auto Smart Layout" in the toolbar!</Badge>
+        <Badge variant="secondary" className="mx-auto">Toggle "Auto-optimize" in the dock at the bottom of the canvas!</Badge>
       </div>
     ),
     highlight: 'smart-layout'
@@ -232,7 +232,7 @@ const onboardingSteps = [
             <span className="text-sm">Perfect for design reviews</span>
           </div>
         </div>
-        <Badge variant="secondary" className="mx-auto">Look for the share button in the toolbar!</Badge>
+        <Badge variant="secondary" className="mx-auto">Find Share in the Project menu in the dock!</Badge>
       </div>
     ),
     highlight: 'sharing'
