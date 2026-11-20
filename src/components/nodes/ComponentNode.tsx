@@ -133,7 +133,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 	return (
 		<div
 			data-highlighted={isChildOfSelectedMain || undefined}
-			className={` relative bg-workspace border-2 rounded-lg shadow-md p-3
+			className={`relative w-fit bg-workspace border-2 rounded-lg shadow-md p-3
       	${selected ? getComponentBorderClass(data.componentType) : isChildOfSelectedMain ? "border-component-main ring-2 ring-component-main" : "border-border"}
        	transition-all duration-200 group`}
 		>
