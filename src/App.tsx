@@ -2,13 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import Homepage from "./pages/Homepage";
-import HomepageVariant1 from "./pages/HomepageVariant1";
-import HomepageVariant2 from "./pages/HomepageVariant2";
-import HomepageVariant3 from "./pages/HomepageVariant3";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import SharedProject from "./pages/SharedProject";
@@ -23,19 +19,16 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <HashRouter>
             <Routes>
-              <Route path="/" element={<HomepageVariant3 />} />
-              <Route path="/variant1" element={<HomepageVariant1 />} />
-              <Route path="/variant2" element={<HomepageVariant2 />} />
-              <Route path="/original" element={<Homepage />} />
+              <Route path="/" element={<Navigate to="/app" replace />} />
               <Route path="/app" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/share/:shareToken" element={<SharedProject />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
         </TooltipProvider>
       </ThemeProvider>
     </AuthProvider>

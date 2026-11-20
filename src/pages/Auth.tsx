@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, UserCheck } from 'lucide-react';
+import { UserCheck } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -83,19 +83,12 @@ const Auth = () => {
       title: "Anonymous mode",
       description: "You can use the tool without saving changes."
     });
-    navigate('/');
+    navigate('/app');
   };
 
   return (
     <div className="min-h-dvh bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        <div className="flex items-center gap-2 text-muted-foreground mb-8">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4" />
-            Back to planner
-          </Button>
-        </div>
-
         <div className="text-center">
           <h1 className="text-2xl font-bold">Component Canvas</h1>
           <p className="text-muted-foreground mt-2">Sign in to save your work</p>

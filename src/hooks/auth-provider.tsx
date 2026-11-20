@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContext } from '@/hooks/useAuth';
+import { WEB_ORIGIN } from '@/lib/webOrigin';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, username?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${WEB_ORIGIN}/`;
 
     const { error } = await supabase.auth.signUp({
       email,

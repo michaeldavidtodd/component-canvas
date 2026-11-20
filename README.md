@@ -23,6 +23,24 @@ npm run preview
 npm run lint
 ```
 
+## Desktop app (Tauri)
+
+The app also runs as a native desktop app via [Tauri v2](https://v2.tauri.app/), using the OS webview (WKWebView on macOS) instead of bundling Chromium.
+
+```sh
+# Run the desktop app with hot reload
+npm run desktop:dev
+
+# Build a macOS .app and .dmg
+npm run desktop:build
+```
+
+The dev server starts on port 8080 and automatically falls back to the next free port if it's taken.
+
+Set `VITE_WEB_ORIGIN` in `.env` (see `.env.example`) so share links and Supabase email redirects point at the hosted web app instead of `tauri://localhost`.
+
+The Tauri shell lives in `src-tauri/`. macOS is the primary target; Windows/Linux support is tracked separately.
+
 ## Tech stack
 
 - [Vite](https://vitejs.dev/) + TypeScript
@@ -44,7 +62,7 @@ src/
   hooks/               Auth, persistence, and toast hooks
   integrations/        Supabase client and generated database types
   lib/                 Utilities and initial canvas data
-  pages/               Route-level pages (homepage variants, auth, shared projects)
+  pages/               Route-level pages (app, auth, shared projects)
   types/               Shared TypeScript types
 public/                Static assets (favicon, robots.txt)
 supabase/              Local Supabase config and migrations

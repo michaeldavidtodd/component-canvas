@@ -5,6 +5,7 @@ import { Plus, ExternalLink } from "lucide-react";
 import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor, getChildComponentType, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { EMPTY_TITLE_LAYERS, getAncestorChain, titleLayersEqual, type TitleLayer } from "@/lib/nodeHierarchy";
+import { openExternal } from "@/lib/openExternal";
 
 export const ComponentNode = memo(({ data, selected, id, selectable, isConnectable }: NodeProps<Node<ComponentNodeData>>) => {
 	const [hoveredSide, setHoveredSide] = useState<"top" | "bottom" | null>(null);
@@ -205,7 +206,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							window.open(data.url, "_blank", "noopener,noreferrer");
+							void openExternal(data.url);
 						}}
 						disabled={isLocked}
 						className={`p-1.5 rounded-md bg-primary/10 text-primary transition-colors${isLocked ? " opacity-50 cursor-not-allowed" : " hover:bg-primary/20"}`}

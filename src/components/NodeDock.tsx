@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
+import { WEB_ORIGIN } from "@/lib/webOrigin";
+import { openExternal } from "@/lib/openExternal";
 
 
 // Approximate rendered node size, used to center a new node on the viewport
@@ -160,7 +162,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 
 		try {
 			const shareToken = await toggleProjectPublic(currentProject.id, true);
-			const shareUrl = `${window.location.origin}/share/${shareToken}`;
+			const shareUrl = `${WEB_ORIGIN}/share/${shareToken}`;
 
 			// The persistence hook that owns `currentProject` lives in a parent, so
 			// push the updated sharing state up for an immediate UI refresh.
@@ -204,7 +206,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		}
 	};
 
-	const shareUrl = currentProject?.share_token ? `${window.location.origin}/share/${currentProject.share_token}` : "";
+	const shareUrl = currentProject?.share_token ? `${WEB_ORIGIN}/share/${currentProject.share_token}` : "";
 
 	const handleEditName = () => {
 		setNewName(currentProject?.name || "");
@@ -329,7 +331,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 											>
 												{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
 											</Button>
-											<Button variant="secondary" onClick={() => window.open(shareUrl, "_blank")}>
+											<Button variant="secondary" onClick={() => void openExternal(shareUrl)}>
 												<ExternalLink className="h-3 w-3" />
 											</Button>
 										</div>
