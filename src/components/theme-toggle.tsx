@@ -15,7 +15,7 @@ export function ThemeToggle() {
       onValueChange={(value) => {
         if (value) setTheme(value as "light" | "dark" | "system")
       }}
-      className="border rounded-md p-1"
+      className="border rounded-full p-1"
     >
       <ToggleGroupItem value="light" aria-label="Light theme" size="sm" className="flex-1 flex items-center gap-1">
         <span className="text-xs">Light</span>

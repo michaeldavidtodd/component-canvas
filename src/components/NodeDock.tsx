@@ -396,7 +396,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	return (
 		<div className={`absolute left-1/2 z-20 -translate-x-1/2 transition-[bottom] duration-300 ${SPRING_EASE}`} style={{ bottom: activeGroup ? DOCK_BOTTOM_OPEN : DOCK_BOTTOM }} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
 			<div
-				className={`box-content flex flex-col overflow-hidden rounded-2xl border border-border bg-background/90 shadow-lg backdrop-blur-md transition-[padding] duration-300 ${SPRING_EASE} ${activeGroup ? DOCK_PADDING_OPEN : DOCK_PADDING}`}
+				className={`box-content flex flex-col overflow-hidden rounded-3xl border border-border bg-background/90 shadow-lg backdrop-blur-md transition-[padding] duration-300 ${SPRING_EASE} ${activeGroup ? DOCK_PADDING_OPEN : DOCK_PADDING}`}
 				onMouseLeave={() => setActiveGroup(null)}
 				onBlur={(event) => {
 					if (!event.currentTarget.contains(event.relatedTarget as Node)) {
@@ -408,7 +408,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 				}}
 			>
 				<div className={`overflow-hidden transition-[height] duration-300 ${SPRING_EASE}`} style={{ height: activeGroup ? contentHeight : 0 }}>
-					<div id="node-dock-panel" ref={contentRef} className={`border-b border-border pb-2 transition-[opacity,visibility] duration-300 ${SPRING_EASE} ${activeGroup ? "visible opacity-100" : "invisible opacity-0"}`}>
+					<div id="node-dock-panel" ref={contentRef} className={`pb-2 transition-[opacity,visibility] duration-300 ${SPRING_EASE} ${activeGroup ? "visible opacity-100" : "invisible opacity-0"}`}>
 						{renderPanel(panelGroup)}
 					</div>
 				</div>
@@ -417,7 +417,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 					{groups.map((group) => {
 						const isActive = activeGroup === group.id;
 						return (
-							<button key={group.id} type="button" aria-expanded={isActive} aria-controls="node-dock-panel" onMouseEnter={() => showGroup(group.id)} onFocus={() => showGroup(group.id)} onClick={() => (isActive ? setActiveGroup(null) : showGroup(group.id))} className={`flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-xl p-2 text-sm font-medium transition-colors lg:px-5 ${isActive ? "bg-secondary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+							<button key={group.id} type="button" aria-expanded={isActive} aria-controls="node-dock-panel" onMouseEnter={() => showGroup(group.id)} onFocus={() => showGroup(group.id)} onClick={() => (isActive ? setActiveGroup(null) : showGroup(group.id))} className={`flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-full p-2 border border-transparent hover:border-border text-sm font-medium transition-colors lg:px-5 ${isActive ? "bg-secondary border-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
 								{group.icon}
 								<span>{group.label}</span>
 							</button>
