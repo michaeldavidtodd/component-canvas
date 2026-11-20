@@ -19,11 +19,24 @@ const STRUCTURAL_TYPES: ReadonlySet<ComponentType> = new Set(["main-component", 
 type NodeLookupLike = ReadonlyMap<string, { id: string; data: Record<string, unknown> }>;
 
 /**
- * Walk incoming edges from `nodeId` to build the structural ancestor chain,
- * ordered from the root down to the immediate parent.
+ * Resolve a node's parent. An explicit `parentId` wins (including `null` for a
+ * detached node); otherwise the first incoming edge is used.
+ */
+const getParentId = (nodeId: string, nodeLookup: NodeLookupLike, edges: Edge[]): string | null | undefined => {
+  const node = nodeLookup.get(nodeId);
+  const data = node?.data as ComponentNodeData | undefined;
+  if (data?.parentId !== undefined) return data.parentId;
+
+  return edges.find((edge) => edge.target === nodeId)?.source;
+};
+
+/**
+ * Walk parents from `nodeId` to build the structural ancestor chain, ordered
+ * from the root down to the immediate parent.
  *
- * Edges are treated as parent -> child. When a node has multiple parents, the
- * first incoming edge wins so the title stays stable.
+ * An explicit `parentId` is preferred over edges, so a node can be detached
+ * from the canvas while keeping its logical relationship. When a node has
+ * multiple incoming edges, the first one wins so the title stays stable.
  */
 export const getAncestorChain = (nodeId: string, nodeLookup: NodeLookupLike, edges: Edge[]): TitleLayer[] => {
   const chain: TitleLayer[] = [];
@@ -31,11 +44,11 @@ export const getAncestorChain = (nodeId: string, nodeLookup: NodeLookupLike, edg
   let currentId = nodeId;
 
   while (true) {
-    const incoming = edges.find((edge) => edge.target === currentId);
-    if (!incoming || visited.has(incoming.source)) break;
-    visited.add(incoming.source);
+    const parentId = getParentId(currentId, nodeLookup, edges);
+    if (!parentId || visited.has(parentId)) break;
+    visited.add(parentId);
 
-    const parent = nodeLookup.get(incoming.source);
+    const parent = nodeLookup.get(parentId);
     if (!parent) break;
 
     const parentData = parent.data as ComponentNodeData;
@@ -47,7 +60,7 @@ export const getAncestorChain = (nodeId: string, nodeLookup: NodeLookupLike, edg
       });
     }
 
-    currentId = incoming.source;
+    currentId = parentId;
   }
 
   return chain;

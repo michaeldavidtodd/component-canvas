@@ -1,4 +1,4 @@
-import { Node } from "@xyflow/react";
+import { Edge, Node } from "@xyflow/react";
 import { ComponentNodeData, ComponentType, TokenKind, TokenType, TokenSubType, TokenValueFormat } from "@/types/component";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { getDefaultTokenFormat, getTokenFormatOptions, isAliasToken, isColorToke
 
 interface PropertiesPanelProps {
 	selectedNode: Node<ComponentNodeData> | null;
+	nodes: Node<ComponentNodeData>[];
+	edges: Edge[];
 	onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
 	onDeleteNode: () => void;
 }
@@ -25,7 +27,7 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
 	{ value: "instance", label: "Instance" },
 ];
 
-export const PropertiesPanel = ({ selectedNode, onUpdateNode, onDeleteNode }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDeleteNode }: PropertiesPanelProps) => {
 	if (!selectedNode) {
 		return (
 			<Card className="flex-1 p-6 overflow-y-auto rounded-xl">
@@ -54,6 +56,11 @@ export const PropertiesPanel = ({ selectedNode, onUpdateNode, onDeleteNode }: Pr
 
 	const handleTypeChange = (value: ComponentType) => {
 		onUpdateNode(selectedNode.id, { componentType: value });
+	};
+
+	const handleParentChange = (value: string) => {
+		// `null` explicitly detaches the variant, even if a canvas edge still exists.
+		onUpdateNode(selectedNode.id, { parentId: value === "none" ? null : value });
 	};
 
 	const handleTokenTypeChange = (value: TokenType) => {
@@ -137,6 +144,15 @@ export const PropertiesPanel = ({ selectedNode, onUpdateNode, onDeleteNode }: Pr
 	const tokenValueIsInvalid = !!selectedNode.data.tokenValue && !isValidTokenValue(selectedNode.data.tokenValue, tokenFormat);
 	const tokenColorPreview = isColorToken(tokenType) ? toCssColor(selectedNode.data.tokenValue, tokenFormat) : null;
 
+	// Variant parent options: main components, plus an explicit "detached" choice.
+	const mainComponentOptions = nodes
+		.filter((node) => node.data.componentType === "main-component" && node.id !== selectedNode.id)
+		.map((node) => ({ value: node.id, label: node.data.label }));
+
+	// An explicit parentId wins; otherwise fall back to the canvas edge.
+	const edgeParentId = edges.find((edge) => edge.target === selectedNode.id)?.source;
+	const parentValue = selectedNode.data.parentId === null ? "none" : selectedNode.data.parentId ?? edgeParentId ?? "none";
+
 	return (
 		<Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto">
 			<div>
@@ -167,6 +183,29 @@ export const PropertiesPanel = ({ selectedNode, onUpdateNode, onDeleteNode }: Pr
 						</SelectContent>
 					</Select>
 				</Field>
+
+				{/* Variant parent relationship, independent of canvas edges */}
+				{selectedNode.data.componentType === "variant" && (
+					<Field>
+						<Label htmlFor="variant-parent" className="text-sm font-medium">
+							Parent Component
+						</Label>
+						<Select value={parentValue} onValueChange={handleParentChange}>
+							<SelectTrigger className="mt-1">
+								<SelectValue placeholder="Select parent" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">None (detached)</SelectItem>
+								{mainComponentOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">Keeps the variant related even when detached on the canvas</p>
+					</Field>
+				)}
 
 				<Field>
 					<Label htmlFor="component-description" className="text-sm font-medium">

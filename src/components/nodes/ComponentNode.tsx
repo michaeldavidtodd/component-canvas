@@ -82,8 +82,18 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 				style: { stroke: strokeColor },
 			};
 
-			// Deselect all existing nodes and add the new selected node
-			setNodes((nodes) => [...nodes.map((n) => ({ ...n, selected: false })), newNode]);
+			// Deselect all existing nodes and add the new selected node.
+			// When a new parent is added above a variant, persist the relationship.
+			setNodes((nodes) => [
+				...nodes.map((n) => {
+					const updated = { ...n, selected: false };
+					if (side === "top" && n.id === currentNode.id && currentType === "variant") {
+						return { ...updated, data: { ...n.data, parentId: newId } };
+					}
+					return updated;
+				}),
+				newNode,
+			]);
 			setEdges((edges) => [...edges, newEdge]);
 
 			// Dispatch custom event to notify parent component of selection

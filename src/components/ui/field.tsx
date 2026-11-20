@@ -63,7 +63,7 @@ const fieldVariants = cva(
 				"[&>input]:mt-0 [&>input]:border-x-0 [&>input]:border-b-0 [&>input]:rounded-xl",
 				"[&>textarea]:mt-0 [&>textarea]:border-x-0 [&>textarea]:border-b-0 [&>textarea]:rounded-xl",
 				"[&>button]:mt-0 [&>button]:border-x-0 [&>button]:border-b-0 [&>button]:rounded-xl",
-				"[&>p]:mx-3 [&>p]:pb-1"
+				"[&>p]:px-3 [&>p]:py-1"
 			],
    		horizontal: [
          	"flex-row items-center gap-2 ",

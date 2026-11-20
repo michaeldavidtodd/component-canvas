@@ -21,6 +21,7 @@ export const initialNodes = [
 			label: "Primary Button",
 			componentType: "variant",
 			description: "Primary variant of the button component",
+			parentId: "1",
 		},
 	},
 	{
@@ -32,6 +33,7 @@ export const initialNodes = [
 			label: "Secondary Button",
 			componentType: "variant",
 			description: "Secondary variant of the button component",
+			parentId: "1",
 		},
 	},
 	{

@@ -71,6 +71,7 @@ const initialNodes: Node[] = [
 			label: "Primary Button",
 			componentType: "variant" as ComponentType,
 			description: "Primary variant with brand colors",
+			parentId: "button-main",
 		},
 	},
 	{
@@ -82,6 +83,7 @@ const initialNodes: Node[] = [
 			label: "Secondary Button",
 			componentType: "variant" as ComponentType,
 			description: "Secondary variant for less prominent actions",
+			parentId: "button-main",
 		},
 	},
 	// Third level - Sub-components and Tokens

@@ -312,8 +312,17 @@ export const ComponentLibraryPlanner = ({
 			};
 
 			setEdges((eds) => addEdge(newEdge, eds));
+
+			// Persist the logical parent so the variant can be detached from the canvas later.
+			if (sourceNode?.data.componentType === "main-component" && params.target) {
+				setNodes((nds) =>
+					nds.map((node) =>
+						node.id === params.target && node.data.componentType === "variant" ? { ...node, data: { ...node.data, parentId: params.source } } : node,
+					),
+				);
+			}
 		},
-		[nodes, setEdges],
+		[nodes, setEdges, setNodes],
 	);
 
 	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null) => {
@@ -519,7 +528,7 @@ export const ComponentLibraryPlanner = ({
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
 						</Badge>
-						<PropertiesPanel selectedNode={selectedNode} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />
+						<PropertiesPanel selectedNode={selectedNode} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />
 					</aside>
 				)}
 
