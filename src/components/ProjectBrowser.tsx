@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Check, Copy, FolderOpen, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -65,6 +65,9 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [startFromCurrent, setStartFromCurrent] = useState(false);
+  // Only show the loading state on the first load. Later refreshes happen in the
+  // background so deleting or creating a project doesn't flash the list.
+  const hasLoadedSummariesRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -72,14 +75,16 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
     if (projects.length === 0) {
       setSummaries({});
       setSummariesLoaded(true);
+      hasLoadedSummariesRef.current = true;
       return;
     }
 
     let cancelled = false;
 
     const loadSummaries = async () => {
-      setSummariesLoading(true);
-      setSummariesLoaded(false);
+      if (!hasLoadedSummariesRef.current) {
+        setSummariesLoading(true);
+      }
       try {
         const { data, error } = await supabase
           .from('project_versions')
@@ -105,6 +110,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
         if (!cancelled) {
           setSummariesLoading(false);
           setSummariesLoaded(true);
+          hasLoadedSummariesRef.current = true;
         }
       }
     };
@@ -239,7 +245,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="app-shell !flex h-[min(640px,85vh)] max-w-2xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
@@ -254,6 +260,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search projects"
+              aria-label="Search projects"
               className="pl-8"
             />
           </div>
@@ -264,11 +271,12 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
         </div>
 
         {showCreate && (
-          <div className="space-y-2 rounded-lg border border-border p-3">
+          <div className="animate-in fade-in slide-in-from-top-2 space-y-2 rounded-lg border border-border p-3 duration-200">
             <Input
               value={newName}
               onChange={(event) => setNewName(event.target.value)}
               placeholder="Project name"
+              aria-label="Project name"
               autoFocus
               onKeyDown={(event) => {
                 if (event.key === 'Enter') handleCreateProject();
@@ -278,6 +286,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               value={newDescription}
               onChange={(event) => setNewDescription(event.target.value)}
               placeholder="Description (optional)"
+              aria-label="Project description"
             />
             {currentProject && (
               <div className="flex items-center gap-2">
@@ -292,7 +301,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={resetCreateForm}>
+              <Button variant="ghost" size="sm" onClick={resetCreateForm} disabled={creating}>
                 Cancel
               </Button>
               <Button size="sm" onClick={handleCreateProject} disabled={!newName.trim() || creating || duplicatingId !== null}>
@@ -302,16 +311,16 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
           </div>
         )}
 
-        <ScrollArea className="max-h-[55vh]">
-          <div className="space-y-2 pr-3">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="min-h-full space-y-2 pr-3">
             {loading || summariesLoading || !summariesLoaded ? (
-              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+              <div className="flex h-full items-center justify-center py-8 text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading projects…
               </div>
             ) : filteredProjects.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <FolderOpen className="mx-auto mb-2 h-10 w-10 opacity-50" />
+              <div className="flex h-full flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                <FolderOpen className="mb-2 h-10 w-10 opacity-50" />
                 <p>{projects.length === 0 ? 'No projects yet' : 'No projects match your search'}</p>
                 {projects.length === 0 && (
                   <Button variant="outline" size="sm" className="mt-3 gap-2" onClick={() => setShowCreate(true)}>
@@ -352,6 +361,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                                 if (event.key === 'Enter') handleSaveRename(project);
                                 if (event.key === 'Escape') setEditingId(null);
                               }}
+                              aria-label="Project name"
                               className="h-8 text-sm"
                               autoFocus
                             />
@@ -360,6 +370,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                               className="h-8 w-8 p-0"
                               onClick={() => handleSaveRename(project)}
                               disabled={!editName.trim()}
+                              aria-label="Save name"
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -469,7 +480,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
           if (!nextOpen) setProjectToDelete(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="app-shell">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>
