@@ -14,11 +14,13 @@ import { AutoSaveHandler } from "./AutoSaveHandler";
 import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
-import { CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
+import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
 import { normalizeEdges } from "@/lib/edges";
 import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -122,6 +124,58 @@ const AutoLayoutHandler = ({ autoSmartLayout, onLayout }: { autoSmartLayout: boo
 	return null;
 };
 
+// Approximate size of a newly added node, used to center it on the viewport.
+const NEW_NODE_WIDTH = 200;
+const NEW_NODE_HEIGHT = 100;
+
+/**
+ * Registers the canvas keyboard shortcuts. Lives inside ReactFlowProvider so it
+ * can place new nodes at the center of the visible canvas, matching the dock.
+ */
+const KeyboardShortcuts = ({
+	enabled,
+	onAddNode,
+	onSave,
+	onOptimizeLayout,
+	onShowHistory,
+	onUndo,
+	onRedo,
+}: {
+	enabled: boolean;
+	onAddNode: (type: ComponentType, position: { x: number; y: number }) => void;
+	onSave: () => void;
+	onOptimizeLayout: () => void;
+	onShowHistory: () => void;
+	onUndo: () => void;
+	onRedo: () => void;
+}) => {
+	const { getViewport } = useReactFlow();
+	const width = useStore((state) => state.width);
+	const height = useStore((state) => state.height);
+
+	const handleAddNode = useCallback(() => {
+		const { x, y, zoom } = getViewport();
+		onAddNode(COMPONENT_TYPES[0].type, {
+			x: (width / 2 - x) / zoom - NEW_NODE_WIDTH / 2,
+			y: (height / 2 - y) / zoom - NEW_NODE_HEIGHT / 2,
+		});
+	}, [getViewport, width, height, onAddNode]);
+
+	useKeyboardShortcuts(
+		{
+			onAddNode: handleAddNode,
+			onSave,
+			onOptimizeLayout,
+			onShowHistory,
+			onUndo,
+			onRedo,
+		},
+		{ enabled },
+	);
+
+	return null;
+};
+
 // Height the floating dock occupies at the bottom of the canvas. Fit-view
 // leaves this much extra room at the bottom so nodes aren't hidden behind it.
 const DOCK_CLEARANCE = 68;
@@ -218,6 +272,26 @@ export const ComponentLibraryPlanner = ({
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
 
+	const { undo, redo, reset: resetHistory } = useUndoRedo({
+		nodes,
+		edges,
+		setNodes,
+		setEdges,
+		enabled: !isSharedView && !isMobile && !isCanvasLocked,
+	});
+
+	// Keep the properties panel pointed at the live node object after undo/redo
+	// or when the selected node is removed. Position-only updates (dragging)
+	// keep the same data reference, so they don't trigger an extra render.
+	useEffect(() => {
+		setSelectedNode((current) => {
+			if (!current) return null;
+			const next = nodes.find((node) => node.id === current.id);
+			if (!next) return null;
+			return next.data === current.data ? current : (next as Node<ComponentNodeData>);
+		});
+	}, [nodes]);
+
 	const { currentProject, projects, versions, loading, autoSaveEnabled, setCurrentProject, setAutoSaveEnabled, saveVersion, autoSave, loadVersion } = useProjectPersistence();
 
 	// Force set currentProject if we have projects but no currentProject
@@ -234,12 +308,15 @@ export const ComponentLibraryPlanner = ({
 			console.log("📋 Loading shared project data:", sharedProjectData);
 			const latestVersion = sharedProjectData.versions[0];
 			if (latestVersion) {
-				setNodes(latestVersion.nodes as Node<ComponentNodeData>[]);
-				setEdges(normalizeEdges(latestVersion.edges));
+				const sharedNodes = latestVersion.nodes as Node<ComponentNodeData>[];
+				const sharedEdges = normalizeEdges(latestVersion.edges);
+				setNodes(sharedNodes);
+				setEdges(sharedEdges);
+				resetHistory({ nodes: sharedNodes, edges: sharedEdges });
 			}
 			setIsProjectInitialized(true);
 		}
-	}, [isSharedView, sharedProjectData, setNodes, setEdges]);
+	}, [isSharedView, sharedProjectData, setNodes, setEdges, resetHistory]);
 
 	// Check if user should see onboarding
 	useEffect(() => {
@@ -462,10 +539,12 @@ export const ComponentLibraryPlanner = ({
 	const handleProjectLoaded = useCallback(
 		(loadedNodes: Node[], loadedEdges: Edge[]) => {
 			console.log("📋 Loading project data:", { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
+			const normalizedEdges = normalizeEdges(loadedEdges);
 			setNodes(loadedNodes);
-			setEdges(normalizeEdges(loadedEdges));
+			setEdges(normalizedEdges);
+			resetHistory({ nodes: loadedNodes, edges: normalizedEdges });
 		},
-		[setNodes, setEdges],
+		[setNodes, setEdges, resetHistory],
 	);
 
 	const handleManualSave = useCallback(async () => {
@@ -506,8 +585,11 @@ export const ComponentLibraryPlanner = ({
 						versions={versions}
 						onLoadVersion={loadVersion}
 						onVersionLoaded={(version) => {
-							setNodes(version.nodes as Node<ComponentNodeData>[]);
-							setEdges(normalizeEdges(version.edges));
+							const versionNodes = version.nodes as Node<ComponentNodeData>[];
+							const versionEdges = normalizeEdges(version.edges);
+							setNodes(versionNodes);
+							setEdges(versionEdges);
+							resetHistory({ nodes: versionNodes, edges: versionEdges });
 						}}
 						nodeTypes={nodeTypes}
 					/>
@@ -554,6 +636,16 @@ export const ComponentLibraryPlanner = ({
 						{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
 						{/* Auto layout handler */}
 						<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
+						{/* Keyboard shortcuts */}
+						<KeyboardShortcuts
+							enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
+							onAddNode={addNode}
+							onSave={handleManualSave}
+							onOptimizeLayout={() => onLayout("TB")}
+							onShowHistory={() => setShowVersionHistory(true)}
+							onUndo={undo}
+							onRedo={redo}
+						/>
 					</ReactFlow>
 				</div>
 			</div>
