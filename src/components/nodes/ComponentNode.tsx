@@ -1,11 +1,11 @@
 import { memo, useState, useCallback, useRef } from 'react';
 import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type NodeProps } from '@xyflow/react';
 import { ComponentType, ComponentNodeData } from '@/types/component';
-import { 
-  Component, 
-  Layers, 
-  Palette, 
-  Copy, 
+import {
+  Component,
+  Layers,
+  Palette,
+  Copy,
   Square,
   Plus,
   ExternalLink
@@ -76,12 +76,12 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
     const nodes = getNodes();
     const edges = getEdges();
     const currentNode = nodes.find(n => n.id === id);
-    
+
     if (!currentNode) return;
 
     // Generate new node ID
     const newId = `node-${Date.now()}`;
-    
+
     // Calculate position based on side
     const offsetY = side === 'top' ? -150 : 150;
     const newPosition = {
@@ -106,9 +106,9 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
     // Use same color logic as onConnect
     const currentType = currentNode.data.componentType as ComponentType;
     const newType = 'main-component' as ComponentType;
-    
+
     let strokeColor = 'hsl(216 8% 45%)'; // default
-    if ((currentType === 'main-component' && newType === 'variant') || 
+    if ((currentType === 'main-component' && newType === 'variant') ||
         (currentType === 'variant' && newType === 'main-component')) {
       strokeColor = 'hsl(258 100% 68%)';
     } else if (currentType === 'token' || newType === 'token') {
@@ -127,11 +127,11 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
     // Deselect all existing nodes and add the new selected node
     setNodes((nodes) => [...nodes.map(n => ({ ...n, selected: false })), newNode]);
     setEdges((edges) => [...edges, newEdge]);
-    
+
     // Dispatch custom event to notify parent component of selection
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('nodeCreated', { 
-        detail: { node: newNode } 
+      window.dispatchEvent(new CustomEvent('nodeCreated', {
+        detail: { node: newNode }
       }));
     }, 0);
   }, [id, setNodes, setEdges, getNodes, getEdges]);
@@ -150,21 +150,21 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
   };
 
   return (
-    <div 
+    <div
       className={`
         relative bg-workspace border-2 rounded-lg shadow-md p-3
         ${selected ? getBorderColor(data.componentType) : 'border-border'}
         transition-all duration-200 group
       `}
     >
-      <NodeResizer 
-        minWidth={160} 
+      <NodeResizer
+        minWidth={160}
         minHeight={80}
         isVisible={selected}
         keepAspectRatio={false}
       />
       {/* Top handle with add button */}
-      <div 
+      <div
         className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center"
         onMouseEnter={() => handleMouseEnter('top')}
         onMouseLeave={handleMouseLeave}
@@ -194,7 +194,7 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
           </div>
         )}
        </div>
-       
+
        <div className="flex items-center gap-2 mb-2">
          <div className={`
            p-1.5 rounded-md flex items-center justify-center
@@ -203,7 +203,7 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
            {getNodeIcon(data.componentType)}
          </div>
          <div className="flex-1 min-w-0">
-           <h3 className="font-medium text-sm text-foreground break-words">
+           <h3 className="font-medium text-sm text-foreground leading-tight break-words">
              {data.label}
            </h3>
            <p className="text-xs text-muted-foreground capitalize">
@@ -232,15 +232,15 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
            </button>
          )}
        </div>
-      
+
       {data.description && (
         <p className="text-xs text-muted-foreground break-words leading-relaxed">
           {data.description}
         </p>
       )}
-      
+
       {/* Bottom handle with add button */}
-      <div 
+      <div
         className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-8 h-8 flex items-center justify-center"
         onMouseEnter={() => handleMouseEnter('bottom')}
         onMouseLeave={handleMouseLeave}

@@ -503,7 +503,7 @@ export const ComponentLibraryPlanner = ({
 				{!isSharedView && !isMobile && (
 					<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
 						<header>
-							<h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">Component Canvas</h2>
+							<h2 className="text-lg font-semibold text-foreground mb-2 leading-tight font-display">Component Canvas</h2>
 							<p className="text-xs text-muted-foreground">Design and visualize your component structure</p>
 						</header>
 						<Badge variant="default" className="md:hidden mt-4">

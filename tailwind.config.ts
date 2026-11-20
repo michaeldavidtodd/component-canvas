@@ -95,7 +95,9 @@ export default {
 				spring: 'cubic-bezier(0.34, 1.4, 0.64, 1)'
 			},
 			fontFamily: {
-				'display': ['Boldonse', 'Inter', 'system-ui', 'sans-serif'],
+				// Display face is overridable per surface via --font-display.
+				// Marketing pages fall back to Boldonse; the app shell sets Geist.
+				'display': ['var(--font-display, Boldonse)', 'Inter', 'system-ui', 'sans-serif'],
 				'sans': ['Inter', 'system-ui', 'sans-serif'],
 				'mono': ['JetBrains Mono', 'monospace'],
 			},

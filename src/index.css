@@ -154,6 +154,11 @@
   }
 }
 
+/* In-app display typeface. Marketing surfaces keep the Boldonse default. */
+.app-shell {
+  --font-display: 'Unbounded';
+}
+
 /* React Flow custom styles */
 .react-flow {
   font-family: inherit;
@@ -223,4 +228,9 @@
 /* Remove outer-stroke from React Flow background pattern - Using a border with rounded corners on the container instead*/
 .react-flow__background rect {
   stroke: none !important;
+}
+
+/* Headings */
+h1, h2, h3 {
+	@apply font-display leading-tight;
 }

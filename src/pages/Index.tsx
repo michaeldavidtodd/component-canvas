@@ -25,7 +25,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="app-shell min-h-dvh bg-background">
       <ComponentLibraryPlanner />
     </div>
   );
