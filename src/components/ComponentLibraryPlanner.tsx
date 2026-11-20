@@ -9,7 +9,8 @@ import { NodeDock } from "./NodeDock";
 
 import { PropertiesPanel } from "./PropertiesPanel";
 import { ConnectionLegend } from "./ConnectionLegend";
-import { VersionHistory } from "./VersionHistory";
+import { VersionHistory } from "@/components/VersionHistory";
+import { ProjectBrowser } from "@/components/ProjectBrowser";
 import { AutoSaveHandler } from "./AutoSaveHandler";
 import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
@@ -18,7 +19,7 @@ import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } fr
 import { normalizeEdges } from "@/lib/edges";
 import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
-import { useProjectPersistence } from "@/hooks/useProjectPersistence";
+import { useProject } from '@/hooks/project-context';
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useNavigate } from "react-router-dom";
@@ -263,7 +264,11 @@ export const ComponentLibraryPlanner = ({
 	const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 	const [selectedNode, setSelectedNode] = useState<Node<ComponentNodeData> | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
+	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
+	// Tracks which project's data is currently on the canvas so auto-save can't
+	// write the previous project's nodes into a newly selected project.
+	const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
 	const [autoSmartLayout, setAutoSmartLayout] = useState(false);
 	const [showOnboarding, setShowOnboarding] = useState(false);
 	// Mirrors the Controls lock button so canvas handlers can be disabled while locked.
@@ -292,15 +297,7 @@ export const ComponentLibraryPlanner = ({
 		});
 	}, [nodes]);
 
-	const { currentProject, projects, versions, loading, autoSaveEnabled, setCurrentProject, setAutoSaveEnabled, saveVersion, autoSave, loadVersion } = useProjectPersistence();
-
-	// Force set currentProject if we have projects but no currentProject
-	useEffect(() => {
-		if (!currentProject && projects.length > 0 && user && !isAnonymous && !isSharedView) {
-			console.log("🔧 ComponentLibraryPlanner: Force setting currentProject to:", projects[0]);
-			setCurrentProject(projects[0]);
-		}
-	}, [projects, currentProject, user, isAnonymous, setCurrentProject, isSharedView]);
+	const { currentProject, versions, autoSaveEnabled, setAutoSaveEnabled, saveVersion, autoSave, loadVersion } = useProject();
 
 	// Load shared project data
 	useEffect(() => {
@@ -543,8 +540,9 @@ export const ComponentLibraryPlanner = ({
 			setNodes(loadedNodes);
 			setEdges(normalizedEdges);
 			resetHistory({ nodes: loadedNodes, edges: normalizedEdges });
+			setLoadedProjectId(currentProject?.id ?? null);
 		},
-		[setNodes, setEdges, resetHistory],
+		[setNodes, setEdges, resetHistory, currentProject?.id],
 	);
 
 	const handleManualSave = useCallback(async () => {
@@ -579,20 +577,25 @@ export const ComponentLibraryPlanner = ({
 			{!isSharedView && <ProjectManager onProjectLoaded={handleProjectLoaded} onInitialized={setIsProjectInitialized} />}
 			<div className="flex h-dvh bg-canvas">
 				{!isSharedView && (
-					<VersionHistory
-						open={showVersionHistory}
-						onOpenChange={setShowVersionHistory}
-						versions={versions}
-						onLoadVersion={loadVersion}
-						onVersionLoaded={(version) => {
-							const versionNodes = version.nodes as Node<ComponentNodeData>[];
-							const versionEdges = normalizeEdges(version.edges);
-							setNodes(versionNodes);
-							setEdges(versionEdges);
-							resetHistory({ nodes: versionNodes, edges: versionEdges });
-						}}
-						nodeTypes={nodeTypes}
-					/>
+					<>
+						<ProjectBrowser open={showProjectBrowser} onOpenChange={setShowProjectBrowser} />
+
+						<VersionHistory
+							open={showVersionHistory}
+							onOpenChange={setShowVersionHistory}
+							projectName={currentProject?.name}
+							versions={versions}
+							onLoadVersion={loadVersion}
+							onVersionLoaded={(version) => {
+								const versionNodes = version.nodes as Node<ComponentNodeData>[];
+								const versionEdges = normalizeEdges(version.edges);
+								setNodes(versionNodes);
+								setEdges(versionEdges);
+								resetHistory({ nodes: versionNodes, edges: versionEdges });
+							}}
+							nodeTypes={nodeTypes}
+						/>
+					</>
 				)}
 
 				{/* Aside */}
@@ -631,9 +634,9 @@ export const ComponentLibraryPlanner = ({
 							<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
 						</div>
 						{/* Primary navigation: floating dock with add, layout, project, and account menus */}
-						{!isSharedView && !isMobile && <NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onProjectUpdate={(updatedProject) => setCurrentProject(updatedProject)} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />}
+						{!isSharedView && !isMobile && <NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />}
 						{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
-						{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
+						{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
 						{/* Auto layout handler */}
 						<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
 						{/* Keyboard shortcuts */}

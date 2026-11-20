@@ -17,7 +17,13 @@ export const useProjectPersistence = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [versionsLoading, setVersionsLoading] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const versionsRequestRef = useRef(0);
+  // Bumped whenever versions are added/removed so an in-flight load that
+  // started before the mutation can't overwrite the newer local state.
+  const versionsMutationRef = useRef(0);
 
   // Load projects for current user
   const loadProjects = useCallback(async () => {
@@ -49,14 +55,21 @@ export const useProjectPersistence = () => {
       });
     } finally {
       setLoading(false);
+      setProjectsLoaded(true);
     }
   }, [user, toast]);
 
-  // Load versions for current project
+  // Load versions for current project. Clearing first and tracking the latest
+  // request prevents a slow response for a previous project from overwriting
+  // the versions of the project the user just switched to.
   const loadVersions = useCallback(async (projectId: string) => {
     if (!projectId) return;
 
+    const requestId = ++versionsRequestRef.current;
+    const mutationAtStart = versionsMutationRef.current;
     console.log('🔍 Loading versions for project:', projectId);
+    setVersionsLoading(true);
+    setVersions([]);
 
     try {
       const { data, error } = await supabase
@@ -66,9 +79,10 @@ export const useProjectPersistence = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+      if (requestId !== versionsRequestRef.current || mutationAtStart !== versionsMutationRef.current) return;
+
       console.log('📋 Raw versions data from DB:', data);
-      
+
       const transformedData: ProjectVersion[] = (data || []).map(row => ({
         id: row.id,
         project_id: row.project_id,
@@ -80,7 +94,7 @@ export const useProjectPersistence = () => {
         is_auto_save: row.is_auto_save,
         created_at: row.created_at
       }));
-      
+
       console.log('🔄 Transformed versions:', transformedData.map(v => ({
         id: v.id,
         name: v.name,
@@ -88,15 +102,20 @@ export const useProjectPersistence = () => {
         edgesCount: v.edges?.length,
         isAutoSave: v.is_auto_save
       })));
-      
+
       setVersions(transformedData);
     } catch (error) {
+      if (requestId !== versionsRequestRef.current) return;
       console.error('❌ Error loading versions:', error);
       toast({
         title: "Error",
         description: "Failed to load project versions",
         variant: "destructive"
       });
+    } finally {
+      if (requestId === versionsRequestRef.current) {
+        setVersionsLoading(false);
+      }
     }
   }, [toast]);
 
@@ -119,6 +138,10 @@ export const useProjectPersistence = () => {
 
       const newProject = data as Project;
       setProjects(prev => [newProject, ...prev]);
+      // Clear the previous project's versions before activating the new one so
+      // the canvas never renders stale data during the switch.
+      setVersions([]);
+      setVersionsLoading(true);
       setCurrentProjectState(newProject);
       
       toast({
@@ -137,6 +160,57 @@ export const useProjectPersistence = () => {
       return null;
     }
   }, [user, toast]);
+
+  // Switch the active project. The currentProject effect loads its versions.
+  const selectProject = useCallback(async (projectOrId: Project | string) => {
+    const projectId = typeof projectOrId === 'string' ? projectOrId : projectOrId.id;
+    const existing = typeof projectOrId === 'string'
+      ? projects.find(p => p.id === projectId) ?? null
+      : projectOrId;
+
+    if (existing) {
+      // Selecting the already-active project won't change the state reference,
+      // so reload versions explicitly instead of waiting for the effect.
+      if (currentProjectRef.current?.id === existing.id) {
+        await loadVersions(existing.id);
+        return existing;
+      }
+      setVersions([]);
+      setVersionsLoading(true);
+      setCurrentProjectState(existing);
+      return existing;
+    }
+
+    // Fall back to fetching when the project isn't in the loaded list (e.g. a deep link).
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (error) throw error;
+
+      const project = data as Project;
+      setProjects(prev => prev.some(p => p.id === project.id) ? prev : [project, ...prev]);
+      if (currentProjectRef.current?.id === project.id) {
+        await loadVersions(project.id);
+        return project;
+      }
+      setVersions([]);
+      setVersionsLoading(true);
+      setCurrentProjectState(project);
+      return project;
+    } catch (error) {
+      console.error('Error selecting project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open project",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [projects, loadVersions, toast]);
 
   // Update project
   const updateProject = useCallback(async (projectId: string, updates: Partial<Pick<Project, 'name' | 'description'>>) => {
@@ -243,7 +317,8 @@ export const useProjectPersistence = () => {
         is_auto_save: data.is_auto_save,
         created_at: data.created_at
       };
-      setVersions(prev => [newVersion, ...prev]);
+      versionsMutationRef.current += 1;
+      setVersions(prev => prev.some(v => v.id === newVersion.id) ? prev : [newVersion, ...prev]);
 
       // Update project's updated_at timestamp
       await supabase
@@ -338,6 +413,7 @@ export const useProjectPersistence = () => {
 
       if (error) throw error;
 
+      versionsMutationRef.current += 1;
       setVersions(prev => prev.filter(v => v.id !== versionId));
       toast({
         title: "Success",
@@ -366,15 +442,16 @@ export const useProjectPersistence = () => {
 
       if (error) throw error;
 
-      // Update local state
+      // Update local state, including the share token so the share URL is
+      // available immediately after enabling sharing.
       setProjects(prev => prev.map(p =>
         p.id === projectId
-          ? { ...p, is_public: isPublic }
+          ? { ...p, is_public: isPublic, share_token: data.share_token }
           : p
       ));
 
       if (currentProjectRef.current?.id === projectId) {
-        setCurrentProjectState({ ...currentProjectRef.current, is_public: isPublic });
+        setCurrentProjectState({ ...currentProjectRef.current, is_public: isPublic, share_token: data.share_token });
       }
 
       return data.share_token;
@@ -433,8 +510,10 @@ export const useProjectPersistence = () => {
       loadProjects();
     } else {
       setProjects([]);
+      setProjectsLoaded(false);
       setCurrentProjectState(null);
       setVersions([]);
+      setVersionsLoading(false);
     }
   }, [user, loadProjects]);
 
@@ -444,6 +523,7 @@ export const useProjectPersistence = () => {
       loadVersions(currentProject.id);
     } else {
       setVersions([]);
+      setVersionsLoading(false);
     }
   }, [currentProject, loadVersions]);
 
@@ -454,12 +534,21 @@ export const useProjectPersistence = () => {
     console.log('🎯 useProjectPersistence: ref updated to:', currentProjectRef.current);
   }, [currentProject]);
 
+  // Remember the active project per user so a refresh or reopen returns to the
+  // same project instead of silently falling back to the most recently updated.
+  useEffect(() => {
+    if (!user || isAnonymous || !currentProject) return;
+    localStorage.setItem(`component-canvas:active-project:${user.id}`, currentProject.id);
+  }, [user, isAnonymous, currentProject]);
+
   return {
     // State
     currentProject,
     projects,
     versions,
     loading,
+    projectsLoaded,
+    versionsLoading,
     autoSaveEnabled,
 
     // Actions
@@ -467,6 +556,7 @@ export const useProjectPersistence = () => {
       console.log('🔧 setCurrentProject called with:', project);
       setCurrentProjectState(project);
     },
+    selectProject,
     setAutoSaveEnabled,
     createProject,
     updateProject,

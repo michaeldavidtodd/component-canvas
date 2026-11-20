@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { useProjectPersistence } from "@/hooks/useProjectPersistence";
+import { useProject } from '@/hooks/project-context';
 import { WEB_ORIGIN } from "@/lib/webOrigin";
 import { openExternal } from "@/lib/openExternal";
 
@@ -81,9 +81,9 @@ interface NodeDockProps {
 	user?: AuthUser | null;
 	isAnonymous?: boolean;
 	currentProject?: Project | null;
-	onProjectUpdate?: (updatedProject: Project) => void;
 	onSave?: () => void;
 	onShowVersions?: () => void;
+	onShowProjects?: () => void;
 	autoSaveEnabled?: boolean;
 	onToggleAutoSave?: () => void;
 	// Account
@@ -99,7 +99,7 @@ interface NodeDockProps {
  * focusing a group expands its menu upward, revealing the options for that
  * group. The dock is the app's primary navigation.
  */
-export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, user, isAnonymous, currentProject, onProjectUpdate, onSave, onShowVersions, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
+export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
 	const [activeGroup, setActiveGroup] = useState<DockGroupId | null>(null);
 	// Keep the last opened group mounted so its content stays visible while the
 	// container animates closed.
@@ -113,7 +113,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	const [newName, setNewName] = useState("");
 	const [isSigningOut, setIsSigningOut] = useState(false);
 
-	const { toggleProjectPublic, updateProject } = useProjectPersistence();
+	const { toggleProjectPublic, updateProject } = useProject();
 	const { toast } = useToast();
 
 	const { getViewport } = useReactFlow();
@@ -164,10 +164,6 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 			const shareToken = await toggleProjectPublic(currentProject.id, true);
 			const shareUrl = `${WEB_ORIGIN}/share/${shareToken}`;
 
-			// The persistence hook that owns `currentProject` lives in a parent, so
-			// push the updated sharing state up for an immediate UI refresh.
-			onProjectUpdate?.({ ...currentProject, is_public: true, share_token: shareToken });
-
 			await navigator.clipboard.writeText(shareUrl);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
@@ -190,7 +186,6 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 
 		try {
 			await toggleProjectPublic(currentProject.id, false);
-			onProjectUpdate?.({ ...currentProject, is_public: false });
 			setShareDialogOpen(false);
 
 			toast({
@@ -219,7 +214,6 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		try {
 			await updateProject(currentProject.id, { name: newName.trim() });
 			setEditingName(false);
-			onProjectUpdate?.({ ...currentProject, name: newName.trim() });
 		} catch {
 			toast({
 				title: "Error",
@@ -306,6 +300,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 						</div>
 					)}
 
+					<DockRow icon={<FolderOpen className="h-4 w-4" />} title="All projects" description="Browse and switch projects" onClick={onShowProjects} />
 					<DockRow icon={<Save className="h-4 w-4" />} title="Save" description="Save a new version" onClick={onSave} />
 					<DockRow icon={<History className="h-4 w-4" />} title="History" description="Browse and restore versions" onClick={onShowVersions} />
 					<DockRow icon={<Share className="h-4 w-4" />} title={currentProject.is_public ? "Manage sharing" : "Share"} description={currentProject.is_public ? "Public read-only link is active" : "Create a public read-only link"} onClick={() => setShareDialogOpen(true)} />

@@ -15,6 +15,7 @@ import type { ProjectVersion } from '@/types/project';
 interface VersionHistoryProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectName?: string;
   versions: ProjectVersion[];
   onLoadVersion: (versionId: string) => Promise<ProjectVersion | null>;
   onDeleteVersion?: (versionId: string) => void;
@@ -25,6 +26,7 @@ interface VersionHistoryProps {
 export const VersionHistory = ({
   open,
   onOpenChange,
+  projectName,
   versions,
   onLoadVersion,
   onDeleteVersion,
@@ -61,7 +63,15 @@ export const VersionHistory = ({
             <DialogTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
               Version History
+              {projectName && (
+                <span className="text-sm font-normal text-muted-foreground">· {projectName}</span>
+              )}
             </DialogTitle>
+            {projectName && (
+              <p className="text-xs text-muted-foreground">
+                {versions.length} version{versions.length === 1 ? '' : 's'} for this project
+              </p>
+            )}
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh]">
@@ -73,7 +83,7 @@ export const VersionHistory = ({
                   <p className="text-sm">Save your first version to see it here</p>
                 </div>
               ) : (
-                versions.slice(0, 10).map((version, index) => (
+                versions.map((version, index) => (
                    <div
                      key={version.id}
                      className="border border-border rounded-lg bg-card hover:bg-accent/50 transition-colors p-4"
@@ -207,6 +217,9 @@ export const VersionHistory = ({
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5" />
                   Preview: {expandedVersion && formatVersionName(expandedVersion)}
+                  {projectName && (
+                    <span className="text-sm font-normal text-muted-foreground">· {projectName}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
