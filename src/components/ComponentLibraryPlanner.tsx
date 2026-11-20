@@ -131,6 +131,23 @@ const FIT_VIEW_OPTIONS = {
 	maxZoom: 2,
 };
 
+// Extra breathing room (in screen pixels) added on every side when fitting the
+// view, on top of the proportional padding above.
+const FIT_VIEW_MARGIN_PX = 100;
+
+/**
+ * React Flow treats a numeric `padding` as a ratio of the viewport. Convert the
+ * base ratio to pixels and add a fixed margin so the gutter grows by a
+ * consistent amount regardless of canvas size.
+ */
+const getFitViewPadding = (width: number, height: number): { x: `${number}px`; y: `${number}px` } => {
+	const ratioToPx = (viewport: number) => (viewport - viewport / (1 + FIT_VIEW_OPTIONS.padding)) * 0.5;
+	return {
+		x: `${Math.round(ratioToPx(width) + FIT_VIEW_MARGIN_PX)}px`,
+		y: `${Math.round(ratioToPx(height) + FIT_VIEW_MARGIN_PX)}px`,
+	};
+};
+
 /**
  * Fits the view, then nudges it up so the dock doesn't cover the content.
  * `fitView` is queued rather than applied immediately, so we wait for it to
@@ -138,14 +155,16 @@ const FIT_VIEW_OPTIONS = {
  */
 const useFitViewWithDockOffset = (offset: number) => {
 	const { fitView, getViewport, setViewport } = useReactFlow();
+	const width = useStore((s) => s.width);
+	const height = useStore((s) => s.height);
 
 	return useCallback(async () => {
-		await fitView({ ...FIT_VIEW_OPTIONS, duration: 0 });
+		await fitView({ ...FIT_VIEW_OPTIONS, padding: getFitViewPadding(width, height), duration: 0 });
 		if (!offset) return;
 
 		const { x, y, zoom } = getViewport();
 		setViewport({ x, y: y - offset, zoom }, { duration: 0 });
-	}, [fitView, getViewport, setViewport, offset]);
+	}, [fitView, getViewport, setViewport, offset, width, height]);
 };
 
 /**
