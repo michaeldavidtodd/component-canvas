@@ -4,7 +4,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { History, Clock, User, RotateCcw, Maximize2, X, Component, Layers, Square, Palette, Copy } from 'lucide-react';
+import { History, Clock, User, RotateCcw, Maximize2, X } from 'lucide-react';
+import { getComponentTypeMeta } from '@/lib/componentTypes';
 import { formatDistanceToNow } from 'date-fns';
 import { ReactFlow, ReactFlowProvider, type NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -167,38 +168,15 @@ export const VersionHistory = ({
                              }, {} as Record<string, number>);
 
                              return Object.entries(componentCounts).map(([type, count]: [string, number]) => {
-                               let color = 'bg-muted';
-                               let icon = null;
-                               switch (type) {
-                                 case 'main-component':
-                                   color = 'bg-component-main';
-                                   icon = <Component className="w-3 h-3" />;
-                                   break;
-                                 case 'variant':
-                                   color = 'bg-component-variant';
-                                   icon = <Layers className="w-3 h-3" />;
-                                   break;
-                                 case 'sub-component':
-                                   color = 'bg-component-sub';
-                                   icon = <Square className="w-3 h-3" />;
-                                   break;
-                                 case 'token':
-                                   color = 'bg-component-token';
-                                   icon = <Palette className="w-3 h-3" />;
-                                   break;
-                                 case 'instance':
-                                   color = 'bg-component-instance';
-                                   icon = <Copy className="w-3 h-3" />;
-                                   break;
-                               }
+                               const { label, icon: Icon, bgClass } = getComponentTypeMeta(type);
 
                                return (
                                  <div key={type} className="flex items-center gap-2 px-2 py-1 rounded text-xs">
-                                   <div className={`p-1 rounded text-white ${color}`}>
-                                     {icon}
+                                   <div className={`p-1 rounded text-white ${bgClass}`}>
+                                     <Icon className="w-3 h-3" />
                                    </div>
                                    <span className="text-foreground">
-                                     {type.replace('-', ' ')}: {count}
+                                     {label}: {count}
                                    </span>
                                  </div>
                                );

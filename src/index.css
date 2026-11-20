@@ -179,25 +179,20 @@
 }
 
 .react-flow__controls {
-  box-shadow: var(--shadow-md);
-  background: hsl(var(--workspace));
-  border: 1px solid hsl(var(--border));
+	@apply relative flex flex-row m-0 gap-2;
 }
 
 .react-flow__controls button {
-  background: hsl(var(--workspace));
-  border: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
+	@apply size-8 bg-secondary hover:bg-primary rounded-full border-0;
 }
 
-.react-flow__controls button:hover {
-  background: hsl(var(--muted));
+/* Lock button gets a filled background while the canvas is locked. */
+.react-flow__controls.is-locked .react-flow__controls-interactive {
+	@apply bg-primary text-primary-foreground hover:bg-primary/90;
 }
 
 .react-flow__minimap {
-  box-shadow: var(--shadow-md);
-  background: hsl(var(--workspace));
-  border: 1px solid hsl(var(--border));
+	@apply bg-card border shadow-md;
 }
 
 .react-flow__minimap-mask {
@@ -233,4 +228,9 @@
 /* Headings */
 h1, h2, h3 {
 	@apply font-display leading-tight tracking-wide;
+}
+
+/* Forms */
+label {
+	@apply text-muted-foreground;
 }

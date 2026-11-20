@@ -14,6 +14,7 @@ import { AutoSaveHandler } from "./AutoSaveHandler";
 import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
+import { CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
 import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
@@ -171,10 +172,12 @@ const useFitViewWithDockOffset = (offset: number) => {
  * React Flow's Controls, with fit-view biased upward to clear the dock. Also
  * performs the initial fit so the first view is offset the same way.
  */
-const DockAwareControls = ({ dockVisible }: { dockVisible: boolean }) => {
+const DockAwareControls = ({ dockVisible, onLockChange }: { dockVisible: boolean; onLockChange?: (locked: boolean) => void }) => {
 	const fitViewWithDockOffset = useFitViewWithDockOffset(dockVisible ? DOCK_CLEARANCE : 0);
 	const nodesInitialized = useStore((s) => s.nodesInitialized);
 	const nodeCount = useStore((s) => s.nodes.length);
+	// Mirrors the selector Controls uses internally to decide the lock icon state.
+	const isInteractive = useStore((s) => s.nodesDraggable || s.nodesConnectable || s.elementsSelectable);
 	const hasFitted = useRef(false);
 
 	useEffect(() => {
@@ -183,7 +186,15 @@ const DockAwareControls = ({ dockVisible }: { dockVisible: boolean }) => {
 		void fitViewWithDockOffset();
 	}, [nodesInitialized, nodeCount, fitViewWithDockOffset]);
 
-	return <Controls className="relative m-0 bg-workspace border border-border" fitViewOptions={FIT_VIEW_OPTIONS} onFitView={() => void fitViewWithDockOffset()} />;
+	// .react-flow__controls
+	return (
+		<Controls
+			className={isInteractive ? undefined : "is-locked"}
+			fitViewOptions={FIT_VIEW_OPTIONS}
+			onFitView={() => void fitViewWithDockOffset()}
+			onInteractiveChange={(interactive) => onLockChange?.(!interactive)}
+		/>
+	);
 };
 
 export const ComponentLibraryPlanner = ({
@@ -200,6 +211,8 @@ export const ComponentLibraryPlanner = ({
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
 	const [autoSmartLayout, setAutoSmartLayout] = useState(false);
 	const [showOnboarding, setShowOnboarding] = useState(false);
+	// Mirrors the Controls lock button so canvas handlers can be disabled while locked.
+	const [isCanvasLocked, setIsCanvasLocked] = useState(false);
 	const { user, isAnonymous, signOut } = useAuth();
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
@@ -264,19 +277,6 @@ export const ComponentLibraryPlanner = ({
 		versionsCount: versions.length,
 	});
 
-	// Function to get edge color based on node types
-	const getEdgeColor = useCallback((sourceType: ComponentType, targetType: ComponentType) => {
-		// Component to Variant connection
-		if ((sourceType === "main-component" && targetType === "variant") || (sourceType === "variant" && targetType === "main-component")) {
-			return "hsl(258 100% 68%)"; // primary
-		}
-		// Token usage connections
-		else if (sourceType === "token" || targetType === "token") {
-			return "hsl(45 100% 68%)"; // component-token
-		}
-		return "hsl(216 8% 45%)"; // default muted-foreground
-	}, []);
-
 	// Update edge colors when node types change
 	useEffect(() => {
 		setEdges((currentEdges) =>
@@ -294,18 +294,15 @@ export const ComponentLibraryPlanner = ({
 				return edge;
 			}),
 		);
-	}, [nodes, setEdges, getEdgeColor]);
+	}, [nodes, setEdges]);
 
 	const onConnect = useCallback(
 		(params: Connection) => {
 			const sourceNode = nodes.find((n) => n.id === params.source);
 			const targetNode = nodes.find((n) => n.id === params.target);
 
-			let strokeColor = "hsl(216 8% 45%)"; // default muted-foreground
-
-			if (sourceNode && targetNode) {
-				strokeColor = getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType);
-			}
+			const strokeColor =
+				sourceNode && targetNode ? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType) : CONNECTION_TYPES.default.stroke;
 
 			const newEdge = {
 				...params,
@@ -316,12 +313,25 @@ export const ComponentLibraryPlanner = ({
 
 			setEdges((eds) => addEdge(newEdge, eds));
 		},
-		[nodes, setEdges, getEdgeColor],
+		[nodes, setEdges],
 	);
 
 	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null) => {
 		setSelectedNode(node);
 	}, []);
+
+	// Locking the canvas should also drop any existing selection so the
+	// properties panel can't keep editing a node while the canvas is read-only.
+	const handleCanvasLockChange = useCallback(
+		(locked: boolean) => {
+			setIsCanvasLocked(locked);
+			if (!locked) return;
+			setSelectedNode(null);
+			setNodes((nds) => nds.map((n) => (n.selected ? { ...n, selected: false } : n)));
+			setEdges((eds) => eds.map((e) => (e.selected ? { ...e, selected: false } : e)));
+		},
+		[setNodes, setEdges],
+	);
 
 	// Listen for custom nodeCreated events to update selection
 	useEffect(() => {
@@ -503,13 +513,12 @@ export const ComponentLibraryPlanner = ({
 				{!isSharedView && !isMobile && (
 					<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
 						<header>
-							<h2 className="text-lg font-semibold text-foreground mb-2 leading-tight font-display">Component Canvas</h2>
+							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">Component Canvas</h2>
 							<p className="text-xs text-muted-foreground">Design and visualize your component structure</p>
 						</header>
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
 						</Badge>
-						<ConnectionLegend />
 						<PropertiesPanel selectedNode={selectedNode} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />
 					</aside>
 				)}
@@ -525,30 +534,15 @@ export const ComponentLibraryPlanner = ({
 						</div>
 					)}
 
-					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
+					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
 						<Background className="[&>*]:!stroke-border" gap={16} />
-						<div className="z-10 absolute right-4 top-4 flex items-start gap-4">
-							<DockAwareControls dockVisible={!isSharedView && !isMobile} />
+						<div className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
+							<ConnectionLegend />
 							<MiniMap
-								className="max-lg:hidden relative m-0 bg-workspace border border-border"
-								nodeColor={(node) => {
-									const data = node.data as ComponentNodeData;
-									switch (data.componentType) {
-										case "main-component":
-											return "hsl(var(--component-main))";
-										case "variant":
-											return "hsl(var(--component-variant))";
-										case "sub-component":
-											return "hsl(var(--component-sub))";
-										case "token":
-											return "hsl(var(--component-token))";
-										case "instance":
-											return "hsl(var(--component-instance))";
-										default:
-											return "hsl(var(--muted))";
-									}
-								}}
+								className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
+								nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
 							/>
+							<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
 						</div>
 						{/* Primary navigation: floating dock with add, layout, project, and account menus */}
 						{!isSharedView && !isMobile && <NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onProjectUpdate={(updatedProject) => setCurrentProject(updatedProject)} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />}

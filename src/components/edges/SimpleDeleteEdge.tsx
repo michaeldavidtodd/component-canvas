@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -13,10 +13,17 @@ export default function SimpleDeleteEdge(props: EdgeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const [edgePath, labelX, labelY] = getBezierPath(props);
-  
-  const showButton = isHovered || props.selected;
+
+  // The canvas lock (Controls) clears `selectable`, so treat that as read-only.
+  const isLocked = !props.selectable;
+  const showButton = !isLocked && (isHovered || props.selected);
+
+  useEffect(() => {
+    if (isLocked) setIsHovered(false);
+  }, [isLocked]);
 
   const handleMouseEnter = () => {
+    if (isLocked) return;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -41,7 +48,7 @@ export default function SimpleDeleteEdge(props: EdgeProps) {
         fill="none"
         stroke="transparent"
         strokeWidth={40}
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: isLocked ? 'default' : 'pointer', pointerEvents: isLocked ? 'none' : 'all' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       />

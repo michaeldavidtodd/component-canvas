@@ -14,6 +14,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { ComponentNode } from '@/components/nodes/ComponentNode';
 import { ComponentType } from '@/types/component';
+import { getComponentColor } from '@/lib/componentTypes';
 import dagre from '@dagrejs/dagre';
 
 const nodeWidth = 200;
@@ -258,16 +259,7 @@ const InteractiveDemo = () => {
           }}
           nodeColor={(node) => {
             const nodeData = nodes.find(n => n.id === node.id)?.data;
-            if (!nodeData) return 'hsl(var(--muted))';
-            
-            switch (nodeData.componentType) {
-              case 'main-component': return 'hsl(var(--component-main))';
-              case 'variant': return 'hsl(var(--component-variant))';
-              case 'sub-component': return 'hsl(var(--component-sub))';
-              case 'token': return 'hsl(var(--component-token))';
-              case 'instance': return 'hsl(var(--component-instance))';
-              default: return 'hsl(var(--muted))';
-            }
+            return nodeData ? getComponentColor(nodeData.componentType as ComponentType) : 'hsl(var(--muted))';
           }}
         />
       </ReactFlow>

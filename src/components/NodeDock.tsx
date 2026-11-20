@@ -1,8 +1,9 @@
 import { ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { Component, Layers, Palette, Copy, Square, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle } from "lucide-react";
+import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle } from "lucide-react";
 import { ComponentType } from "@/types/component";
+import { COMPONENT_TYPES } from "@/lib/componentTypes";
 import type { Project } from "@/types/project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,51 +13,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
 
-interface NodeDockItem {
-	type: ComponentType;
-	label: string;
-	description: string;
-	icon: ReactNode;
-	color: string;
-}
-
-const nodeItems: NodeDockItem[] = [
-	{
-		type: "main-component",
-		label: "Main Component",
-		description: "The source of truth for a component",
-		icon: <Component className="h-4 w-4" />,
-		color: "bg-component-main",
-	},
-	{
-		type: "variant",
-		label: "Variant",
-		description: "A state or size of a main component",
-		icon: <Layers className="h-4 w-4" />,
-		color: "bg-component-variant",
-	},
-	{
-		type: "sub-component",
-		label: "Sub Component",
-		description: "A nested building block",
-		icon: <Square className="h-4 w-4" />,
-		color: "bg-component-sub",
-	},
-	{
-		type: "token",
-		label: "Design Token",
-		description: "A shared color, spacing, or size value",
-		icon: <Palette className="h-4 w-4" />,
-		color: "bg-component-token",
-	},
-	{
-		type: "instance",
-		label: "Instance",
-		description: "A usage of a component in a design",
-		icon: <Copy className="h-4 w-4" />,
-		color: "bg-component-instance",
-	},
-];
 
 // Approximate rendered node size, used to center a new node on the viewport
 const NODE_WIDTH = 200;
@@ -294,8 +250,8 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		if (group === "add") {
 			return (
 				<div className="space-y-0.5">
-					{nodeItems.map((item) => (
-						<DockRow key={item.type} icon={item.icon} title={item.label} description={item.description} tileClassName={`${item.color} text-white`} onClick={() => handleAdd(item.type)} />
+					{COMPONENT_TYPES.map(({ type, label, description, icon: Icon, bgClass }) => (
+						<DockRow key={type} icon={<Icon className="h-4 w-4" />} title={label} description={description} tileClassName={`${bgClass} text-white`} onClick={() => handleAdd(type)} />
 					))}
 				</div>
 			);

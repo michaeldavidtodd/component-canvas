@@ -1,67 +1,26 @@
-import { memo, useState, useCallback, useRef } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { ComponentType, ComponentNodeData } from "@/types/component";
-import { Component, Layers, Palette, Copy, Square, Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink } from "lucide-react";
+import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor } from "@/lib/componentTypes";
 
-const getNodeIcon = (type: ComponentType) => {
-	switch (type) {
-		case "main-component":
-			return <Component className="w-4 h-4" />;
-		case "variant":
-			return <Layers className="w-4 h-4" />;
-		case "sub-component":
-			return <Square className="w-4 h-4" />;
-		case "token":
-			return <Palette className="w-4 h-4" />;
-		case "instance":
-			return <Copy className="w-4 h-4" />;
-		default:
-			return <Component className="w-4 h-4" />;
-	}
-};
-
-const getNodeColor = (type: ComponentType) => {
-	switch (type) {
-		case "main-component":
-			return "bg-component-main";
-		case "variant":
-			return "bg-component-variant";
-		case "sub-component":
-			return "bg-component-sub";
-		case "token":
-			return "bg-component-token";
-		case "instance":
-			return "bg-component-instance";
-		default:
-			return "bg-muted text-muted-foreground";
-	}
-};
-
-const getBorderColor = (type: ComponentType) => {
-	switch (type) {
-		case "main-component":
-			return "border-component-main";
-		case "variant":
-			return "border-component-variant";
-		case "sub-component":
-			return "border-component-sub";
-		case "token":
-			return "border-component-token";
-		case "instance":
-			return "border-component-instance";
-		default:
-			return "border-border";
-	}
-};
-
-export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<ComponentNodeData>>) => {
+export const ComponentNode = memo(({ data, selected, id, selectable, isConnectable }: NodeProps<Node<ComponentNodeData>>) => {
 	const [hoveredSide, setHoveredSide] = useState<"top" | "bottom" | null>(null);
 	const timeoutRef = useRef<NodeJS.Timeout>();
 	const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
 
+	// The canvas lock (Controls) clears `selectable`, so treat that as read-only.
+	const isLocked = !selectable;
+
+	useEffect(() => {
+		if (isLocked) setHoveredSide(null);
+	}, [isLocked]);
+
 	// Get the current node to access its style (width)
 	const currentNode = useStore((s) => s.nodeLookup.get(id));
 	const nodeWidth = currentNode?.style?.width || 200;
+
+	const NodeIcon = getComponentIcon(data.componentType);
 
 	const addNode = useCallback(
 		(side: "top" | "bottom") => {
@@ -99,13 +58,7 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 			// Use same color logic as onConnect
 			const currentType = currentNode.data.componentType as ComponentType;
 			const newType = "main-component" as ComponentType;
-
-			let strokeColor = "hsl(216 8% 45%)"; // default
-			if ((currentType === "main-component" && newType === "variant") || (currentType === "variant" && newType === "main-component")) {
-				strokeColor = "hsl(258 100% 68%)";
-			} else if (currentType === "token" || newType === "token") {
-				strokeColor = "hsl(45 100% 68%)";
-			}
+			const strokeColor = getEdgeColor(currentType, newType);
 
 			// Create new edge
 			const newEdge = {
@@ -133,6 +86,7 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 	);
 
 	const handleMouseEnter = (side: "top" | "bottom") => {
+		if (isLocked) return;
 		if (timeoutRef.current) {
 			clearTimeout(timeoutRef.current);
 		}
@@ -147,17 +101,15 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 
 	return (
 		<div
-			className={`
-        relative bg-workspace border-2 rounded-lg shadow-md p-3
-        ${selected ? getBorderColor(data.componentType) : "border-border"}
-        transition-all duration-200 group
-      `}
+			className={` relative bg-workspace border-2 rounded-lg shadow-md p-3
+      	${selected ? getComponentBorderClass(data.componentType) : "border-border"}
+       	transition-all duration-200 group`}
 		>
-			<NodeResizer minWidth={160} minHeight={80} isVisible={selected} keepAspectRatio={false} />
+			<NodeResizer minWidth={160} minHeight={80} isVisible={selected && !isLocked} keepAspectRatio={false} />
 			{/* Top handle with add button */}
 			<div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("top")} onMouseLeave={handleMouseLeave}>
-				<Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-border hover:!bg-primary" />
-				{hoveredSide === "top" && (
+				<Handle type="target" position={Position.Top} isConnectable={isConnectable} className={`!w-3 !h-3 !bg-border${isConnectable ? " hover:!bg-primary" : ""}`} />
+				{!isLocked && hoveredSide === "top" && (
 					<div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("top")} onMouseLeave={handleMouseLeave}>
 						<button
 							className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
@@ -175,19 +127,13 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 			</div>
 
 			<div className="flex flex-col gap-2 mb-2">
-				<div className={`p-1.5 rounded-md flex items-center justify-center text-background ${getNodeColor(data.componentType)}`}>
-					{getNodeIcon(data.componentType)}
+				<div className="flex flex-row justify-between gap-2 items-center">
+					<p className={`text-[12px] capitalize ${getComponentTextClass(data.componentType)}`}>{data.componentType.replace("-", " ")}</p>
+					<div className={`p-1 gap-1 rounded-md flex items-center text-background ${getComponentBgClass(data.componentType)}`}>
+						<NodeIcon className="size-3" />
+					</div>
 				</div>
-				<div className="flex-1 min-w-0">
-					<h3 className="font-medium text-sm text-foreground leading-tight break-words">{data.label}</h3>
-					<p className="text-xs text-muted-foreground capitalize">{data.componentType.replace("-", " ")}</p>
-					{data.componentType === "token" && data.tokenType && (
-						<div className="text-xs text-muted-foreground mt-1 break-words">
-							<span className="font-medium">{data.tokenType}</span>
-							{data.tokenSubType && <span className="ml-1">• {data.tokenSubType}</span>}
-						</div>
-					)}
-				</div>
+				<h3 className="font-medium text-sm text-foreground leading-tight break-words">{data.label}</h3>
 				{/* Figma Link Button for main components */}
 				{data.componentType === "main-component" && data.url && (
 					<button
@@ -195,7 +141,8 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 							e.stopPropagation();
 							window.open(data.url, "_blank", "noopener,noreferrer");
 						}}
-						className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+						disabled={isLocked}
+						className={`p-1.5 rounded-md bg-primary/10 text-primary transition-colors${isLocked ? " opacity-50 cursor-not-allowed" : " hover:bg-primary/20"}`}
 						title="Open in Figma"
 					>
 						<ExternalLink className="w-3 h-3" />
@@ -205,10 +152,17 @@ export const ComponentNode = memo(({ data, selected, id }: NodeProps<Node<Compon
 
 			{data.description && <p className="text-xs text-muted-foreground break-words">{data.description}</p>}
 
+			{data.componentType === "token" && data.tokenType && (
+				<div className="flex mt-2 pt-1 border-t-2 border-muted-foreground/10 text-xs text-muted-foreground break-words">
+					<span>{data.tokenType}</span>
+					{data.tokenSubType && <span className="ml-1">• {data.tokenSubType}</span>}
+				</div>
+			)}
+
 			{/* Bottom handle with add button */}
 			<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("bottom")} onMouseLeave={handleMouseLeave}>
-				<Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-border hover:!bg-primary" />
-				{hoveredSide === "bottom" && (
+				<Handle type="source" position={Position.Bottom} isConnectable={isConnectable} className={`!w-3 !h-3 !bg-border${isConnectable ? " hover:!bg-primary" : ""}`} />
+				{!isLocked && hoveredSide === "bottom" && (
 					<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("bottom")} onMouseLeave={handleMouseLeave}>
 						<button
 							className="w-6 h-6 bg-primary hover:bg-primary/80 text-primary-foreground rounded-full flex items-center justify-center shadow-lg transition-colors z-50"
