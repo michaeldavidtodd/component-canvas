@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { History, Clock, User, RotateCcw, Maximize2, X } from 'lucide-react';
 import { getComponentTypeMeta } from '@/lib/componentTypes';
+import { normalizeEdges } from '@/lib/edges';
 import { formatDistanceToNow } from 'date-fns';
 import { ReactFlow, ReactFlowProvider, type NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -251,7 +252,7 @@ export const VersionHistory = ({
                 <ReactFlowProvider>
                   <ReactFlow
                     nodes={expandedVersion.nodes}
-                    edges={expandedVersion.edges}
+                    edges={normalizeEdges(expandedVersion.edges)}
                     nodeTypes={nodeTypes}
                     fitView
                     fitViewOptions={{ padding: 0.1, includeHiddenNodes: false }}

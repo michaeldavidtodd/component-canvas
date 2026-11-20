@@ -15,6 +15,7 @@ import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
 import { CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
+import { normalizeEdges } from "@/lib/edges";
 import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjectPersistence } from "@/hooks/useProjectPersistence";
@@ -234,7 +235,7 @@ export const ComponentLibraryPlanner = ({
 			const latestVersion = sharedProjectData.versions[0];
 			if (latestVersion) {
 				setNodes(latestVersion.nodes as Node<ComponentNodeData>[]);
-				setEdges(latestVersion.edges);
+				setEdges(normalizeEdges(latestVersion.edges));
 			}
 			setIsProjectInitialized(true);
 		}
@@ -255,14 +256,9 @@ export const ComponentLibraryPlanner = ({
 		console.log("🔍 ComponentLibraryPlanner: currentProject changed:", currentProject?.name);
 	}, [currentProject]);
 
-	// Update existing edges to use default type (for delete button functionality)
+	// Normalize existing edges: default type (for delete button) and solid lines
 	useEffect(() => {
-		setEdges((currentEdges) =>
-			currentEdges.map((edge) => ({
-				...edge,
-				type: "default",
-			})),
-		);
+		setEdges((currentEdges) => normalizeEdges(currentEdges));
 	}, [setEdges]); // Run once on mount
 
 	// Debug logging
@@ -307,7 +303,6 @@ export const ComponentLibraryPlanner = ({
 			const newEdge = {
 				...params,
 				type: "default",
-				animated: true,
 				style: { stroke: strokeColor },
 			};
 
@@ -468,7 +463,7 @@ export const ComponentLibraryPlanner = ({
 		(loadedNodes: Node[], loadedEdges: Edge[]) => {
 			console.log("📋 Loading project data:", { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
 			setNodes(loadedNodes);
-			setEdges(loadedEdges);
+			setEdges(normalizeEdges(loadedEdges));
 		},
 		[setNodes, setEdges],
 	);
@@ -512,7 +507,7 @@ export const ComponentLibraryPlanner = ({
 						onLoadVersion={loadVersion}
 						onVersionLoaded={(version) => {
 							setNodes(version.nodes as Node<ComponentNodeData>[]);
-							setEdges(version.edges);
+							setEdges(normalizeEdges(version.edges));
 						}}
 						nodeTypes={nodeTypes}
 					/>
