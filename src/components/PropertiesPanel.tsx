@@ -29,12 +29,12 @@ export const PropertiesPanel = ({
 }: PropertiesPanelProps) => {
   if (!selectedNode) {
     return (
-      <Card className="flex-1 bg-background border border-border p-6 overflow-y-auto rounded-xl">
+      <Card className="flex-1 p-6 overflow-y-auto rounded-xl">
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <h3 className="text-sm font-medium text-foreground mb-1">No Selection</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground text-balance">
               Select a component to view and edit its properties
             </p>
           </div>

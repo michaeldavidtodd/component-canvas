@@ -42,9 +42,9 @@
 
     /* Component type colors */
     --component-main: 258 100% 68%;
-    --component-variant: 197 100% 68%;
-    --component-sub: 152 100% 68%;
-    --component-token: 45 100% 68%;
+    --component-variant: 197 100% 58%;
+    --component-sub: 152 100% 45%;
+    --component-token: 45 100% 48%;
     --component-instance: 21 100% 68%;
 
     /* Status colors */
@@ -90,7 +90,7 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 54% 10%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
@@ -232,5 +232,5 @@
 
 /* Headings */
 h1, h2, h3 {
-	@apply font-display leading-tight;
+	@apply font-display leading-tight tracking-wide;
 }

@@ -1,23 +1,25 @@
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const ConnectionLegend = () => {
-  return (
-    <Card className="p-4 bg-background/95 backdrop-blur-sm border z-10">
-      <h3 className="text-sm font-semibold mb-3 text-foreground">Connection Types</h3>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-0.5 rounded bg-primary" />
-          <span className="text-xs text-muted-foreground">Component to Variant</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-0.5 rounded bg-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Component Relationships</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-0.5 rounded bg-component-token" />
-          <span className="text-xs text-muted-foreground">Token Usage</span>
-        </div>
-      </div>
-    </Card>
-  );
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-sm">Connection Types</CardTitle>
+			</CardHeader>
+			<CardContent className="space-y-2">
+				<div className="flex items-center gap-2">
+					<div className="w-6 h-0.5 rounded bg-primary" />
+					<span className="text-xs text-muted-foreground">Component to Variant</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<div className="w-6 h-0.5 rounded bg-muted-foreground" />
+					<span className="text-xs text-muted-foreground">Component Relationships</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<div className="w-6 h-0.5 rounded bg-component-token" />
+					<span className="text-xs text-muted-foreground">Token Usage</span>
+				</div>
+			</CardContent>
+		</Card>
+	);
 };
