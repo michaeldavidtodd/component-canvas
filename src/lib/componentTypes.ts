@@ -1,6 +1,7 @@
 import { Component, Copy, Layers, Palette, Square, type LucideIcon } from "lucide-react";
 
-import type { ComponentType } from "@/types/component";
+import type { ComponentType, TokenKind } from "@/types/component";
+import { isAliasToken } from "@/lib/tokenValues";
 
 /**
  * Single source of truth for how each node type is presented.
@@ -96,6 +97,16 @@ const CHILD_COMPONENT_TYPE: Record<ComponentType, ComponentType> = {
 
 /** Resolve the type for a node created as a child of `parentType`. */
 export const getChildComponentType = (parentType: string): ComponentType => CHILD_COMPONENT_TYPE[parentType as ComponentType] ?? "main-component";
+
+/**
+ * Label shown at the top of a canvas node for its type. Tokens are split into
+ * alias and literal so the two kinds are distinguishable at a glance.
+ * `tokenKind` falls back to literal, matching the properties panel.
+ */
+export const getNodeTypeLabel = (type: string, tokenKind?: TokenKind): string => {
+  if (type === "token") return isAliasToken(tokenKind) ? "Token Alias" : "Token Literal";
+  return type.replace("-", " ");
+};
 
 /** Neutral fallback for node types read from persisted data. */
 const FALLBACK_META: ComponentTypeMeta = {

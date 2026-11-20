@@ -2,7 +2,7 @@ import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { ComponentType, ComponentNodeData } from "@/types/component";
 import { Plus, ExternalLink } from "lucide-react";
-import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor, getChildComponentType } from "@/lib/componentTypes";
+import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor, getChildComponentType, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { EMPTY_TITLE_LAYERS, getAncestorChain, titleLayersEqual, type TitleLayer } from "@/lib/nodeHierarchy";
 
@@ -165,7 +165,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 
 			<div className="flex flex-col gap-2 mb-2">
 				<div className="flex flex-row justify-between gap-2 items-center">
-					<p className={`text-[12px] capitalize ${getComponentTextClass(data.componentType)}`}>{data.componentType.replace("-", " ")}</p>
+					<p className={`text-[12px] capitalize ${getComponentTextClass(data.componentType)}`}>{getNodeTypeLabel(data.componentType, data.tokenKind)}</p>
 					<div className={`p-1 gap-1 rounded-md flex items-center text-background ${getComponentBgClass(data.componentType)}`}>
 						<NodeIcon className="size-3" />
 					</div>
