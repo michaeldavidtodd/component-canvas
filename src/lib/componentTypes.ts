@@ -81,6 +81,22 @@ export const COMPONENT_TYPE_META: Record<ComponentType, ComponentTypeMeta> = {
 /** Ordered list for palettes, docks, and legends. */
 export const COMPONENT_TYPES: readonly ComponentTypeMeta[] = Object.values(COMPONENT_TYPE_META);
 
+/**
+ * The type a child node takes when it is created beneath a node of the given
+ * type. Adding below a node builds the hierarchy downward, so the child's type
+ * follows from its parent instead of defaulting to a main component.
+ */
+const CHILD_COMPONENT_TYPE: Record<ComponentType, ComponentType> = {
+  "main-component": "variant",
+  variant: "sub-component",
+  "sub-component": "sub-component",
+  token: "token",
+  instance: "variant",
+};
+
+/** Resolve the type for a node created as a child of `parentType`. */
+export const getChildComponentType = (parentType: string): ComponentType => CHILD_COMPONENT_TYPE[parentType as ComponentType] ?? "main-component";
+
 /** Neutral fallback for node types read from persisted data. */
 const FALLBACK_META: ComponentTypeMeta = {
   type: "main-component",

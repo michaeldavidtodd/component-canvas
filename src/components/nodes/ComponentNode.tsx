@@ -2,7 +2,7 @@ import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { ComponentType, ComponentNodeData } from "@/types/component";
 import { Plus, ExternalLink } from "lucide-react";
-import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor } from "@/lib/componentTypes";
+import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor, getChildComponentType } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { EMPTY_TITLE_LAYERS, getAncestorChain, titleLayersEqual, type TitleLayer } from "@/lib/nodeHierarchy";
 
@@ -62,6 +62,11 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 				y: currentNode.position.y + offsetY,
 			};
 
+			// Adding below builds the hierarchy downward, so the child's type follows
+			// from its parent. Adding above creates a new root main component.
+			const currentType = currentNode.data.componentType as ComponentType;
+			const newType: ComponentType = side === "bottom" ? getChildComponentType(currentType) : "main-component";
+
 			// Create new node with selected: true and proper dimensions
 			const newNode = {
 				id: newId,
@@ -70,15 +75,15 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 				selected: true,
 				style: { width: 200, height: 80 },
 				data: {
-					label: "New Component",
-					componentType: "main-component" as ComponentType,
-					description: "A new component",
+					label: "New Node",
+					componentType: newType,
+					description: "",
+					// Child tokens default to an alias so they reference an existing token.
+					...(newType === "token" ? { tokenKind: "alias" as const } : {}),
 				},
 			};
 
 			// Use same color logic as onConnect
-			const currentType = currentNode.data.componentType as ComponentType;
-			const newType = "main-component" as ComponentType;
 			const strokeColor = getEdgeColor(currentType, newType);
 
 			// Create new edge
