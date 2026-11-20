@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Check, FolderOpen, Loader2, Pencil, Plus, Search } from 'lucide-react';
+import { Check, Copy, FolderOpen, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +46,8 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
     createProject,
     saveVersion,
     updateProject,
+    deleteProject,
+    duplicateProject,
   } = useProject();
 
   const [query, setQuery] = useState('');
@@ -47,6 +61,10 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
   const [newDescription, setNewDescription] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [startFromCurrent, setStartFromCurrent] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -125,24 +143,80 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
     }
   };
 
+  const resetCreateForm = () => {
+    setShowCreate(false);
+    setNewName('');
+    setNewDescription('');
+    setStartFromCurrent(false);
+  };
+
+  const handleToggleCreate = () => {
+    if (showCreate) {
+      resetCreateForm();
+    } else {
+      setShowCreate(true);
+    }
+  };
+
   const handleCreateProject = async () => {
     const name = newName.trim();
     if (!name) return;
 
     setCreating(true);
     try {
+      if (startFromCurrent && currentProject) {
+        const duplicate = await duplicateProject(currentProject.id, {
+          name,
+          description: newDescription.trim() || undefined,
+        });
+        if (duplicate) {
+          resetCreateForm();
+          onOpenChange(false);
+        }
+        return;
+      }
+
       const project = await createProject(name, newDescription.trim() || undefined);
       if (project) {
         // Seed a version so the new project opens deterministically instead of
-        // inheriting whatever is currently on the canvas.
-        await saveVersion(project.id, [], [], undefined, 'Initial version', false);
-        setShowCreate(false);
-        setNewName('');
-        setNewDescription('');
+        // inheriting what's currently on the canvas.
+        const version = await saveVersion(project.id, [], [], undefined, 'Initial version', false);
+        if (!version) {
+          // Roll back so a failed create doesn't leave an empty project behind.
+          await deleteProject(project.id, { silent: true });
+          return;
+        }
+        resetCreateForm();
         onOpenChange(false);
       }
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDuplicateProject = async (project: Project) => {
+    setDuplicatingId(project.id);
+    try {
+      const duplicate = await duplicateProject(project.id);
+      if (duplicate) {
+        onOpenChange(false);
+      }
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    setDeleting(true);
+    try {
+      const deleted = await deleteProject(projectToDelete.id);
+      if (deleted) {
+        setProjectToDelete(null);
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -163,7 +237,8 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -182,7 +257,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               className="pl-8"
             />
           </div>
-          <Button onClick={() => setShowCreate((value) => !value)} className="gap-2">
+          <Button onClick={handleToggleCreate} className="gap-2" disabled={duplicatingId !== null}>
             <Plus className="h-4 w-4" />
             New project
           </Button>
@@ -204,11 +279,23 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               onChange={(event) => setNewDescription(event.target.value)}
               placeholder="Description (optional)"
             />
+            {currentProject && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="start-from-current"
+                  checked={startFromCurrent}
+                  onCheckedChange={(checked) => setStartFromCurrent(checked === true)}
+                />
+                <Label htmlFor="start-from-current" className="text-sm font-normal">
+                  Copy versions from “{currentProject.name}”
+                </Label>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>
+              <Button variant="ghost" size="sm" onClick={resetCreateForm}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleCreateProject} disabled={!newName.trim() || creating}>
+              <Button size="sm" onClick={handleCreateProject} disabled={!newName.trim() || creating || duplicatingId !== null}>
                 {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create'}
               </Button>
             </div>
@@ -322,15 +409,40 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                           size="sm"
                           className="h-8 w-8 p-0"
                           onClick={() => handleStartRename(project)}
+                          disabled={duplicatingId !== null}
                           aria-label={`Rename ${project.name}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDuplicateProject(project)}
+                          disabled={duplicatingId !== null}
+                          aria-label={`Duplicate ${project.name}`}
+                        >
+                          {duplicatingId === project.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => setProjectToDelete(project)}
+                          disabled={duplicatingId !== null}
+                          aria-label={`Delete ${project.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
                           variant={isActive ? 'secondary' : 'outline'}
                           size="sm"
                           onClick={() => handleOpenProject(project)}
-                          disabled={openingId === project.id}
+                          disabled={openingId === project.id || duplicatingId !== null}
                         >
                           {openingId === project.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -349,6 +461,38 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
           </div>
         </ScrollArea>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <AlertDialog
+        open={!!projectToDelete}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setProjectToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{projectToDelete?.name}” and all of its versions will be permanently deleted. Any share link will stop
+              working. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteProject();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

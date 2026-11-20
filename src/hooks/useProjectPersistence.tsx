@@ -429,6 +429,145 @@ export const useProjectPersistence = () => {
     }
   }, [toast]);
 
+  // Delete a project. Versions are removed by the database cascade.
+  const deleteProject = useCallback(async (projectId: string, options?: { silent?: boolean }) => {
+    if (!user) return false;
+
+    const remaining = projects.filter(p => p.id !== projectId);
+    const wasActive = currentProjectRef.current?.id === projectId;
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+
+      if (wasActive) {
+        if (remaining.length > 0) {
+          await selectProject(remaining[0]);
+        } else {
+          // Keep the app usable when the last project is deleted.
+          const replacement = await createProject('Untitled Project');
+          if (replacement) {
+            await saveVersion(replacement.id, [], [], undefined, 'Initial version', false);
+          }
+        }
+      }
+
+      if (!options?.silent) {
+        toast({
+          title: "Success",
+          description: "Project deleted successfully"
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, [user, projects, selectProject, createProject, saveVersion, toast]);
+
+  // Duplicate a project and all of its versions. The copy becomes active.
+  const duplicateProject = useCallback(async (
+    projectId: string,
+    overrides?: { name?: string; description?: string }
+  ) => {
+    if (!user) return null;
+
+    try {
+      let source = projects.find(p => p.id === projectId);
+      if (!source) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .single();
+        if (error) throw error;
+        source = data as Project;
+      }
+
+      const { data: versionRows, error: versionsError } = await supabase
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('version_number', { ascending: true });
+
+      if (versionsError) throw versionsError;
+
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          name: overrides?.name ?? `${source.name} (copy)`,
+          description: overrides?.description ?? source.description ?? null,
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      const newProject = projectData as Project;
+
+      if (versionRows && versionRows.length > 0) {
+        const copies = versionRows.map(row => ({
+          project_id: newProject.id,
+          version_number: row.version_number,
+          name: row.name,
+          nodes: row.nodes,
+          edges: row.edges,
+          viewport: row.viewport,
+          is_auto_save: row.is_auto_save,
+          created_at: row.created_at,
+        }));
+
+        const { error: copyError } = await supabase
+          .from('project_versions')
+          .insert(copies);
+
+        if (copyError) {
+          // Roll back so a failed copy doesn't leave an empty project behind.
+          await supabase.from('projects').delete().eq('id', newProject.id);
+          throw copyError;
+        }
+      } else {
+        // Keep the copy usable even when the source has no versions.
+        const version = await saveVersion(newProject.id, [], [], undefined, 'Initial version', false);
+        if (!version) {
+          await supabase.from('projects').delete().eq('id', newProject.id);
+          throw new Error('Failed to seed an initial version for the duplicate');
+        }
+      }
+
+      setProjects(prev => [newProject, ...prev]);
+      await selectProject(newProject);
+
+      toast({
+        title: "Success",
+        description: "Project duplicated successfully"
+      });
+
+      return newProject;
+    } catch (error) {
+      console.error('Error duplicating project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate project",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [user, projects, saveVersion, selectProject, toast]);
+
   const toggleProjectPublic = useCallback(async (projectId: string, isPublic: boolean) => {
     if (!user && !isAnonymous) return;
 
@@ -564,6 +703,8 @@ export const useProjectPersistence = () => {
     autoSave,
     loadVersion,
     deleteVersion,
+    deleteProject,
+    duplicateProject,
     loadProjects,
     loadVersions,
     toggleProjectPublic,
