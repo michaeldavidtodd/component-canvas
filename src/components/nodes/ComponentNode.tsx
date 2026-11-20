@@ -3,6 +3,7 @@ import { Handle, Position, useReactFlow, useStore, NodeResizer, type Node, type 
 import { ComponentType, ComponentNodeData } from "@/types/component";
 import { Plus, ExternalLink } from "lucide-react";
 import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor } from "@/lib/componentTypes";
+import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 
 export const ComponentNode = memo(({ data, selected, id, selectable, isConnectable }: NodeProps<Node<ComponentNodeData>>) => {
 	const [hoveredSide, setHoveredSide] = useState<"top" | "bottom" | null>(null);
@@ -21,6 +22,11 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 	const nodeWidth = currentNode?.style?.width || 200;
 
 	const NodeIcon = getComponentIcon(data.componentType);
+
+	// Fall back to the token type's default notation for nodes saved before formats existed.
+	const tokenFormat = data.tokenFormat ?? (data.tokenType ? getDefaultTokenFormat(data.tokenType) : undefined);
+	const tokenIsAlias = isAliasToken(data.tokenKind);
+	const tokenValueLabel = tokenIsAlias ? data.tokenAlias : data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
 
 	const addNode = useCallback(
 		(side: "top" | "bottom") => {
@@ -153,9 +159,19 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 			{data.description && <p className="text-xs text-muted-foreground break-words">{data.description}</p>}
 
 			{data.componentType === "token" && data.tokenType && (
-				<div className="flex mt-2 pt-1 border-t-2 border-muted-foreground/10 text-xs text-muted-foreground break-words">
-					<span>{data.tokenType}</span>
-					{data.tokenSubType && <span className="ml-1">• {data.tokenSubType}</span>}
+				<div className="mt-2 pt-1 border-t-2 border-muted-foreground/10 text-xs text-muted-foreground">
+					<div className="flex items-center justify-between gap-2">
+						<span className="min-w-0 truncate">
+							{data.tokenType}
+							{data.tokenSubType && <span> • {data.tokenSubType}</span>}
+						</span>
+						{tokenValueLabel && (
+							<span className="flex min-w-0 items-center gap-1 font-mono text-foreground">
+								{tokenIsAlias ? <span aria-hidden="true">→</span> : isColorToken(data.tokenType) && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: toCssColor(data.tokenValue, tokenFormat) ?? "transparent" }} aria-hidden="true" />}
+								<span className="truncate">{tokenValueLabel}</span>
+							</span>
+						)}
+					</div>
 				</div>
 			)}
 
