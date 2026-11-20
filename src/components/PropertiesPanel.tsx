@@ -85,7 +85,8 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 			// Keep the model honest: aliases have no value/unit, literals have no alias name.
 			tokenValue: isAlias ? undefined : selectedNode.data.tokenValue,
 			tokenFormat: isAlias ? undefined : selectedNode.data.tokenFormat,
-			tokenAlias: isAlias ? selectedNode.data.tokenAlias : undefined,
+			// The alias is the name, so carry the current name over when switching to alias.
+			tokenAlias: isAlias ? selectedNode.data.tokenAlias || selectedNode.data.label : undefined,
 		});
 	};
 
@@ -98,7 +99,8 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 	};
 
 	const handleTokenAliasChange = (value: string) => {
-		onUpdateNode(selectedNode.id, { tokenAlias: value });
+		// The alias is the component name for alias tokens, so keep both in sync.
+		onUpdateNode(selectedNode.id, { tokenAlias: value, label: value });
 	};
 
 	// Token type options
@@ -137,6 +139,8 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 	const tokenType = selectedNode.data.tokenType;
 	const tokenKind = selectedNode.data.tokenKind ?? "literal";
 	const tokenIsAlias = isAliasToken(tokenKind);
+	// Alias tokens use the alias as their name, so the separate name field is hidden.
+	const usesAliasAsName = selectedNode.data.componentType === "token" && tokenIsAlias;
 	const tokenKindOption = TOKEN_KIND_OPTIONS.find((option) => option.value === tokenKind);
 	const tokenFormat = selectedNode.data.tokenFormat || (tokenType ? getDefaultTokenFormat(tokenType) : undefined);
 	const tokenFormatOptions = getTokenFormatOptions(tokenType);
@@ -161,10 +165,12 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 			</div>
 
 			<div className="flex flex-col gap-4">
-				<Field>
-					<Label htmlFor="component-name">Component Name</Label>
-					<Input id="component-name" value={selectedNode.data.label} onChange={(e) => handleLabelChange(e.target.value)} placeholder="Enter component name" className="mt-1" />
-				</Field>
+				{!usesAliasAsName && (
+					<Field>
+						<Label htmlFor="component-name">Component Name</Label>
+						<Input id="component-name" value={selectedNode.data.label} onChange={(e) => handleLabelChange(e.target.value)} placeholder="Enter component name" className="mt-1" />
+					</Field>
+				)}
 
 				<Field>
 					<Label htmlFor="component-type" className="text-sm font-medium">
@@ -289,50 +295,58 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 									</ToggleGroup>
 									{tokenKindOption && <p className="py-1 text-xs text-muted-foreground">{tokenKindOption.description}</p>}
 								</Field>
+							</>
+						)}
+
+						{tokenIsAlias && (
+							<>
 								<div className="w-0.5 h-6 mx-auto bg-secondary" />
-								{tokenIsAlias ? (
+								<Field>
+									<Label htmlFor="token-alias" className="text-sm font-medium text-muted-foreground">
+										Component Name
+									</Label>
+									<Input id="token-alias" value={selectedNode.data.tokenAlias || ""} onChange={(e) => handleTokenAliasChange(e.target.value)} placeholder="color.brand.primary" className="font-mono" />
+									<p className="text-xs text-muted-foreground">Alias tokens are named after the token they reference</p>
+								</Field>
+							</>
+						)}
+
+						{!tokenIsAlias && tokenType && (
+							<>
+								<div className="w-0.5 h-6 mx-auto bg-secondary" />
+								<div className="flex flex-row">
 									<Field>
-										<Label htmlFor="token-alias" className="text-sm font-medium text-muted-foreground">
-											Alias
+										<Label htmlFor="token-format" className="text-sm font-medium text-muted-foreground">
+											{isColorToken(tokenType) ? "Color Format" : "Unit"}
 										</Label>
-										<Input id="token-alias" value={selectedNode.data.tokenAlias || ""} onChange={(e) => handleTokenAliasChange(e.target.value)} placeholder="color.brand.primary" />
-										<p className="text-xs text-muted-foreground">Name of the token this references</p>
+										<Select value={tokenFormat} onValueChange={handleTokenFormatChange}>
+											<SelectTrigger className="mt-1">
+												<SelectValue placeholder="Select format" />
+											</SelectTrigger>
+											<SelectContent>
+												{tokenFormatOptions.map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</Field>
-								) : (
-									<div className="flex flex-row">
-										<Field>
-											<Label htmlFor="token-format" className="text-sm font-medium text-muted-foreground">
-												{isColorToken(tokenType) ? "Color Format" : "Unit"}
-											</Label>
-											<Select value={tokenFormat} onValueChange={handleTokenFormatChange}>
-												<SelectTrigger className="mt-1">
-													<SelectValue placeholder="Select format" />
-												</SelectTrigger>
-												<SelectContent>
-													{tokenFormatOptions.map((option) => (
-														<SelectItem key={option.value} value={option.value}>
-															{option.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</Field>
-										<div>
-											<div className="w-0.5 h-9 mx-auto bg-secondary" />
-											<div className="w-6 h-0.5 mx-auto bg-secondary" />
-										</div>
-										<Field>
-											<Label htmlFor="token-value" className="text-sm font-medium text-muted-foreground">
-												Value
-											</Label>
-											<div className="flex items-center gap-2">
-												{isColorToken(tokenType) && <span className="ml-2 size-6 shrink-0 rounded border border-border" style={{ backgroundColor: tokenColorPreview ?? "transparent" }} aria-hidden="true" />}
-												<Input id="token-value" value={selectedNode.data.tokenValue || ""} onChange={(e) => handleTokenValueChange(e.target.value)} placeholder={tokenFormatPlaceholder} className="mt-0 border-x-0 border-b-0 rounded-xl" inputMode={isColorToken(tokenType) ? "text" : "decimal"} aria-invalid={tokenValueIsInvalid} />
-											</div>
-											{tokenValueIsInvalid && <p className="text-xs text-destructive mt-1">Enter a valid {isColorToken(tokenType) ? tokenFormat?.toUpperCase() : tokenFormat} value</p>}
-										</Field>
+									<div>
+										<div className="w-0.5 h-9 mx-auto bg-secondary" />
+										<div className="w-6 h-0.5 mx-auto bg-secondary" />
 									</div>
-								)}
+									<Field>
+										<Label htmlFor="token-value" className="text-sm font-medium text-muted-foreground">
+											Value
+										</Label>
+										<div className="flex items-center gap-2">
+											{isColorToken(tokenType) && <span className="ml-2 size-6 shrink-0 rounded border border-border" style={{ backgroundColor: tokenColorPreview ?? "transparent" }} aria-hidden="true" />}
+											<Input id="token-value" value={selectedNode.data.tokenValue || ""} onChange={(e) => handleTokenValueChange(e.target.value)} placeholder={tokenFormatPlaceholder} className="mt-0 border-x-0 border-b-0 rounded-xl" inputMode={isColorToken(tokenType) ? "text" : "decimal"} aria-invalid={tokenValueIsInvalid} />
+										</div>
+										{tokenValueIsInvalid && <p className="text-xs text-destructive mt-1">Enter a valid {isColorToken(tokenType) ? tokenFormat?.toUpperCase() : tokenFormat} value</p>}
+									</Field>
+								</div>
 							</>
 						)}
 					</div>

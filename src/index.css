@@ -157,6 +157,7 @@
 /* In-app display typeface. Marketing surfaces keep the Boldonse default. */
 .app-shell {
   --font-display: 'Unbounded';
+  --font-mono: 'DM Mono';
 }
 
 /* React Flow custom styles */

@@ -41,7 +41,10 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 	// Fall back to the token type's default notation for nodes saved before formats existed.
 	const tokenFormat = data.tokenFormat ?? (data.tokenType ? getDefaultTokenFormat(data.tokenType) : undefined);
 	const tokenIsAlias = isAliasToken(data.tokenKind);
-	const tokenValueLabel = tokenIsAlias ? data.tokenAlias : data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
+	// Alias tokens are named after the token they reference, so the alias doubles as the name.
+	const displayName = tokenIsAlias && data.tokenAlias ? data.tokenAlias : data.label;
+	// Only literal tokens carry a value; aliases show their name in the title instead.
+	const tokenValueLabel = !tokenIsAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
 
 	const addNode = useCallback(
 		(side: "top" | "bottom") => {
@@ -170,7 +173,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 						<NodeIcon className="size-3" />
 					</div>
 				</div>
-				<h3 className="font-medium text-sm text-foreground leading-tight break-words">
+				<h3 className={`font-medium text-sm text-foreground leading-tight break-words${tokenIsAlias ? " font-mono" : ""}`}>
 					{titleLayers ? (
 						<span className="flex flex-wrap items-baseline gap-x-1">
 							{titleLayers.map((layer, index) => {
@@ -194,7 +197,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 							})}
 						</span>
 					) : (
-						data.label
+						displayName
 					)}
 				</h3>
 				{/* Figma Link Button for main components */}
@@ -224,7 +227,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 						</span>
 						{tokenValueLabel && (
 							<span className="flex min-w-0 items-center gap-1 font-mono text-foreground">
-								{tokenIsAlias ? <span aria-hidden="true">→</span> : isColorToken(data.tokenType) && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: toCssColor(data.tokenValue, tokenFormat) ?? "transparent" }} aria-hidden="true" />}
+								{isColorToken(data.tokenType) && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: toCssColor(data.tokenValue, tokenFormat) ?? "transparent" }} aria-hidden="true" />}
 								<span className="truncate">{tokenValueLabel}</span>
 							</span>
 						)}

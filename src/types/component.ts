@@ -36,7 +36,7 @@ export interface ComponentNodeData extends Record<string, unknown> {
 	tokenValue?: string;
 	/** Notation/unit the value is expressed in, e.g. "hex" or "rem". */
 	tokenFormat?: TokenValueFormat;
-	  /** Name of the token this alias points to. Only used when tokenKind is "alias". */
+	  /** Name of the token this alias points to. Doubles as the node's display name. */
 	  tokenAlias?: string;
 	  /**
 	   * Explicit parent relationship, independent of canvas edges.

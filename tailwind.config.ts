@@ -99,7 +99,8 @@ export default {
 				// Marketing pages fall back to Boldonse; the app shell sets Geist.
 				'display': ['var(--font-display, Boldonse)', 'Inter', 'system-ui', 'sans-serif'],
 				'sans': ['Inter', 'system-ui', 'sans-serif'],
-				'mono': ['JetBrains Mono', 'monospace'],
+				// Mono face is overridable per surface via --font-mono.
+				'mono': ['var(--font-mono, "JetBrains Mono")', 'monospace'],
 			},
 			keyframes: {
 				'accordion-down': {
