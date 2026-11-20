@@ -481,17 +481,19 @@ export const ComponentLibraryPlanner = ({
 				)}
 
 				{/* Aside */}
-				<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
-					<header>
-						<h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">Component Canvas</h2>
-						<p className="text-xs text-muted-foreground">Design and visualize your component structure</p>
-					</header>
-					<Badge variant="default" className="md:hidden mt-4">
-						Read-only on mobile
-					</Badge>
-					<ConnectionLegend />
-					{!isSharedView && !isMobile && <PropertiesPanel selectedNode={selectedNode} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />}
-				</aside>
+				{!isSharedView && !isMobile && (
+					<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
+						<header>
+							<h2 className="text-lg font-semibold text-foreground mb-2 leading-tight">Component Canvas</h2>
+							<p className="text-xs text-muted-foreground">Design and visualize your component structure</p>
+						</header>
+						<Badge variant="default" className="md:hidden mt-4">
+							Read-only on mobile
+						</Badge>
+						<ConnectionLegend />
+						<PropertiesPanel selectedNode={selectedNode} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />
+					</aside>
+				)}
 
 				<div className="flex-1 relative">
 					{/* Mobile Sign-out Button */}
@@ -504,12 +506,12 @@ export const ComponentLibraryPlanner = ({
 						</div>
 					)}
 
-					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border border-border">
+					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
 						<Background className="[&>*]:!stroke-border" gap={16} />
-						<div className="max-xl:hidden z-10 absolute right-4 top-4 flex items-start gap-4">
+						<div className="z-10 absolute right-4 top-4 flex items-start gap-4">
 							<DockAwareControls dockVisible={!isSharedView && !isMobile} />
 							<MiniMap
-								className="relative m-0 bg-workspace border border-border"
+								className="max-lg:hidden relative m-0 bg-workspace border border-border"
 								nodeColor={(node) => {
 									const data = node.data as ComponentNodeData;
 									switch (data.componentType) {
