@@ -7,10 +7,17 @@ export interface KeyboardShortcutHandlers {
 	onShowHistory: () => void;
 	onUndo: () => void;
 	onRedo: () => void;
+	onToggleUI: () => void;
 }
 
 interface UseKeyboardShortcutsOptions {
 	enabled?: boolean;
+	/**
+	 * Keeps the UI toggle shortcut active even when the canvas is locked. The
+	 * dock and properties panel hold the controls needed to unlock, so hiding
+	 * them must never strand the user.
+	 */
+	uiToggleEnabled?: boolean;
 }
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -28,12 +35,12 @@ const isModalOpen = (): boolean =>
  * open. `Cmd` is the primary modifier (macOS); history uses `Ctrl+H` because
  * macOS reserves `Cmd+H` for hiding the app.
  */
-export const useKeyboardShortcuts = (handlers: KeyboardShortcutHandlers, { enabled = true }: UseKeyboardShortcutsOptions = {}) => {
+export const useKeyboardShortcuts = (handlers: KeyboardShortcutHandlers, { enabled = true, uiToggleEnabled = enabled }: UseKeyboardShortcutsOptions = {}) => {
 	const handlersRef = useRef(handlers);
 	handlersRef.current = handlers;
 
 	useEffect(() => {
-		if (!enabled) return;
+		if (!enabled && !uiToggleEnabled) return;
 
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (isEditableTarget(event.target) || isModalOpen()) return;
@@ -41,6 +48,17 @@ export const useKeyboardShortcuts = (handlers: KeyboardShortcutHandlers, { enabl
 			const key = event.key.toLowerCase();
 			const command = event.metaKey;
 			const noAlt = !event.altKey;
+
+			// Cmd+\ toggles the canvas UI. Checked before the `enabled` gate so the
+			// user can always bring the dock back, even while the canvas is locked.
+			if (command && !event.shiftKey && noAlt && key === "\\") {
+				if (!uiToggleEnabled) return;
+				event.preventDefault();
+				handlersRef.current.onToggleUI();
+				return;
+			}
+
+			if (!enabled) return;
 
 			if (command && !event.shiftKey && noAlt && key === "n") {
 				event.preventDefault();
@@ -83,5 +101,5 @@ export const useKeyboardShortcuts = (handlers: KeyboardShortcutHandlers, { enabl
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [enabled]);
+	}, [enabled, uiToggleEnabled]);
 };

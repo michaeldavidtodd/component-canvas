@@ -135,20 +135,24 @@ const NEW_NODE_HEIGHT = 100;
  */
 const KeyboardShortcuts = ({
 	enabled,
+	uiToggleEnabled,
 	onAddNode,
 	onSave,
 	onOptimizeLayout,
 	onShowHistory,
 	onUndo,
 	onRedo,
+	onToggleUI,
 }: {
 	enabled: boolean;
+	uiToggleEnabled: boolean;
 	onAddNode: (type: ComponentType, position: { x: number; y: number }) => void;
 	onSave: () => void;
 	onOptimizeLayout: () => void;
 	onShowHistory: () => void;
 	onUndo: () => void;
 	onRedo: () => void;
+	onToggleUI: () => void;
 }) => {
 	const { getViewport } = useReactFlow();
 	const width = useStore((state) => state.width);
@@ -170,8 +174,9 @@ const KeyboardShortcuts = ({
 			onShowHistory,
 			onUndo,
 			onRedo,
+			onToggleUI,
 		},
-		{ enabled },
+		{ enabled, uiToggleEnabled },
 	);
 
 	return null;
@@ -273,6 +278,9 @@ export const ComponentLibraryPlanner = ({
 	const [showOnboarding, setShowOnboarding] = useState(false);
 	// Mirrors the Controls lock button so canvas handlers can be disabled while locked.
 	const [isCanvasLocked, setIsCanvasLocked] = useState(false);
+	// Hides the properties panel, floating UI, and dock so the canvas can be
+	// viewed unobstructed. Cmd+\ toggles it back.
+	const [isUIHidden, setIsUIHidden] = useState(false);
 	const { user, isAnonymous, signOut } = useAuth();
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
@@ -599,7 +607,7 @@ export const ComponentLibraryPlanner = ({
 				)}
 
 				{/* Aside */}
-				{!isSharedView && !isMobile && (
+				{!isSharedView && !isMobile && !isUIHidden && (
 					<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
 						<header>
 							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">Component Canvas</h2>
@@ -625,16 +633,34 @@ export const ComponentLibraryPlanner = ({
 
 					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
 						<Background className="[&>*]:!stroke-border" gap={16} />
-						<div className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
-							<ConnectionLegend />
-							<MiniMap
-								className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
-								nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
-							/>
-							<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
-						</div>
+						{!isUIHidden && (
+							<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
+								<ConnectionLegend />
+								<MiniMap
+									className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
+									nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
+								/>
+								<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
+							</div>
+						)}
 						{/* Primary navigation: floating dock with add, layout, project, and account menus */}
-						{!isSharedView && !isMobile && <NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />}
+						{!isSharedView && !isMobile && (isUIHidden ? (
+							<button
+								type="button"
+								onPointerDown={(event) => event.stopPropagation()}
+								onClick={(event) => {
+									event.stopPropagation();
+									setIsUIHidden(false);
+								}}
+								className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<span>Press</span>
+								<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">⌘<span className="px-1 text-muted-foreground">+</span>\</kbd>
+								<span>to show UI</span>
+							</button>
+						) : (
+							<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
+						))}
 						{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
 						{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
 						{/* Auto layout handler */}
@@ -642,12 +668,14 @@ export const ComponentLibraryPlanner = ({
 						{/* Keyboard shortcuts */}
 						<KeyboardShortcuts
 							enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
+							uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding}
 							onAddNode={addNode}
 							onSave={handleManualSave}
 							onOptimizeLayout={() => onLayout("TB")}
 							onShowHistory={() => setShowVersionHistory(true)}
 							onUndo={undo}
 							onRedo={redo}
+							onToggleUI={() => setIsUIHidden((hidden) => !hidden)}
 						/>
 					</ReactFlow>
 				</div>

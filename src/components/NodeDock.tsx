@@ -1,7 +1,7 @@
 import { ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle } from "lucide-react";
+import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff } from "lucide-react";
 import { ComponentType } from "@/types/component";
 import { COMPONENT_TYPES } from "@/lib/componentTypes";
 import type { Project } from "@/types/project";
@@ -77,6 +77,7 @@ interface NodeDockProps {
 	onCleanupLayout?: () => void;
 	autoSmartLayout?: boolean;
 	onToggleAutoSmartLayout?: () => void;
+	onToggleUI?: () => void;
 	// Project
 	user?: AuthUser | null;
 	isAnonymous?: boolean;
@@ -99,7 +100,7 @@ interface NodeDockProps {
  * focusing a group expands its menu upward, revealing the options for that
  * group. The dock is the app's primary navigation.
  */
-export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
+export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
 	const [activeGroup, setActiveGroup] = useState<DockGroupId | null>(null);
 	// Keep the last opened group mounted so its content stays visible while the
 	// container animates closed.
@@ -259,6 +260,7 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 					<DockRow icon={<Sparkles className="h-4 w-4" />} title="Optimize" description="Arrange nodes into a clean tree layout" badge="Once" onClick={onSmartLayout} />
 					<DockRow icon={<LayoutGrid className="h-4 w-4" />} title="Clean up" description="Snap nodes to the grid" badge="Once" onClick={onCleanupLayout} />
 					<DockRow icon={autoSmartLayout ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />} title="Auto-optimize" description="Keep the layout tidy as you build" badge={autoSmartLayout ? "On" : "Off"} badgeVariant={autoSmartLayout ? "default" : "outline"} tileClassName={autoSmartLayout ? "bg-primary text-primary-foreground" : undefined} onClick={onToggleAutoSmartLayout} />
+					<DockRow icon={<EyeOff className="h-4 w-4" />} title="Hide UI" description="Hide panels and dock for a clean canvas" badge={"⌘\\"} onClick={onToggleUI} />
 				</div>
 			);
 		}
