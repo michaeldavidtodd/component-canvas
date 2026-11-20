@@ -28,6 +28,14 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 	const titleLayers: TitleLayer[] | null =
 		showsAncestorChain && ancestorChain.length > 0 ? [...ancestorChain, { id, label: data.label, componentType: data.componentType }] : null;
 
+	// Highlight variants whose parent is the currently selected main component.
+	const selectedMainComponentId = useStore((s) => {
+		const selectedMain = s.nodes.find((node) => node.selected && (node.data as ComponentNodeData).componentType === "main-component");
+		return selectedMain?.id;
+	});
+	const immediateParentId = ancestorChain[ancestorChain.length - 1]?.id;
+	const isChildOfSelectedMain = data.componentType === "variant" && selectedMainComponentId !== undefined && immediateParentId === selectedMainComponentId;
+
 	const NodeIcon = getComponentIcon(data.componentType);
 
 	// Fall back to the token type's default notation for nodes saved before formats existed.
@@ -124,8 +132,9 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 
 	return (
 		<div
+			data-highlighted={isChildOfSelectedMain || undefined}
 			className={` relative bg-workspace border-2 rounded-lg shadow-md p-3
-      	${selected ? getComponentBorderClass(data.componentType) : "border-border"}
+      	${selected ? getComponentBorderClass(data.componentType) : isChildOfSelectedMain ? "border-component-main ring-2 ring-component-main" : "border-border"}
        	transition-all duration-200 group`}
 		>
 			<NodeResizer minWidth={160} minHeight={80} isVisible={selected && !isLocked} keepAspectRatio={false} />
