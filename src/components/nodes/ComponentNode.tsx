@@ -4,6 +4,7 @@ import { ComponentType, ComponentNodeData } from "@/types/component";
 import { Plus, ExternalLink } from "lucide-react";
 import { getComponentBgClass, getComponentBorderClass, getComponentIcon, getComponentTextClass, getEdgeColor } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
+import { EMPTY_TITLE_LAYERS, getAncestorChain, titleLayersEqual, type TitleLayer } from "@/lib/nodeHierarchy";
 
 export const ComponentNode = memo(({ data, selected, id, selectable, isConnectable }: NodeProps<Node<ComponentNodeData>>) => {
 	const [hoveredSide, setHoveredSide] = useState<"top" | "bottom" | null>(null);
@@ -20,6 +21,12 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 	// Get the current node to access its style (width)
 	const currentNode = useStore((s) => s.nodeLookup.get(id));
 	const nodeWidth = currentNode?.style?.width || 200;
+
+	// Variants and sub-components show their structural ancestors as a breadcrumb title.
+	const showsAncestorChain = data.componentType === "variant" || data.componentType === "sub-component";
+	const ancestorChain = useStore((s) => (showsAncestorChain ? getAncestorChain(id, s.nodeLookup, s.edges) : EMPTY_TITLE_LAYERS), titleLayersEqual);
+	const titleLayers: TitleLayer[] | null =
+		showsAncestorChain && ancestorChain.length > 0 ? [...ancestorChain, { id, label: data.label, componentType: data.componentType }] : null;
 
 	const NodeIcon = getComponentIcon(data.componentType);
 
@@ -139,7 +146,33 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 						<NodeIcon className="size-3" />
 					</div>
 				</div>
-				<h3 className="font-medium text-sm text-foreground leading-tight break-words">{data.label}</h3>
+				<h3 className="font-medium text-sm text-foreground leading-tight break-words">
+					{titleLayers ? (
+						<span className="flex flex-wrap items-baseline gap-x-1">
+							{titleLayers.map((layer, index) => {
+								const isLast = index === titleLayers.length - 1;
+								return (
+									<span
+										key={layer.id}
+										className={`title-layer inline-flex min-w-0 items-baseline gap-1 ${isLast ? "text-foreground" : "text-muted-foreground"}`}
+										data-depth={index}
+										data-component-type={layer.componentType}
+										data-current={isLast}
+									>
+										<span className="title-layer-label break-words">{layer.label}</span>
+										{!isLast && (
+											<span className="title-layer-separator text-muted-foreground/60" aria-hidden="true">
+												/
+											</span>
+										)}
+									</span>
+								);
+							})}
+						</span>
+					) : (
+						data.label
+					)}
+				</h3>
 				{/* Figma Link Button for main components */}
 				{data.componentType === "main-component" && data.url && (
 					<button
