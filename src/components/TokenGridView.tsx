@@ -449,7 +449,7 @@ export const TokenGridView = ({
 
 	return (
 		<div className="flex h-full flex-col bg-canvas" onClick={() => onNodeSelect(null)}>
-			<header className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+			<header className="flex flex-wrap items-center justify-between gap-3 pr-6 py-4">
 				<div className="flex flex-wrap items-center gap-1.5">
 					{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
 						const isVisible = visibleTypes.has(type);
@@ -463,12 +463,12 @@ export const TokenGridView = ({
 								title={`${isVisible ? "Hide" : "Show"} ${label}`}
 								onClick={() => onToggleType(type)}
 								className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-									isVisible ? `${bgClass} ${borderClass} text-white` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+									isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
 								}`}
 							>
 								<Icon className="size-3.5" />
 								<span>{label}</span>
-								<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white" : "bg-background text-muted-foreground"}`}>{count}</span>
+								<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white dark:text-black" : "bg-background text-muted-foreground"}`}>{count}</span>
 							</button>
 						);
 					})}
