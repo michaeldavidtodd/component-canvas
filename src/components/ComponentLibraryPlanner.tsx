@@ -6,6 +6,7 @@ import dagre from "@dagrejs/dagre";
 import { ComponentNode } from "./nodes/ComponentNode";
 import SimpleDeleteEdge from "./edges/SimpleDeleteEdge";
 import { NodeDock } from "./NodeDock";
+import { TokenGridView } from "./TokenGridView";
 
 import { PropertiesPanel } from "./PropertiesPanel";
 import { ConnectionLegend } from "./ConnectionLegend";
@@ -19,6 +20,7 @@ import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } fr
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
 import type { SharedProjectData } from "@/types/project";
+import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from '@/hooks/project-context';
 import { useUndoRedo } from "@/hooks/useUndoRedo";
@@ -282,11 +284,14 @@ export const ComponentLibraryPlanner = ({
 	// Hides the properties panel, floating UI, and dock so the canvas can be
 	// viewed unobstructed. Cmd+\ toggles it back.
 	const [isUIHidden, setIsUIHidden] = useState(false);
+	// The canvas is the free-form editor; the token map is a structured read of
+	// the same nodes and edges.
+	const [viewMode, setViewMode] = useState<ViewMode>("canvas");
 	const { user, isAnonymous, signOut } = useAuth();
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
 
-	const { undo, redo, reset: resetHistory } = useUndoRedo({
+	const { undo, redo, reset: resetHistory, canUndo, canRedo } = useUndoRedo({
 		nodes,
 		edges,
 		setNodes,
@@ -480,6 +485,29 @@ export const ComponentLibraryPlanner = ({
 		}
 	}, [selectedNode, setNodes, setEdges]);
 
+	// Re-order a node within its token-map sibling group by moving it to the
+	// target's position and assigning an explicit `order` to every sibling. The
+	// canvas layout ignores this field.
+	const reorderNode = useCallback(
+		(siblingIds: string[], draggedId: string, targetId: string) => {
+			const fromIndex = siblingIds.indexOf(draggedId);
+			const toIndex = siblingIds.indexOf(targetId);
+			if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+			const reordered = [...siblingIds];
+			const [moved] = reordered.splice(fromIndex, 1);
+			reordered.splice(toIndex, 0, moved);
+
+			setNodes((nds) =>
+				nds.map((node) => {
+					const order = reordered.indexOf(node.id);
+					return order === -1 ? node : { ...node, data: { ...node.data, order } };
+				}),
+			);
+		},
+		[setNodes],
+	);
+
 	const onLayout = useCallback(
 		(direction = "TB") => {
 			console.log("🔧 LAYOUT STARTED:", { direction, nodesCount: nodes.length, edgesCount: edges.length });
@@ -616,10 +644,10 @@ export const ComponentLibraryPlanner = ({
 
 				{/* Aside */}
 				{!isSharedView && !isMobile && !isUIHidden && (
-					<aside className="flex flex-col gap-4 w-80 m-2 xl:m-4">
+					<aside className="flex shrink-0 flex-col gap-4 w-80 m-2 xl:m-4">
 						<header>
-							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">Component Canvas</h2>
-							<p className="text-xs text-muted-foreground">Design and visualize your component structure</p>
+							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">{viewMode === "canvas" ? "Component Canvas" : "Token Map"}</h2>
+							<p className="text-xs text-muted-foreground">{viewMode === "canvas" ? "Design and visualize your component structure" : "Inspect and edit the selected token or usage"}</p>
 						</header>
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
@@ -628,7 +656,7 @@ export const ComponentLibraryPlanner = ({
 					</aside>
 				)}
 
-				<div className="flex-1 relative">
+				<div className="flex-1 min-w-0 relative">
 					{/* Mobile Sign-out Button */}
 					{isMobile && !isSharedView && (
 						<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
@@ -639,53 +667,70 @@ export const ComponentLibraryPlanner = ({
 						</div>
 					)}
 
-					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} multiSelectionKeyCode="Shift" selectionKeyCode="Shift" selectionMode={SelectionMode.Partial} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
-						<Background className="[&>*]:!stroke-border" gap={16} />
-						{!isUIHidden && (
-							<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
-								<ConnectionLegend />
-								<MiniMap
-									className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
-									nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
-								/>
-								<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
-							</div>
-						)}
-						{/* Primary navigation: floating dock with add, layout, project, and account menus */}
-						{!isSharedView && !isMobile && (isUIHidden ? (
-							<button
-								type="button"
-								onPointerDown={(event) => event.stopPropagation()}
-								onClick={(event) => {
-									event.stopPropagation();
-									setIsUIHidden(false);
-								}}
-								className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<span>Press</span>
-								<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">⌘<span className="px-1 text-muted-foreground">+</span>\</kbd>
-								<span>to show UI</span>
-							</button>
-						) : (
-							<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
-						))}
-						{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
-						{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
-						{/* Auto layout handler */}
-						<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
-						{/* Keyboard shortcuts */}
-						<KeyboardShortcuts
-							enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
-							uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding}
-							onAddNode={addNode}
-							onSave={handleManualSave}
-							onOptimizeLayout={() => onLayout("TB")}
-							onShowHistory={() => setShowVersionHistory(true)}
+					{viewMode === "canvas" ? (
+						<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile && !isCanvasLocked} nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked} elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked} multiSelectionKeyCode="Shift" selectionKeyCode="Shift" selectionMode={SelectionMode.Partial} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
+							<Background className="[&>*]:!stroke-border" gap={16} />
+							{!isUIHidden && (
+								<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
+									<ConnectionLegend />
+									<MiniMap
+										className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
+										nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
+									/>
+									<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
+								</div>
+							)}
+							{/* Auto layout handler */}
+							<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
+							{/* Keyboard shortcuts */}
+							<KeyboardShortcuts
+								enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
+								uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding}
+								onAddNode={addNode}
+								onSave={handleManualSave}
+								onOptimizeLayout={() => onLayout("TB")}
+								onShowHistory={() => setShowVersionHistory(true)}
+								onUndo={undo}
+								onRedo={redo}
+								onToggleUI={() => setIsUIHidden((hidden) => !hidden)}
+							/>
+						</ReactFlow>
+					) : (
+						<TokenGridView
+							nodes={nodes as Node<ComponentNodeData>[]}
+							edges={edges}
+							selectedNodeId={selectedNode?.id ?? null}
+							onNodeSelect={handleNodeSelect}
+							onSwitchToCanvas={() => setViewMode("canvas")}
+							isLocked={isCanvasLocked}
 							onUndo={undo}
 							onRedo={redo}
-							onToggleUI={() => setIsUIHidden((hidden) => !hidden)}
+							canUndo={canUndo}
+							canRedo={canRedo}
+							onReorder={reorderNode}
 						/>
-					</ReactFlow>
+					)}
+
+					{/* Primary navigation: floating dock with add, layout, view, project, and account menus */}
+					{!isSharedView && !isMobile && (isUIHidden ? (
+						<button
+							type="button"
+							onPointerDown={(event) => event.stopPropagation()}
+							onClick={(event) => {
+								event.stopPropagation();
+								setIsUIHidden(false);
+							}}
+							className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<span>Press</span>
+							<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">⌘<span className="px-1 text-muted-foreground">+</span>\</kbd>
+							<span>to show UI</span>
+						</button>
+					) : (
+						<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
+					))}
+					{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
+					{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
 				</div>
 			</div>
 

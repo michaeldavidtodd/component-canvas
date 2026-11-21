@@ -41,6 +41,15 @@ Set `VITE_WEB_ORIGIN` in `.env` (see `.env.example`) so share links and Supabase
 
 The Tauri shell lives in `src-tauri/`. macOS is the primary target; Windows/Linux support is tracked separately.
 
+## Views
+
+The planner has two views, switchable from the **View** menu in the dock:
+
+- **Canvas** — the free-form React Flow editor for creating nodes and connections.
+- **Token map** — a structured grid where columns are hierarchy levels (literal → alias → usage) and rows are leaves. Each token root starts a new block of rows, so the map reads like a table while keeping compact connectors.
+
+The **View** menu also has a **Lock editing** toggle that applies to both views. In the token map, drag the grip handle at the start of a chip to re-order rows within its sibling group (or focus the handle and use the arrow keys), and use the header undo/redo buttons (or `Cmd+Z` / `Shift+Cmd+Z`) to step through changes.
+
 ## Tech stack
 
 - [Vite](https://vitejs.dev/) + TypeScript

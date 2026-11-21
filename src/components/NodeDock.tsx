@@ -1,8 +1,9 @@
-import { ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff } from "lucide-react";
+import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff, Columns3, Table2, Workflow, Lock, Unlock } from "lucide-react";
 import { ComponentType } from "@/types/component";
+import type { ViewMode } from "@/types/view";
 import { COMPONENT_TYPES } from "@/lib/componentTypes";
 import type { Project } from "@/types/project";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,7 @@ const DOCK_PADDING_OPEN = "p-[18px]";
 const DOCK_BOTTOM = 24;
 const DOCK_BOTTOM_OPEN = 12;
 
-type DockGroupId = "add" | "layout" | "project" | "account";
+type DockGroupId = "add" | "layout" | "view" | "project" | "account";
 
 interface DockRowProps {
 	icon: ReactNode;
@@ -78,6 +79,11 @@ interface NodeDockProps {
 	autoSmartLayout?: boolean;
 	onToggleAutoSmartLayout?: () => void;
 	onToggleUI?: () => void;
+	// View
+	viewMode?: ViewMode;
+	onViewModeChange?: (mode: ViewMode) => void;
+	isLocked?: boolean;
+	onToggleLock?: () => void;
 	// Project
 	user?: AuthUser | null;
 	isAnonymous?: boolean;
@@ -96,17 +102,25 @@ interface NodeDockProps {
 /**
  * Figma-style floating dock at the bottom of the canvas.
  *
- * Actions are grouped into menus (Add, Layout, Project, Account). Hovering or
+ * Actions are grouped into menus (Add, Layout, View, Project, Account). Hovering or
  * focusing a group expands its menu upward, revealing the options for that
  * group. The dock is the app's primary navigation.
  */
-export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
+export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, viewMode = "canvas", onViewModeChange, isLocked = false, onToggleLock, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
 	const [activeGroup, setActiveGroup] = useState<DockGroupId | null>(null);
 	// Keep the last opened group mounted so its content stays visible while the
 	// container animates closed.
 	const [lastGroup, setLastGroup] = useState<DockGroupId>("add");
 	const [contentHeight, setContentHeight] = useState(0);
 	const contentRef = useRef<HTMLDivElement>(null);
+
+	// The Add and Layout menus only exist on the canvas. If the view changes
+	// while one of them is open, fall back to the View menu.
+	useEffect(() => {
+		if (viewMode !== "tokens") return;
+		setLastGroup((current) => (current === "add" || current === "layout" ? "view" : current));
+		setActiveGroup((current) => (current === "add" || current === "layout" ? null : current));
+	}, [viewMode]);
 
 	const [shareDialogOpen, setShareDialogOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
@@ -123,6 +137,8 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 
 	const showProject = !!(user && !isAnonymous && currentProject);
 	const panelGroup: DockGroupId = lastGroup === "project" && !showProject ? "add" : lastGroup;
+	// Guard against a hidden menu staying mounted after switching views.
+	const effectivePanelGroup: DockGroupId = viewMode === "tokens" && (panelGroup === "add" || panelGroup === "layout") ? "view" : panelGroup;
 
 	// Measure the menu's natural height before paint so the container can
 	// animate to it in a single motion, including when switching groups. The
@@ -141,9 +157,11 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
 		return () => observer.disconnect();
-	}, [panelGroup, activeGroup]);
+	}, [effectivePanelGroup, activeGroup]);
 
 	const showGroup = (group: DockGroupId) => {
+		// Add and Layout only exist on the canvas.
+		if (viewMode === "tokens" && (group === "add" || group === "layout")) return;
 		setLastGroup(group);
 		setActiveGroup(group);
 	};
@@ -241,14 +259,24 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		}
 	};
 
-	const groups: { id: DockGroupId; label: string; icon: ReactNode }[] = [{ id: "add", label: "Add", icon: <Plus className="h-4 w-4" /> }, { id: "layout", label: "Layout", icon: <LayoutGrid className="h-4 w-4" /> }, ...(showProject ? [{ id: "project" as DockGroupId, label: "Project", icon: <FolderOpen className="h-4 w-4" /> }] : []), { id: "account", label: "Account", icon: <User className="h-4 w-4" /> }];
+	const groups: { id: DockGroupId; label: string; icon: ReactNode }[] = [
+		...(viewMode === "tokens"
+			? []
+			: [
+					{ id: "add" as DockGroupId, label: "Add", icon: <Plus className="h-4 w-4" /> },
+					{ id: "layout" as DockGroupId, label: "Layout", icon: <LayoutGrid className="h-4 w-4" /> },
+				]),
+		{ id: "view", label: "View", icon: <Columns3 className="h-4 w-4" /> },
+		...(showProject ? [{ id: "project" as DockGroupId, label: "Project", icon: <FolderOpen className="h-4 w-4" /> }] : []),
+		{ id: "account", label: "Account", icon: <User className="h-4 w-4" /> },
+	];
 
 	const renderPanel = (group: DockGroupId) => {
 		if (group === "add") {
 			return (
 				<div className="space-y-0.5">
 					{COMPONENT_TYPES.map(({ type, label, description, icon: Icon, bgClass }) => (
-						<DockRow key={type} icon={<Icon className="h-4 w-4" />} title={label} description={description} tileClassName={`${bgClass} text-white`} onClick={() => handleAdd(type)} />
+						<DockRow key={type} icon={<Icon className="h-4 w-4" />} title={label} description={description} tileClassName={`${bgClass} text-white`} onClick={() => handleAdd(type)} disabled={isLocked} />
 					))}
 				</div>
 			);
@@ -257,10 +285,44 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 		if (group === "layout") {
 			return (
 				<div className="space-y-0.5">
-					<DockRow icon={<Sparkles className="h-4 w-4" />} title="Optimize" description="Arrange nodes into a clean tree layout" badge="Once" onClick={onSmartLayout} />
-					<DockRow icon={<LayoutGrid className="h-4 w-4" />} title="Clean up" description="Snap nodes to the grid" badge="Once" onClick={onCleanupLayout} />
-					<DockRow icon={autoSmartLayout ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />} title="Auto-optimize" description="Keep the layout tidy as you build" badge={autoSmartLayout ? "On" : "Off"} badgeVariant={autoSmartLayout ? "default" : "outline"} tileClassName={autoSmartLayout ? "bg-primary text-primary-foreground" : undefined} onClick={onToggleAutoSmartLayout} />
+					<DockRow icon={<Sparkles className="h-4 w-4" />} title="Optimize" description="Arrange nodes into a clean tree layout" badge="Once" onClick={onSmartLayout} disabled={isLocked} />
+					<DockRow icon={<LayoutGrid className="h-4 w-4" />} title="Clean up" description="Snap nodes to the grid" badge="Once" onClick={onCleanupLayout} disabled={isLocked} />
+					<DockRow icon={autoSmartLayout ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />} title="Auto-optimize" description="Keep the layout tidy as you build" badge={autoSmartLayout ? "On" : "Off"} badgeVariant={autoSmartLayout ? "default" : "outline"} tileClassName={autoSmartLayout ? "bg-primary text-primary-foreground" : undefined} onClick={onToggleAutoSmartLayout} disabled={isLocked} />
 					<DockRow icon={<EyeOff className="h-4 w-4" />} title="Hide UI" description="Hide panels and dock for a clean canvas" badge={"⌘\\"} onClick={onToggleUI} />
+				</div>
+			);
+		}
+
+		if (group === "view") {
+			return (
+				<div className="space-y-0.5">
+					<DockRow
+						icon={<Workflow className="h-4 w-4" />}
+						title="Canvas"
+						description="Free-form map for building and connecting nodes"
+						badge={viewMode === "canvas" ? "Active" : undefined}
+						badgeVariant={viewMode === "canvas" ? "default" : "outline"}
+						tileClassName={viewMode === "canvas" ? "bg-primary text-primary-foreground" : undefined}
+						onClick={() => onViewModeChange?.("canvas")}
+					/>
+					<DockRow
+						icon={<Table2 className="h-4 w-4" />}
+						title="Token map"
+						description="Structured grid of tokens and their usages"
+						badge={viewMode === "tokens" ? "Active" : undefined}
+						badgeVariant={viewMode === "tokens" ? "default" : "outline"}
+						tileClassName={viewMode === "tokens" ? "bg-primary text-primary-foreground" : undefined}
+						onClick={() => onViewModeChange?.("tokens")}
+					/>
+					<DockRow
+						icon={isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+						title="Lock editing"
+						description="Prevent changes in both views"
+						badge={isLocked ? "On" : "Off"}
+						badgeVariant={isLocked ? "default" : "outline"}
+						tileClassName={isLocked ? "bg-primary text-primary-foreground" : undefined}
+						onClick={onToggleLock}
+					/>
 				</div>
 			);
 		}
@@ -403,12 +465,15 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 					}
 				}}
 				onKeyDown={(event) => {
-					if (event.key === "Escape") setActiveGroup(null);
+					if (event.key === "Escape") {
+						event.stopPropagation();
+						setActiveGroup(null);
+					}
 				}}
 			>
 				<div className={`overflow-hidden transition-[height] duration-300 ${SPRING_EASE}`} style={{ height: activeGroup ? contentHeight : 0 }}>
-					<div id="node-dock-panel" ref={contentRef} className={`pb-2 transition-[opacity,visibility] duration-300 ${SPRING_EASE} ${activeGroup ? "visible opacity-100" : "invisible opacity-0"}`}>
-						{renderPanel(panelGroup)}
+					<div id="node-dock-panel" ref={contentRef} className={`w-0 min-w-full pb-2 transition-[opacity,visibility] duration-300 ${SPRING_EASE} ${activeGroup ? "visible opacity-100" : "invisible opacity-0"}`}>
+						{renderPanel(effectivePanelGroup)}
 					</div>
 				</div>
 
@@ -416,7 +481,22 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 					{groups.map((group) => {
 						const isActive = activeGroup === group.id;
 						return (
-							<button key={group.id} type="button" aria-expanded={isActive} aria-controls="node-dock-panel" onMouseEnter={() => showGroup(group.id)} onFocus={() => showGroup(group.id)} onClick={() => (isActive ? setActiveGroup(null) : showGroup(group.id))} className={`flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-full p-2 border border-transparent hover:border-border text-sm font-medium transition-colors lg:px-5 ${isActive ? "bg-secondary border-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+							<button
+								key={group.id}
+								type="button"
+								aria-expanded={isActive}
+								aria-controls="node-dock-panel"
+								onMouseEnter={() => showGroup(group.id)}
+								onFocus={() => showGroup(group.id)}
+								onClick={() => {
+									if (isActive) {
+										setActiveGroup(null);
+									} else {
+										showGroup(group.id);
+									}
+								}}
+								className={`flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-full p-2 border border-transparent hover:border-border text-sm font-medium transition-colors lg:px-5 ${isActive ? "bg-secondary border-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+							>
 								{group.icon}
 								<span>{group.label}</span>
 							</button>

@@ -43,4 +43,9 @@ export interface ComponentNodeData extends Record<string, unknown> {
 	   * `undefined` falls back to the first incoming edge; `null` means detached.
 	   */
 	  parentId?: string | null;
+	  /**
+	   * Manual row order within the token map's sibling group. Set when the user
+	   * re-orders rows; the canvas layout ignores it.
+	   */
+	  order?: number;
 	}

@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 // Tauri's `devUrl` is static, so it can't follow Vite's automatic port
@@ -51,7 +51,38 @@ if (port >= START_PORT + MAX_ATTEMPTS) {
 
 const configDir = mkdtempSync(join(tmpdir(), "component-canvas-"));
 const configPath = join(configDir, "tauri.dev.conf.json");
-writeFileSync(configPath, JSON.stringify({ build: { devUrl: `http://localhost:${port}` } }));
+
+// The dev server port can differ from the static 8080 in tauri.conf.json, so
+// rebuild the dev CSP around the chosen port. Without this, HMR's WebSocket is
+// blocked and the webview only updates when the whole app is restarted.
+const devCsp = [
+	`default-src 'self' http://localhost:${port}`,
+	`img-src 'self' data: blob:`,
+	`style-src 'self' 'unsafe-inline'`,
+	`font-src 'self' data:`,
+	`connect-src 'self' http://localhost:${port} ws://localhost:${port} ws://127.0.0.1:${port} ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co`,
+	`script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+].join("; ");
+
+writeFileSync(
+	configPath,
+	JSON.stringify({
+		build: { devUrl: `http://localhost:${port}` },
+		app: { security: { devCsp } },
+	}),
+);
+
+// WKWebView can keep serving a stale JS bundle across dev restarts even though
+// Vite sends `Cache-Control: no-cache`. Clear only the network cache so modules
+// are re-fetched; localStorage (and the auth session) is preserved.
+if (process.platform === "darwin") {
+	const networkCache = join(homedir(), "Library", "Caches", "app", "WebKit", "NetworkCache");
+	try {
+		rmSync(networkCache, { recursive: true, force: true });
+	} catch {
+		// A previous app instance may still hold the cache; it will clear next time.
+	}
+}
 
 console.log(`Starting desktop dev server on port ${port}.`);
 
