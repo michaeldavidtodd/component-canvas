@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, addEdge, Connection, Edge, Background, Controls, MiniMap, Node, useReactFlow, useStore } from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, addEdge, Connection, Edge, Background, Controls, MiniMap, Node, SelectionMode, useReactFlow, useStore } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 
@@ -17,6 +17,7 @@ import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
 import { normalizeEdges } from "@/lib/edges";
+import { normalizeNodes } from "@/lib/nodes";
 import type { SharedProjectData } from "@/types/project";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from '@/hooks/project-context';
@@ -293,15 +294,21 @@ export const ComponentLibraryPlanner = ({
 		enabled: !isSharedView && !isMobile && !isCanvasLocked,
 	});
 
-	// Keep the properties panel pointed at the live node object after undo/redo
-	// or when the selected node is removed. Position-only updates (dragging)
-	// keep the same data reference, so they don't trigger an extra render.
+	// Keep the properties panel pointed at the live node object after undo/redo,
+	// when the selected node is removed, or when it's deselected (Shift+click
+	// toggles a node off). Position-only updates (dragging) keep the same data
+	// reference, so they don't trigger an extra render. When the current node is
+	// deselected but other nodes remain selected, fall back to one of them so the
+	// panel doesn't go blank during a multi-selection.
 	useEffect(() => {
 		setSelectedNode((current) => {
 			if (!current) return null;
 			const next = nodes.find((node) => node.id === current.id);
-			if (!next) return null;
-			return next.data === current.data ? current : (next as Node<ComponentNodeData>);
+			if (next?.selected) {
+				return next.data === current.data ? current : (next as Node<ComponentNodeData>);
+			}
+			const fallback = nodes.find((node) => node.selected);
+			return fallback ? (fallback as Node<ComponentNodeData>) : null;
 		});
 	}, [nodes]);
 
@@ -313,7 +320,7 @@ export const ComponentLibraryPlanner = ({
 			console.log("📋 Loading shared project data:", sharedProjectData);
 			const latestVersion = sharedProjectData.versions[0];
 			if (latestVersion) {
-				const sharedNodes = latestVersion.nodes as Node<ComponentNodeData>[];
+				const sharedNodes = normalizeNodes(latestVersion.nodes as Node<ComponentNodeData>[]);
 				const sharedEdges = normalizeEdges(latestVersion.edges);
 				setNodes(sharedNodes);
 				setEdges(sharedEdges);
@@ -544,10 +551,11 @@ export const ComponentLibraryPlanner = ({
 	const handleProjectLoaded = useCallback(
 		(loadedNodes: Node[], loadedEdges: Edge[]) => {
 			console.log("📋 Loading project data:", { nodesCount: loadedNodes.length, edgesCount: loadedEdges.length });
+			const normalizedNodes = normalizeNodes(loadedNodes as Node<ComponentNodeData>[]);
 			const normalizedEdges = normalizeEdges(loadedEdges);
-			setNodes(loadedNodes);
+			setNodes(normalizedNodes);
 			setEdges(normalizedEdges);
-			resetHistory({ nodes: loadedNodes, edges: normalizedEdges });
+			resetHistory({ nodes: normalizedNodes, edges: normalizedEdges });
 			setLoadedProjectId(currentProject?.id ?? null);
 		},
 		[setNodes, setEdges, resetHistory, currentProject?.id],
@@ -595,7 +603,7 @@ export const ComponentLibraryPlanner = ({
 							versions={versions}
 							onLoadVersion={loadVersion}
 							onVersionLoaded={(version) => {
-								const versionNodes = version.nodes as Node<ComponentNodeData>[];
+								const versionNodes = normalizeNodes(version.nodes as Node<ComponentNodeData>[]);
 								const versionEdges = normalizeEdges(version.edges);
 								setNodes(versionNodes);
 								setEdges(versionEdges);
@@ -631,7 +639,7 @@ export const ComponentLibraryPlanner = ({
 						</div>
 					)}
 
-					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
+					<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile} nodesConnectable={!isSharedView && !isMobile} elementsSelectable={!isSharedView && !isMobile} multiSelectionKeyCode="Shift" selectionKeyCode="Shift" selectionMode={SelectionMode.Partial} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
 						<Background className="[&>*]:!stroke-border" gap={16} />
 						{!isUIHidden && (
 							<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
