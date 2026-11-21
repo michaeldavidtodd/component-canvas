@@ -19,7 +19,7 @@ import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-interface TokenGridViewProps {
+interface GridViewProps {
 	nodes: Node<ComponentNodeData>[];
 	edges: Edge[];
 	selectedNodeId: string | null;
@@ -177,7 +177,7 @@ TokenChip.displayName = "TokenChip";
  * compact orthogonal lines over a rigid grid, so the map stays readable as the
  * number of tokens and usages grows.
  */
-export const TokenGridView = ({
+export const GridView = ({
 	nodes,
 	edges,
 	selectedNodeId,
@@ -191,7 +191,7 @@ export const TokenGridView = ({
 	onReorder,
 	visibleTypes,
 	onToggleType,
-}: TokenGridViewProps) => {
+}: GridViewProps) => {
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);

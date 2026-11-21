@@ -6,7 +6,7 @@ import dagre from "@dagrejs/dagre";
 import { ComponentNode } from "./nodes/ComponentNode";
 import SimpleDeleteEdge from "./edges/SimpleDeleteEdge";
 import { NodeDock } from "./NodeDock";
-import { TokenGridView } from "./TokenGridView";
+import { GridView } from "./GridView";
 
 import { PropertiesPanel } from "./PropertiesPanel";
 import { ConnectionLegend } from "./ConnectionLegend";
@@ -708,7 +708,7 @@ export const ComponentLibraryPlanner = ({
 							/>
 						</ReactFlow>
 					) : (
-						<TokenGridView
+						<GridView
 							nodes={nodes as Node<ComponentNodeData>[]}
 							edges={edges}
 							selectedNodeId={selectedNode?.id ?? null}
