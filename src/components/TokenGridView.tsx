@@ -45,7 +45,6 @@ interface TokenChipProps {
 	dimmed: boolean;
 	isLocked: boolean;
 	isDragging: boolean;
-	isDropTarget: boolean;
 	onSelect: (node: Node<ComponentNodeData>) => void;
 	onHover: (nodeId: string | null) => void;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
@@ -54,7 +53,7 @@ interface TokenChipProps {
 }
 
 const TokenChip = memo(
-	({ item, selected, dimmed, isLocked, isDragging, isDropTarget, onSelect, onHover, onReorder, onDragStart, onDragEnd }: TokenChipProps) => {
+	({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd }: TokenChipProps) => {
 		const data = item.node.data;
 		const meta = getComponentTypeMeta(data.componentType);
 		const Icon = meta.icon;
@@ -108,12 +107,12 @@ const TokenChip = memo(
 					onHover(null);
 				}}
 				className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-					isDropTarget
+					isDragging
 						? "border-primary ring-2 ring-primary"
 						: selected
 							? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20`
 							: "border-border hover:border-muted-foreground/40"
-				} ${isDragging || dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
+				} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
 				style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
 			>
 				<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
@@ -588,7 +587,6 @@ export const TokenGridView = ({
 								dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId}
 								isLocked={isLocked}
 								isDragging={item.id === draggedItemId}
-								isDropTarget={item.node.id === dropTargetId}
 								onSelect={onNodeSelect}
 								onHover={setHoveredNodeId}
 								onReorder={onReorder}
