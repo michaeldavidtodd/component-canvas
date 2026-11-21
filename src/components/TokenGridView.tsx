@@ -509,8 +509,8 @@ export const TokenGridView = ({
 				</div>
 			</header>
 
-			<div ref={scrollRef} className="flex-1 overflow-auto pb-24">
-				<div className="relative" style={{ width: layout.totalWidth }}>
+			<div ref={scrollRef} className="flex-1 overflow-auto px-2 pb-24">
+				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
 					<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
 						{layout.columns.map((column) => (
 							<div key={column.depth} className="flex items-center justify-between gap-2 border-r border-border/40 px-4 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
