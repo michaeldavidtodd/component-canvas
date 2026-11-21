@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import { GripVertical, Palette, Redo2, Undo2 } from "lucide-react";
+import { Columns3, GripVertical, Redo2, Undo2 } from "lucide-react";
 
-import type { ComponentNodeData } from "@/types/component";
-import { getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
+import type { ComponentNodeData, ComponentType } from "@/types/component";
+import { COMPONENT_TYPES, getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import {
 	buildTokenLayout,
@@ -32,6 +32,8 @@ interface TokenGridViewProps {
 	canUndo: boolean;
 	canRedo: boolean;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
+	visibleTypes: ReadonlySet<ComponentType>;
+	onToggleType: (type: ComponentType) => void;
 }
 
 const isLinkActive = (link: TokenLayoutLink, activeNodeId: string | null): boolean =>
@@ -47,7 +49,7 @@ interface TokenChipProps {
 	onSelect: (node: Node<ComponentNodeData>) => void;
 	onHover: (nodeId: string | null) => void;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
-	onDragStart: (nodeId: string) => void;
+	onDragStart: (itemId: string, nodeId: string) => void;
 	onDragEnd: () => void;
 }
 
@@ -114,31 +116,6 @@ const TokenChip = memo(
 				} ${isDragging || dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
 				style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
 			>
-				{canReorder && (
-					<span
-						draggable
-						role="button"
-						tabIndex={0}
-						aria-label="Drag to reorder"
-						title="Drag to reorder"
-						onDragStart={(event) => {
-							event.dataTransfer.effectAllowed = "move";
-							event.dataTransfer.setData("text/plain", item.node.id);
-							onDragStart(item.node.id);
-						}}
-						onDragEnd={() => onDragEnd()}
-						onClick={(event) => event.stopPropagation()}
-						onKeyDown={(event) => {
-							if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-							event.preventDefault();
-							event.stopPropagation();
-							moveByKeyboard(event.key === "ArrowUp" ? "up" : "down");
-						}}
-						className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
-					>
-						<GripVertical className="size-3.5" />
-					</span>
-				)}
 				<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
 					<Icon className="size-3" />
 				</span>
@@ -153,6 +130,40 @@ const TokenChip = memo(
 				</span>
 				{colorPreview && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: colorPreview }} aria-hidden="true" />}
 				{valueLabel && <span className="max-w-[35%] shrink-0 truncate font-mono text-[10px] text-muted-foreground">{valueLabel}</span>}
+				{canReorder && (
+					<span
+						draggable
+						role="button"
+						tabIndex={0}
+						aria-label="Drag to reorder"
+						title="Drag to reorder"
+						onDragStart={(event) => {
+							event.dataTransfer.effectAllowed = "move";
+							event.dataTransfer.setData("text/plain", item.node.id);
+							onDragStart(item.id, item.node.id);
+							try {
+								const chip = event.currentTarget.closest("[data-token-chip]");
+								if (chip instanceof HTMLElement) {
+									const rect = chip.getBoundingClientRect();
+									event.dataTransfer.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top);
+								}
+							} catch {
+								// The browser will fall back to its default drag image.
+							}
+						}}
+						onDragEnd={() => onDragEnd()}
+						onClick={(event) => event.stopPropagation()}
+						onKeyDown={(event) => {
+							if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+							event.preventDefault();
+							event.stopPropagation();
+							moveByKeyboard(event.key === "ArrowUp" ? "up" : "down");
+						}}
+						className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
+					>
+						<GripVertical className="size-3.5" />
+					</span>
+				)}
 			</div>
 		);
 	},
@@ -179,30 +190,34 @@ export const TokenGridView = ({
 	canUndo,
 	canRedo,
 	onReorder,
+	visibleTypes,
+	onToggleType,
 }: TokenGridViewProps) => {
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
 	const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	// Safari/WKWebView can deliver `dragover` before React commits the state
-	// update from `dragstart`, so keep a synchronous copy of the dragged id.
+	// update from `dragstart`, so keep synchronous copies of the dragged ids.
+	const draggedItemIdRef = useRef<string | null>(null);
 	const draggedNodeIdRef = useRef<string | null>(null);
 
 	const activeNodeId = hoveredNodeId ?? selectedNodeId;
 
 	// The committed layout. Drag previews are derived from this so the target
 	// lookup stays stable while the rows are visually re-ordered.
-	const baseLayout = useMemo(() => buildTokenLayout(nodes, edges), [nodes, edges]);
+	const baseLayout = useMemo(() => buildTokenLayout(nodes, edges, visibleTypes), [nodes, edges, visibleTypes]);
 
 	// Stage the re-ordered rows while dragging. The actual document is only
 	// updated on drop, so cancelling a drag restores the original order.
 	const previewNodes = useMemo(() => {
-		if (!draggedNodeId || !dropTargetId || draggedNodeId === dropTargetId) return nodes;
+		if (!draggedItemId || !dropTargetId) return nodes;
 
-		const draggedItem = baseLayout.items.find((item) => item.node.id === draggedNodeId);
+		const draggedItem = baseLayout.items.find((item) => item.id === draggedItemId);
 		if (!draggedItem) return nodes;
 
-		const fromIndex = draggedItem.siblingIds.indexOf(draggedNodeId);
+		const fromIndex = draggedItem.siblingIds.indexOf(draggedItem.node.id);
 		const toIndex = draggedItem.siblingIds.indexOf(dropTargetId);
 		if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return nodes;
 
@@ -216,15 +231,32 @@ export const TokenGridView = ({
 			const order = orderById.get(node.id);
 			return order === undefined ? node : { ...node, data: { ...node.data, order } };
 		});
-	}, [nodes, draggedNodeId, dropTargetId, baseLayout.items]);
+	}, [nodes, draggedItemId, dropTargetId, baseLayout.items]);
 
-	const layout = useMemo(() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges)), [previewNodes, nodes, edges, baseLayout]);
+	const layout = useMemo(
+		() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges, visibleTypes)),
+		[previewNodes, nodes, edges, baseLayout, visibleTypes],
+	);
+
+	// Counts reflect the project, not the current filter, so a hidden type still
+	// shows how many nodes the toggle would reveal.
+	const typeCounts = useMemo(() => {
+		const counts = new Map<ComponentType, number>();
+		for (const node of nodes) {
+			if (node.hidden) continue;
+			const type = node.data.componentType;
+			counts.set(type, (counts.get(type) ?? 0) + 1);
+		}
+		return counts;
+	}, [nodes]);
 
 	// Locking the canvas clears the selection; drop any lingering drag state too.
 	useEffect(() => {
 		if (isLocked) {
+			draggedItemIdRef.current = null;
 			draggedNodeIdRef.current = null;
 			setHoveredNodeId(null);
+			setDraggedItemId(null);
 			setDraggedNodeId(null);
 			setDropTargetId(null);
 		}
@@ -238,8 +270,10 @@ export const TokenGridView = ({
 			if (isEditableTarget(event.target) || isModalOpen()) return;
 
 			if (event.key === "Escape") {
-				if (draggedNodeIdRef.current) {
+				if (draggedItemIdRef.current) {
+					draggedItemIdRef.current = null;
 					draggedNodeIdRef.current = null;
+					setDraggedItemId(null);
 					setDraggedNodeId(null);
 					setDropTargetId(null);
 					return;
@@ -269,14 +303,18 @@ export const TokenGridView = ({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [onNodeSelect, onUndo, onRedo, isLocked]);
 
-	const handleDragStart = useCallback((nodeId: string) => {
+	const handleDragStart = useCallback((itemId: string, nodeId: string) => {
+		draggedItemIdRef.current = itemId;
 		draggedNodeIdRef.current = nodeId;
+		setDraggedItemId(itemId);
 		setDraggedNodeId(nodeId);
 		setDropTargetId(null);
 	}, []);
 
 	const handleDragEnd = useCallback(() => {
+		draggedItemIdRef.current = null;
 		draggedNodeIdRef.current = null;
+		setDraggedItemId(null);
 		setDraggedNodeId(null);
 		setDropTargetId(null);
 	}, []);
@@ -287,20 +325,25 @@ export const TokenGridView = ({
 
 	const handleGridDragOver = useCallback(
 		(event: DragEvent<HTMLDivElement>) => {
-			const draggedId = draggedNodeIdRef.current;
+			const draggedId = draggedItemIdRef.current;
 			if (!draggedId) return;
 
-			const draggedItem = baseLayout.items.find((item) => item.node.id === draggedId);
+			const draggedItem = baseLayout.items.find((item) => item.id === draggedId);
 			if (!draggedItem || draggedItem.siblingIds.length <= 1) return;
 
 			const rect = event.currentTarget.getBoundingClientRect();
 			const y = event.clientY - rect.top;
 			const row = Math.max(0, Math.min(baseLayout.rowCount - 1, Math.floor(y / TOKEN_ROW_HEIGHT)));
 
-			const siblingItems = draggedItem.siblingIds
-				.map((id) => baseLayout.items.find((item) => item.node.id === id))
-				.filter((item): item is TokenLayoutItem => !!item);
+			// Keep the current order while the pointer is still over the dragged item's
+			// own rows. A parent spanning an even number of rows has a half-row centre,
+			// so without this it can be closer to a sibling's centre and stage a move
+			// as soon as the drag starts.
+			if (row >= draggedItem.rowStart && row <= draggedItem.rowEnd) return;
 
+			// Use the sibling occurrences under the same parent occurrence, not the
+			// first occurrence of each sibling node.
+			const siblingItems = baseLayout.items.filter((item) => item.parentItemId === draggedItem.parentItemId);
 			if (siblingItems.length === 0) return;
 
 			const target = siblingItems.reduce((closest, item) => {
@@ -309,7 +352,7 @@ export const TokenGridView = ({
 				return itemDistance < closestDistance ? item : closest;
 			});
 
-			if (target.node.id === draggedId) return;
+			if (target.node.id === draggedItem.node.id) return;
 
 			event.preventDefault();
 			event.dataTransfer.dropEffect = "move";
@@ -327,19 +370,19 @@ export const TokenGridView = ({
 		(event: DragEvent<HTMLDivElement>) => {
 			event.preventDefault();
 
-			const draggedId = draggedNodeIdRef.current;
+			const draggedId = draggedItemIdRef.current;
 			if (!draggedId || !dropTargetId) {
 				handleDragEnd();
 				return;
 			}
 
-			const draggedItem = baseLayout.items.find((item) => item.node.id === draggedId);
+			const draggedItem = baseLayout.items.find((item) => item.id === draggedId);
 			if (!draggedItem) {
 				handleDragEnd();
 				return;
 			}
 
-			onReorder(draggedItem.siblingIds, draggedId, dropTargetId);
+			onReorder(draggedItem.siblingIds, draggedItem.node.id, dropTargetId);
 			handleDragEnd();
 		},
 		[baseLayout.items, dropTargetId, handleDragEnd, onReorder],
@@ -356,12 +399,13 @@ export const TokenGridView = ({
 		return neighbors;
 	}, [activeNodeId, layout.links]);
 
-	const activeItem = useMemo(() => layout.items.find((item) => item.node.id === activeNodeId) ?? null, [activeNodeId, layout.items]);
+	const activeItems = useMemo(() => layout.items.filter((item) => item.node.id === activeNodeId), [activeNodeId, layout.items]);
 
 	// Bring the selected node into view when the view opens or the selection
 	// changes, but leave it alone when the node is already visible.
 	useEffect(() => {
 		if (!selectedNodeId) return;
+		if (draggedItemIdRef.current) return;
 
 		const item = layout.items.find((entry) => entry.node.id === selectedNodeId);
 		const container = scrollRef.current;
@@ -379,16 +423,23 @@ export const TokenGridView = ({
 	}, [selectedNodeId, layout.items]);
 
 	if (layout.items.length === 0) {
+		const hasNodes = nodes.some((node) => !node.hidden);
+		const hasVisibleTypes = visibleTypes.size > 0;
+		const title = !hasNodes ? "Nothing to map yet" : !hasVisibleTypes ? "No node types selected" : "No nodes match the current filters";
+		const description = !hasNodes
+			? "Add components, variants, or tokens on the canvas, then connect them. They'll appear here as a structured map."
+			: !hasVisibleTypes
+				? "Turn on a node type in the header to see it in the map."
+				: "The current filters hide every node. Turn on a node type in the header to see it.";
+
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 bg-canvas p-8 text-center" onClick={() => onNodeSelect(null)}>
-				<div className="flex size-12 items-center justify-center rounded-full bg-component-token/10 text-component-token">
-					<Palette className="size-6" />
+				<div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+					<Columns3 className="size-6" />
 				</div>
 				<div className="space-y-1">
-					<h3 className="text-sm font-medium text-foreground">No tokens to map yet</h3>
-					<p className="mx-auto max-w-sm text-xs text-muted-foreground">
-						Add token literals and aliases on the canvas, then connect them to the components that use them. They'll appear here as a structured map.
-					</p>
+					<h3 className="text-sm font-medium text-foreground">{title}</h3>
+					<p className="mx-auto max-w-sm text-xs text-muted-foreground">{description}</p>
 				</div>
 				<Button variant="outline" size="sm" onClick={onSwitchToCanvas}>
 					Open canvas
@@ -397,19 +448,34 @@ export const TokenGridView = ({
 		);
 	}
 
-	const tokenItems = layout.items.filter((item) => item.node.data.componentType === "token");
-	const literalCount = tokenItems.filter((item) => !isAliasToken(item.node.data.tokenKind)).length;
-	const aliasCount = tokenItems.filter((item) => isAliasToken(item.node.data.tokenKind)).length;
-	const usageCount = layout.items.length - tokenItems.length;
-
 	return (
 		<div className="flex h-full flex-col bg-canvas" onClick={() => onNodeSelect(null)}>
-			<header className="flex flex-wrap items-center justify-end gap-3 px-6 py-4">
+			<header className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+				<div className="flex flex-wrap items-center gap-1.5">
+					{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
+						const isVisible = visibleTypes.has(type);
+						const count = typeCounts.get(type) ?? 0;
+
+						return (
+							<button
+								key={type}
+								type="button"
+								aria-pressed={isVisible}
+								title={`${isVisible ? "Hide" : "Show"} ${label}`}
+								onClick={() => onToggleType(type)}
+								className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+									isVisible ? `${bgClass} ${borderClass} text-white` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+								}`}
+							>
+								<Icon className="size-3.5" />
+								<span>{label}</span>
+								<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white" : "bg-background text-muted-foreground"}`}>{count}</span>
+							</button>
+						);
+					})}
+				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					{isLocked && <Badge variant="outline">Canvas locked</Badge>}
-					<Badge variant="outline">{literalCount} literals</Badge>
-					<Badge variant="outline">{aliasCount} aliases</Badge>
-					<Badge variant="outline">{usageCount} usages</Badge>
 					<div className="flex items-center gap-1">
 						<Button
 							variant="outline"
@@ -444,9 +510,9 @@ export const TokenGridView = ({
 				</div>
 			</header>
 
-			<div ref={scrollRef} className="flex-1 flex px-1 overflow-auto">
-				<div className="relative flex-1" style={{ width: layout.totalWidth }}>
-					<div className="sticky top-0 z-20 flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
+			<div ref={scrollRef} className="flex-1 overflow-auto pb-24">
+				<div className="relative" style={{ width: layout.totalWidth }}>
+					<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
 						{layout.columns.map((column) => (
 							<div key={column.depth} className="flex items-center justify-between gap-2 border-r border-border/40 px-4 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
 								<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
@@ -456,7 +522,7 @@ export const TokenGridView = ({
 					</div>
 
 					<div
-						className="relative flex-1 flex"
+						className="relative"
 						style={{ height: layout.gridHeight }}
 						role="group"
 						aria-label="Token map"
@@ -467,17 +533,18 @@ export const TokenGridView = ({
 						onDragLeave={handleGridDragLeave}
 						onDrop={handleGridDrop}
 					>
-						{activeItem && (
+						{activeItems.map((item) => (
 							<div
+								key={item.id}
 								className="pointer-events-none absolute inset-x-0 bg-primary/5"
 								style={{
-									top: activeItem.rowStart * TOKEN_ROW_HEIGHT,
-									height: (activeItem.rowEnd - activeItem.rowStart + 1) * TOKEN_ROW_HEIGHT,
+									top: item.rowStart * TOKEN_ROW_HEIGHT,
+									height: (item.rowEnd - item.rowStart + 1) * TOKEN_ROW_HEIGHT,
 								}}
 							/>
-						)}
+						))}
 
-						<svg className="pointer-events-none absolute inset-0" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
+						<svg className="pointer-events-none absolute inset-0 mb-4" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
 							{/*{Array.from({ length: layout.rowCount + 1 }).map((_, index) => (
 								<line key={`row-${index}`} x1={0} x2={layout.totalWidth} y1={index * TOKEN_ROW_HEIGHT} y2={index * TOKEN_ROW_HEIGHT} className="stroke-border/40" strokeWidth={1} />
 							))}*/}
@@ -501,7 +568,7 @@ export const TokenGridView = ({
 									const isActive = isLinkActive(link, activeNodeId);
 									return (
 										<path
-											key={`${link.sourceId}-${link.targetId}`}
+											key={`${link.sourceItemId}-${link.targetItemId}`}
 											d={link.path}
 											fill="none"
 											stroke={link.color}
@@ -515,12 +582,12 @@ export const TokenGridView = ({
 
 						{layout.items.map((item) => (
 							<TokenChip
-								key={item.node.id}
+								key={item.id}
 								item={item}
 								selected={item.node.id === selectedNodeId}
 								dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId}
 								isLocked={isLocked}
-								isDragging={item.node.id === draggedNodeId}
+								isDragging={item.id === draggedItemId}
 								isDropTarget={item.node.id === dropTargetId}
 								onSelect={onNodeSelect}
 								onHover={setHoveredNodeId}

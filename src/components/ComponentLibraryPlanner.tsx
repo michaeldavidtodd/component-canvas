@@ -284,9 +284,12 @@ export const ComponentLibraryPlanner = ({
 	// Hides the properties panel, floating UI, and dock so the canvas can be
 	// viewed unobstructed. Cmd+\ toggles it back.
 	const [isUIHidden, setIsUIHidden] = useState(false);
-	// The canvas is the free-form editor; the token map is a structured read of
-	// the same nodes and edges.
+	// The canvas is the free-form editor; the structured map is a table-like read
+	// of the same nodes and edges.
 	const [viewMode, setViewMode] = useState<ViewMode>("canvas");
+	// Which node types are shown in the structured map. Kept here so the filter
+	// survives switching between the canvas and the map.
+	const [visibleTypes, setVisibleTypes] = useState<Set<ComponentType>>(() => new Set(COMPONENT_TYPES.map((meta) => meta.type)));
 	const { user, isAnonymous, signOut } = useAuth();
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
@@ -416,6 +419,15 @@ export const ComponentLibraryPlanner = ({
 
 	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null) => {
 		setSelectedNode(node);
+	}, []);
+
+	const toggleVisibleType = useCallback((type: ComponentType) => {
+		setVisibleTypes((current) => {
+			const next = new Set(current);
+			if (next.has(type)) next.delete(type);
+			else next.add(type);
+			return next;
+		});
 	}, []);
 
 	// Locking the canvas should also drop any existing selection so the
@@ -646,8 +658,8 @@ export const ComponentLibraryPlanner = ({
 				{!isSharedView && !isMobile && !isUIHidden && (
 					<aside className="flex shrink-0 flex-col gap-4 w-80 m-2 xl:m-4">
 						<header>
-							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">{viewMode === "canvas" ? "Component Canvas" : "Token Map"}</h2>
-							<p className="text-xs text-muted-foreground">{viewMode === "canvas" ? "Design and visualize your component structure" : "Inspect and edit the selected token or usage"}</p>
+							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">{viewMode === "canvas" ? "Component Canvas" : "Structured Map"}</h2>
+							<p className="text-xs text-muted-foreground">{viewMode === "canvas" ? "Design and visualize your component structure" : "Inspect and edit the selected node"}</p>
 						</header>
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
@@ -708,6 +720,8 @@ export const ComponentLibraryPlanner = ({
 							canUndo={canUndo}
 							canRedo={canRedo}
 							onReorder={reorderNode}
+							visibleTypes={visibleTypes}
+							onToggleType={toggleVisibleType}
 						/>
 					)}
 

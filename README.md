@@ -46,9 +46,9 @@ The Tauri shell lives in `src-tauri/`. macOS is the primary target; Windows/Linu
 The planner has two views, switchable from the **View** menu in the dock:
 
 - **Canvas** — the free-form React Flow editor for creating nodes and connections.
-- **Token map** — a structured grid where columns are hierarchy levels (literal → alias → usage) and rows are leaves. Each token root starts a new block of rows, so the map reads like a table while keeping compact connectors.
+- **Structured map** — a table-like grid where columns are hierarchy levels (main component → variant, literal → alias → usage) and rows are leaves. Each root starts a new block of rows, and the header toggles filter which node types are visible.
 
-The **View** menu also has a **Lock editing** toggle that applies to both views. In the token map, drag the grip handle at the start of a chip to re-order rows within its sibling group (or focus the handle and use the arrow keys), and use the header undo/redo buttons (or `Cmd+Z` / `Shift+Cmd+Z`) to step through changes.
+The **View** menu also has a **Lock editing** toggle that applies to both views. In the structured map, drag the grip handle at the start of a chip to re-order rows within its sibling group (or focus the handle and use the arrow keys), and use the header undo/redo buttons (or `Cmd+Z` / `Shift+Cmd+Z`) to step through changes.
 
 ## Tech stack
 

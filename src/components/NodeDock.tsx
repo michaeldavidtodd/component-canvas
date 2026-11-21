@@ -307,8 +307,8 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 					/>
 					<DockRow
 						icon={<Table2 className="h-4 w-4" />}
-						title="Token map"
-						description="Structured grid of tokens and their usages"
+						title="Structured map"
+						description="Structured grid of components, variants, and tokens"
 						badge={viewMode === "tokens" ? "Active" : undefined}
 						badgeVariant={viewMode === "tokens" ? "default" : "outline"}
 						tileClassName={viewMode === "tokens" ? "bg-primary text-primary-foreground" : undefined}

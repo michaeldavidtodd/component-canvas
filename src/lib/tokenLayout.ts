@@ -6,7 +6,7 @@ import { getAncestorChain, type TitleLayer } from "@/lib/nodeHierarchy";
 import { isAliasToken } from "@/lib/tokenValues";
 
 /**
- * Geometry for the token map. The layout module owns these values so the
+ * Geometry for the structured map. The layout module owns these values so the
  * computed positions and the rendered grid can't drift apart.
  */
 export const TOKEN_ROW_HEIGHT = 48;
@@ -16,29 +16,39 @@ export const TOKEN_NODE_HEIGHT = 36;
 export const TOKEN_HEADER_HEIGHT = 44;
 
 interface TreeNode {
+	/** Unique per occurrence, so a node can appear under multiple parents. */
+	id: string;
 	node: Node<ComponentNodeData>;
 	depth: number;
 	children: TreeNode[];
 }
 
 export interface TokenLayoutItem {
+	/** Unique per occurrence, so a node can appear under multiple parents. */
+	id: string;
 	node: Node<ComponentNodeData>;
 	depth: number;
-	/** First row covered by this node's subtree. */
+	/** First row covered by this occurrence's subtree. */
 	rowStart: number;
-	/** Last row covered by this node's subtree. */
+	/** Last row covered by this occurrence's subtree. */
 	rowEnd: number;
 	x: number;
 	y: number;
 	/** Structural ancestors shown as a breadcrumb, matching the canvas node. */
 	ancestors: TitleLayer[];
-	/** Parent in the token tree; `null` for a root block. */
+	/** Parent node id; `null` for a root block. */
 	parentId: string | null;
-	/** Sibling group used for row re-ordering. */
+	/** Parent occurrence id; `null` for a root block. */
+	parentItemId: string | null;
+	/** Sibling node ids used for row re-ordering. */
 	siblingIds: string[];
 }
 
 export interface TokenLayoutLink {
+	/** Occurrence ids, used as the React key so duplicate nodes stay distinct. */
+	sourceItemId: string;
+	targetItemId: string;
+	/** Node ids, used for hover/selection highlighting. */
 	sourceId: string;
 	targetId: string;
 	path: string;
@@ -123,6 +133,35 @@ const compareNodeOrder = (a: Node<ComponentNodeData>, b: Node<ComponentNodeData>
 const compareTreeNodes = (a: TreeNode, b: TreeNode): number => compareNodeOrder(a.node, b.node);
 
 /**
+ * Root ordering when the user hasn't explicitly re-ordered blocks. Parents sort
+ * above their children so a main component claims its variants and a token
+ * claims its usages before those nodes can start their own block.
+ */
+const TYPE_RANK: Record<ComponentType, number> = {
+	"main-component": 0,
+	token: 1,
+	variant: 2,
+	"sub-component": 3,
+	instance: 4,
+};
+
+const compareRoots = (a: Node<ComponentNodeData>, b: Node<ComponentNodeData>): number => {
+	if (a.data.order !== undefined || b.data.order !== undefined) return compareNodeOrder(a, b);
+
+	const rankDiff = (TYPE_RANK[a.data.componentType] ?? 99) - (TYPE_RANK[b.data.componentType] ?? 99);
+	if (rankDiff !== 0) return rankDiff;
+
+	// Keep literals above aliases when both are token roots.
+	if (a.data.componentType === "token" && b.data.componentType === "token") {
+		const aAlias = isAliasToken(a.data.tokenKind) ? 1 : 0;
+		const bAlias = isAliasToken(b.data.tokenKind) ? 1 : 0;
+		if (aAlias !== bAlias) return aAlias - bAlias;
+	}
+
+	return compareNodePositions(a, b);
+};
+
+/**
  * Orthogonal connector with rounded corners: out of the parent, down a shared
  * vertical bus, then into the child. Siblings share the bus x, which gives the
  * map its table-like feel.
@@ -147,99 +186,118 @@ const orthogonalPath = (startX: number, startY: number, endX: number, endY: numb
 };
 
 /**
- * Build the structured token map.
+ * Build the structured map.
  *
- * Each token literal/alias starts a block. The block's rows are its leaves, so
+ * Each visible root starts a block. The block's rows are its leaves, so a
+ * main component → five variants chain occupies two columns and five rows, and
  * a literal → alias → five variants chain occupies three columns and five rows.
  * Internal nodes are vertically centred over their descendants. A second root
  * starts on the next free row, exactly like a table.
  *
- * Only tokens continue the hierarchy; any other node type is treated as a usage
- * leaf. That keeps the view focused on token relationships rather than the full
- * component tree.
+ * Visibility is inherited: a node is shown only when its type is enabled and it
+ * is reachable from an enabled root. Hiding a parent therefore hides its
+ * children, while a child with another visible parent still appears there.
+ *
+ * A node may appear under every visible parent. Each occurrence gets its own
+ * id, so the same variant can be connected to both a token and a main component.
  */
-export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]): TokenLayout => {
-	const visibleNodes = nodes.filter((node) => !node.hidden);
-	const visibleEdges = edges.filter((edge) => !edge.hidden);
+export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[], visibleTypes: ReadonlySet<ComponentType>): TokenLayout => {
+	const allNodes = nodes.filter((node) => !node.hidden);
+	const allEdges = edges.filter((edge) => !edge.hidden);
 
-	const nodeById = new Map(visibleNodes.map((node) => [node.id, node]));
-	const tokenIds = new Set(visibleNodes.filter((node) => node.data.componentType === "token").map((node) => node.id));
+	const allNodeById = new Map(allNodes.map((node) => [node.id, node]));
+	const typeVisible = (node: Node<ComponentNodeData>) => visibleTypes.has(node.data.componentType);
 
 	const childrenOf = new Map<string, string[]>();
-	const incomingTokenEdge = new Set<string>();
+	const incomingEdge = new Set<string>();
 
-	for (const edge of visibleEdges) {
-		if (!nodeById.has(edge.source) || !nodeById.has(edge.target)) continue;
+	for (const edge of allEdges) {
+		if (!allNodeById.has(edge.source) || !allNodeById.has(edge.target)) continue;
 
 		if (!childrenOf.has(edge.source)) childrenOf.set(edge.source, []);
 		childrenOf.get(edge.source)!.push(edge.target);
+		incomingEdge.add(edge.target);
+	}
 
-		if (tokenIds.has(edge.source) && tokenIds.has(edge.target)) {
-			incomingTokenEdge.add(edge.target);
+	// Roots are enabled nodes with no incoming edge. Type rank keeps main
+	// components above variants and tokens above their usages.
+	const roots = allNodes.filter((node) => typeVisible(node) && !incomingEdge.has(node.id)).sort(compareRoots);
+
+	// Visibility flows down from the roots. A node whose parent is hidden is not
+	// reachable, so it disappears with that parent. A node with another visible
+	// parent remains reachable through that parent.
+	const visibleNodeIds = new Set<string>();
+	const queue = [...roots];
+
+	while (queue.length > 0) {
+		const node = queue.pop()!;
+		if (visibleNodeIds.has(node.id)) continue;
+		visibleNodeIds.add(node.id);
+
+		for (const childId of childrenOf.get(node.id) ?? []) {
+			const child = allNodeById.get(childId);
+			if (child && typeVisible(child)) queue.push(child);
 		}
 	}
 
-	// A token is a root when no other token points at it. Literals sort before
-	// aliases so a literal claims an alias reachable through a non-token path.
-	// Once the user re-orders roots, the explicit order wins.
-	const roots = visibleNodes
-		.filter((node) => tokenIds.has(node.id) && !incomingTokenEdge.has(node.id))
-		.sort((a, b) => {
-			if (a.data.order !== undefined || b.data.order !== undefined) return compareNodeOrder(a, b);
+	const visibleNodes = allNodes.filter((node) => visibleNodeIds.has(node.id));
+	const visibleNodeById = new Map(visibleNodes.map((node) => [node.id, node]));
+	const visibleEdges = allEdges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
 
-			const aAlias = isAliasToken(a.data.tokenKind) ? 1 : 0;
-			const bAlias = isAliasToken(b.data.tokenKind) ? 1 : 0;
-			if (aAlias !== bAlias) return aAlias - bAlias;
-			return compareNodePositions(a, b);
-		});
+	const visibleChildrenOf = new Map<string, string[]>();
+	for (const edge of visibleEdges) {
+		if (!visibleChildrenOf.has(edge.source)) visibleChildrenOf.set(edge.source, []);
+		visibleChildrenOf.get(edge.source)!.push(edge.target);
+	}
 
-	const visited = new Set<string>();
+	const nodeByOccurrenceId = new Map<string, Node<ComponentNodeData>>();
 	const depthById = new Map<string, number>();
 	const parentById = new Map<string, string | null>();
+	const parentItemById = new Map<string, string | null>();
 	const siblingsById = new Map<string, string[]>();
-	const parentChildPairs: { sourceId: string; targetId: string }[] = [];
+	const parentChildPairs: { sourceItemId: string; targetItemId: string; sourceId: string; targetId: string }[] = [];
 	const forest: TreeNode[] = [];
 
-	const buildTree = (node: Node<ComponentNodeData>, depth: number, parentId: string | null): TreeNode => {
-		visited.add(node.id);
-		depthById.set(node.id, depth);
-		parentById.set(node.id, parentId);
+	const buildTree = (node: Node<ComponentNodeData>, depth: number, parentId: string | null, parentOccurrenceId: string | null, path: Set<string>): TreeNode => {
+		const occurrenceId = `${parentOccurrenceId ?? "root"}/${node.id}`;
+		nodeByOccurrenceId.set(occurrenceId, node);
+		depthById.set(occurrenceId, depth);
+		parentById.set(occurrenceId, parentId);
+		parentItemById.set(occurrenceId, parentOccurrenceId);
 
 		const children: TreeNode[] = [];
 
-		if (node.data.componentType === "token") {
-			const childIds = [...new Set(childrenOf.get(node.id) ?? [])];
+		// The path set is per branch, so a node can appear under multiple parents
+		// while cycles still terminate.
+		if (!path.has(node.id)) {
+			const nextPath = new Set(path);
+			nextPath.add(node.id);
+
+			const childIds = [...new Set(visibleChildrenOf.get(node.id) ?? [])];
 			for (const childId of childIds) {
-				if (visited.has(childId)) continue;
-				const child = nodeById.get(childId);
+				const child = visibleNodeById.get(childId);
 				if (!child) continue;
 
-				children.push(buildTree(child, depth + 1, node.id));
-				parentChildPairs.push({ sourceId: node.id, targetId: child.id });
+				const childOccurrenceId = `${occurrenceId}/${child.id}`;
+				children.push(buildTree(child, depth + 1, node.id, occurrenceId, nextPath));
+				parentChildPairs.push({ sourceItemId: occurrenceId, targetItemId: childOccurrenceId, sourceId: node.id, targetId: child.id });
 			}
 			children.sort(compareTreeNodes);
 
 			const childIdsInOrder = children.map((child) => child.node.id);
-			for (const child of children) siblingsById.set(child.node.id, childIdsInOrder);
+			for (const child of children) siblingsById.set(child.id, childIdsInOrder);
 		}
 
-		return { node, depth, children };
+		return { id: occurrenceId, node, depth, children };
 	};
 
 	for (const root of roots) {
-		if (visited.has(root.id)) continue;
-		forest.push(buildTree(root, 0, null));
-	}
-
-	// Tokens caught in a cycle never reach a root; give each one its own block.
-	for (const node of visibleNodes) {
-		if (!tokenIds.has(node.id) || visited.has(node.id)) continue;
-		forest.push(buildTree(node, 0, null));
+		forest.push(buildTree(root, 0, null, null, new Set()));
 	}
 
 	// Roots are siblings of each other, so they can be re-ordered as blocks.
 	const rootIds = forest.map((tree) => tree.node.id);
-	for (const rootId of rootIds) siblingsById.set(rootId, rootIds);
+	for (const root of forest) siblingsById.set(root.id, rootIds);
 
 	const rowSpans = new Map<string, { start: number; end: number }>();
 	const blocks: TokenLayoutBlock[] = [];
@@ -249,7 +307,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		if (tree.children.length === 0) {
 			const row = nextRow++;
 			const span = { start: row, end: row };
-			rowSpans.set(tree.node.id, span);
+			rowSpans.set(tree.id, span);
 			return span;
 		}
 
@@ -263,7 +321,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		}
 
 		const span = { start, end };
-		rowSpans.set(tree.node.id, span);
+		rowSpans.set(tree.id, span);
 		return span;
 	};
 
@@ -277,22 +335,26 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 	const itemById = new Map<string, TokenLayoutItem>();
 
 	for (const [id, span] of rowSpans) {
-		const node = nodeById.get(id);
+		const node = nodeByOccurrenceId.get(id);
 		if (!node) continue;
 
 		const depth = depthById.get(id) ?? 0;
 		const centerRow = (span.start + span.end) / 2;
 
 		const item: TokenLayoutItem = {
+			id,
 			node,
 			depth,
 			rowStart: span.start,
 			rowEnd: span.end,
 			x: depth * TOKEN_COLUMN_WIDTH,
 			y: (centerRow + 0.5) * TOKEN_ROW_HEIGHT - TOKEN_NODE_HEIGHT / 2,
-			ancestors: getAncestorChain(node.id, nodeById, visibleEdges),
+			// Ancestors come from the full graph, so a hidden main component still
+			// appears in a variant's breadcrumb for context.
+			ancestors: getAncestorChain(node.id, allNodeById, allEdges),
 			parentId: parentById.get(id) ?? null,
-			siblingIds: siblingsById.get(id) ?? [id],
+			parentItemId: parentItemById.get(id) ?? null,
+			siblingIds: siblingsById.get(id) ?? [node.id],
 		};
 
 		items.push(item);
@@ -302,8 +364,8 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 	const links: TokenLayoutLink[] = [];
 
 	for (const pair of parentChildPairs) {
-		const source = itemById.get(pair.sourceId);
-		const target = itemById.get(pair.targetId);
+		const source = itemById.get(pair.sourceItemId);
+		const target = itemById.get(pair.targetItemId);
 		if (!source || !target) continue;
 
 		const startX = source.x + TOKEN_NODE_WIDTH;
@@ -312,6 +374,8 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		const endY = target.y + TOKEN_NODE_HEIGHT / 2;
 
 		links.push({
+			sourceItemId: pair.sourceItemId,
+			targetItemId: pair.targetItemId,
 			sourceId: pair.sourceId,
 			targetId: pair.targetId,
 			path: orthogonalPath(startX, startY, endX, endY),
