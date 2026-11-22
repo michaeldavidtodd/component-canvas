@@ -15,6 +15,7 @@ import {
 	type TokenLayoutItem,
 	type TokenLayoutLink,
 } from "@/lib/tokenLayout";
+import { canAssignParent } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ interface GridViewProps {
 	nodes: Node<ComponentNodeData>[];
 	edges: Edge[];
 	selectedNodeId: string | null;
-	onNodeSelect: (node: Node<ComponentNodeData> | null) => void;
+	onNodeSelect: (node: Node<ComponentNodeData> | null, occurrenceId?: string | null) => void;
 	onSwitchToCanvas: () => void;
 	/** Mirrors the canvas lock so the token map is read-only too. */
 	isLocked?: boolean;
@@ -58,6 +59,8 @@ interface ReconnectDrag {
 	pointerY: number;
 	hoverItemId: string | null;
 	hoverNodeId: string | null;
+	hoverAllowed: boolean;
+	hoverReason: string | null;
 	color: string;
 	sourceId: string;
 	targetId: string;
@@ -69,7 +72,7 @@ interface TokenChipProps {
 	dimmed: boolean;
 	isLocked: boolean;
 	isDragging: boolean;
-	onSelect: (node: Node<ComponentNodeData>) => void;
+	onSelect: (node: Node<ComponentNodeData>, occurrenceId: string) => void;
 	onHover: (nodeId: string | null) => void;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
 	onDragStart: (itemId: string, nodeId: string) => void;
@@ -111,13 +114,13 @@ const TokenChip = memo(
 				title={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
 				onClick={(event) => {
 					event.stopPropagation();
-					if (!isLocked) onSelect(item.node);
+					if (!isLocked) onSelect(item.node, item.id);
 				}}
 				onKeyDown={(event) => {
 					if (event.target !== event.currentTarget) return;
 					if (event.key === "Enter" || event.key === " ") {
 						event.preventDefault();
-						if (!isLocked) onSelect(item.node);
+						if (!isLocked) onSelect(item.node, item.id);
 					}
 				}}
 				onMouseEnter={() => onHover(item.node.id)}
@@ -326,17 +329,34 @@ export const GridView = ({
 		[layout.items],
 	);
 
-	const isValidReconnectTarget = useCallback(
-		(drag: ReconnectDrag, nodeId: string): boolean => {
-			if (drag.endpoint === "source" && nodeId === drag.targetId) return false;
-			if (drag.endpoint === "target" && nodeId === drag.sourceId) return false;
+	const evaluateReconnectTarget = useCallback(
+		(drag: ReconnectDrag, nodeId: string): { allowed: boolean; reason: string | null } => {
+			const edge = edges.find((candidate) => candidate.id === drag.edgeId);
+			if (!edge) return { allowed: false, reason: "This connection no longer exists." };
 
-			const nextSource = drag.endpoint === "source" ? nodeId : drag.sourceId;
-			const nextTarget = drag.endpoint === "target" ? nodeId : drag.targetId;
+			const nextSource = drag.endpoint === "source" ? nodeId : edge.source;
+			const nextTarget = drag.endpoint === "target" ? nodeId : edge.target;
+			if (nextSource === nextTarget) return { allowed: false, reason: "A node can't be its own parent." };
 
-			return !edges.some((edge) => edge.id !== drag.edgeId && edge.source === nextSource && edge.target === nextTarget);
+			const child = nodes.find((node) => node.id === nextTarget);
+			const parent = nodes.find((node) => node.id === nextSource);
+			if (!child || !parent) return { allowed: false, reason: "That node is no longer available." };
+
+			const existingParents = edges
+				.filter((candidate) => candidate.id !== drag.edgeId && candidate.target === nextTarget)
+				.map((candidate) => nodes.find((node) => node.id === candidate.source))
+				.filter((node): node is Node<ComponentNodeData> => !!node);
+
+			const check = canAssignParent(child, parent, existingParents);
+			if (!check.allowed) return { allowed: false, reason: check.reason ?? "This parent isn't allowed." };
+
+			if (edges.some((candidate) => candidate.id !== drag.edgeId && candidate.source === nextSource && candidate.target === nextTarget)) {
+				return { allowed: false, reason: "That connection already exists." };
+			}
+
+			return { allowed: true, reason: null };
 		},
-		[edges],
+		[edges, nodes],
 	);
 
 	// Keep the highlight stable while an endpoint is being dragged; the pointer
@@ -367,6 +387,8 @@ export const GridView = ({
 				pointerY: event.clientY - rect.top,
 				hoverItemId: null,
 				hoverNodeId: null,
+				hoverAllowed: false,
+				hoverReason: null,
 				color: link.color,
 				sourceId: link.sourceId,
 				targetId: link.targetId,
@@ -390,21 +412,23 @@ export const GridView = ({
 			const x = event.clientX - rect.left;
 			const y = event.clientY - rect.top;
 			const item = findItemAt(x, y);
-			const isValid = item ? isValidReconnectTarget(current, item.node.id) : false;
+			const evaluation = item ? evaluateReconnectTarget(current, item.node.id) : { allowed: false, reason: null };
 
 			setReconnectDrag({
 				...current,
 				pointerX: x,
 				pointerY: y,
-				hoverItemId: isValid && item ? item.id : null,
-				hoverNodeId: isValid && item ? item.node.id : null,
+				hoverItemId: item?.id ?? null,
+				hoverNodeId: item?.node.id ?? null,
+				hoverAllowed: evaluation.allowed,
+				hoverReason: evaluation.reason,
 			});
 		};
 
 		const handlePointerUp = (event: PointerEvent) => {
 			const current = reconnectDragRef.current;
 			if (!current || event.pointerId !== current.pointerId) return;
-			if (current.hoverNodeId) {
+			if (current.hoverNodeId && current.hoverAllowed) {
 				onReconnectEdge(current.edgeId, current.endpoint, current.hoverNodeId);
 			}
 			setReconnectDrag(null);
@@ -432,7 +456,7 @@ export const GridView = ({
 			window.removeEventListener("pointerup", handlePointerUp);
 			window.removeEventListener("pointercancel", handlePointerCancel);
 		};
-	}, [isReconnecting, findItemAt, isValidReconnectTarget, onReconnectEdge, setReconnectDrag]);
+	}, [isReconnecting, findItemAt, evaluateReconnectTarget, onReconnectEdge, setReconnectDrag]);
 
 	const reconnectHoverItem = useMemo(() => {
 		if (!reconnectDrag?.hoverItemId) return null;
@@ -922,12 +946,22 @@ export const GridView = ({
 										height={TOKEN_NODE_HEIGHT + 4}
 										rx={10}
 										fill="none"
-										stroke={reconnectDrag.color}
+										stroke={reconnectDrag.hoverAllowed ? reconnectDrag.color : "hsl(var(--destructive))"}
 										strokeWidth={2}
 										strokeDasharray="4 3"
 									/>
 								)}
 							</svg>
+						)}
+
+						{/* Explain why a hovered chip can't be used as the new parent. */}
+						{reconnectDrag?.hoverReason && (
+							<div
+								className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md"
+								style={{ left: reconnectDrag.pointerX + 12, top: reconnectDrag.pointerY + 12 }}
+							>
+								{reconnectDrag.hoverReason}
+							</div>
 						)}
 					</div>
 				</div>

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, addEdge, Connection, Edge, Background, Controls, MiniMap, Node, SelectionMode, useReactFlow, useStore } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -19,6 +19,7 @@ import { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
+import { canAssignParent, getPrimaryParentId } from "@/lib/parentRules";
 import type { SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,6 +83,37 @@ const nodeTypes = {
 
 const edgeTypes = {
 	default: SimpleDeleteEdge,
+};
+
+/**
+ * Floating explanation for an ineligible connection target. Rendered inside the
+ * ReactFlow wrapper so it can be positioned in screen coordinates.
+ */
+const ConnectionRuleTooltip = ({ hover }: { hover: { nodeId: string; reason: string } | null }) => {
+	const position = useStore((state) => {
+		if (!hover) return null;
+		const node = state.nodeLookup.get(hover.nodeId);
+		if (!node) return null;
+		const [tx, ty, zoom] = state.transform;
+		const width = node.measured?.width ?? 200;
+		const height = node.measured?.height ?? 80;
+		return {
+			x: node.position.x * zoom + tx + (width * zoom) / 2,
+			y: node.position.y * zoom + ty + height * zoom + 10,
+		};
+	});
+
+	if (!hover || !position) return null;
+
+	return (
+		<div
+			className="pointer-events-none absolute z-50 w-max max-w-64 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md"
+			style={{ left: position.x, top: position.y }}
+			role="status"
+		>
+			{hover.reason}
+		</div>
+	);
 };
 
 // Component for auto layout functionality
@@ -271,6 +303,9 @@ export const ComponentLibraryPlanner = ({
 	const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
 	const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 	const [selectedNode, setSelectedNode] = useState<Node<ComponentNodeData> | null>(null);
+	// The specific grid occurrence that was clicked. A node can appear in several
+	// places in the structured map, so this disambiguates which parent to show.
+	const [selectedOccurrenceId, setSelectedOccurrenceId] = useState<string | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
 	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
@@ -290,6 +325,10 @@ export const ComponentLibraryPlanner = ({
 	// Which node types are shown in the structured map. Kept here so the filter
 	// survives switching between the canvas and the map.
 	const [visibleTypes, setVisibleTypes] = useState<Set<ComponentType>>(() => new Set(COMPONENT_TYPES.map((meta) => meta.type)));
+	// Tracks an in-progress canvas connection so ineligible targets can explain
+	// themselves while the user drags.
+	const [connectionDrag, setConnectionDrag] = useState<{ startNodeId: string; handleType: "source" | "target" } | null>(null);
+	const [connectionHover, setConnectionHover] = useState<{ nodeId: string; reason: string } | null>(null);
 	const { user, isAnonymous, signOut } = useAuth();
 	const navigate = useNavigate();
 	const isMobile = useIsMobile();
@@ -389,13 +428,27 @@ export const ComponentLibraryPlanner = ({
 		);
 	}, [nodes, setEdges]);
 
+	const getExistingParents = useCallback(
+		(nodeId: string, excludeEdgeId?: string) =>
+			edges
+				.filter((edge) => edge.target === nodeId && edge.id !== excludeEdgeId)
+				.map((edge) => nodes.find((node) => node.id === edge.source))
+				.filter((node): node is Node<ComponentNodeData> => !!node),
+		[edges, nodes],
+	);
+
 	const onConnect = useCallback(
 		(params: Connection) => {
 			const sourceNode = nodes.find((n) => n.id === params.source);
 			const targetNode = nodes.find((n) => n.id === params.target);
+			if (!sourceNode || !targetNode) return;
+			if (sourceNode.id === targetNode.id) return;
 
-			const strokeColor =
-				sourceNode && targetNode ? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType) : CONNECTION_TYPES.default.stroke;
+			const existingParents = getExistingParents(targetNode.id);
+			const check = canAssignParent(targetNode as Node<ComponentNodeData>, sourceNode as Node<ComponentNodeData>, existingParents);
+			if (!check.allowed) return;
+
+			const strokeColor = getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType);
 
 			const newEdge = {
 				...params,
@@ -405,20 +458,71 @@ export const ComponentLibraryPlanner = ({
 
 			setEdges((eds) => addEdge(newEdge, eds));
 
-			// Persist the logical parent so the variant can be detached from the canvas later.
-			if (sourceNode?.data.componentType === "main-component" && params.target) {
-				setNodes((nds) =>
-					nds.map((node) =>
-						node.id === params.target && node.data.componentType === "variant" ? { ...node, data: { ...node.data, parentId: params.source } } : node,
-					),
-				);
-			}
+			// Keep the target's logical parent in sync with the new edge. Structural
+			// parents win so a variant's breadcrumb stays anchored to its main component.
+			const primaryParentId = getPrimaryParentId([...existingParents, sourceNode as Node<ComponentNodeData>]);
+			setNodes((nds) => nds.map((node) => (node.id === targetNode.id ? { ...node, data: { ...node.data, parentId: primaryParentId } } : node)));
 		},
-		[nodes, setEdges, setNodes],
+		[nodes, getExistingParents, setEdges, setNodes],
 	);
 
-	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null) => {
+	const isValidConnection = useCallback(
+		(connection: Connection | Edge) => {
+			const sourceNode = nodes.find((n) => n.id === connection.source);
+			const targetNode = nodes.find((n) => n.id === connection.target);
+			if (!sourceNode || !targetNode) return false;
+			if (sourceNode.id === targetNode.id) return false;
+
+			return canAssignParent(
+				targetNode as Node<ComponentNodeData>,
+				sourceNode as Node<ComponentNodeData>,
+				getExistingParents(targetNode.id),
+			).allowed;
+		},
+		[nodes, getExistingParents],
+	);
+
+	const onConnectStart = useCallback((_: unknown, params: { nodeId: string | null; handleType: "source" | "target" | null }) => {
+		if (!params.nodeId || !params.handleType) return;
+		setConnectionDrag({ startNodeId: params.nodeId, handleType: params.handleType });
+	}, []);
+
+	const onConnectEnd = useCallback(() => {
+		setConnectionDrag(null);
+		setConnectionHover(null);
+	}, []);
+
+	const onNodeMouseEnter = useCallback(
+		(_: ReactMouseEvent, node: Node) => {
+			if (!connectionDrag) return;
+			const startNode = nodes.find((n) => n.id === connectionDrag.startNodeId);
+			if (!startNode) return;
+
+			const parent = connectionDrag.handleType === "source" ? startNode : node;
+			const child = connectionDrag.handleType === "source" ? node : startNode;
+			if (parent.id === child.id) {
+				setConnectionHover({ nodeId: node.id, reason: "A node can't be its own parent." });
+				return;
+			}
+
+			const check = canAssignParent(
+				child as Node<ComponentNodeData>,
+				parent as Node<ComponentNodeData>,
+				getExistingParents(child.id),
+			);
+
+			setConnectionHover(check.allowed ? null : { nodeId: node.id, reason: check.reason ?? "This parent isn't allowed." });
+		},
+		[connectionDrag, nodes, getExistingParents],
+	);
+
+	const onNodeMouseLeave = useCallback(() => {
+		setConnectionHover(null);
+	}, []);
+
+	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null, occurrenceId: string | null = null) => {
 		setSelectedNode(node);
+		setSelectedOccurrenceId(node ? occurrenceId : null);
 	}, []);
 
 	const toggleVisibleType = useCallback((type: ComponentType) => {
@@ -541,23 +645,41 @@ export const ComponentLibraryPlanner = ({
 
 			const sourceNode = nodes.find((node) => node.id === nextSource);
 			const targetNode = nodes.find((node) => node.id === nextTarget);
-			const stroke =
-				sourceNode && targetNode
-					? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType)
-					: edge.style?.stroke;
+			if (!sourceNode || !targetNode) return;
+
+			const existingParents = edges
+				.filter((candidate) => candidate.id !== edgeId && candidate.target === nextTarget)
+				.map((candidate) => nodes.find((node) => node.id === candidate.source))
+				.filter((node): node is Node<ComponentNodeData> => !!node);
+
+			const check = canAssignParent(
+				targetNode as Node<ComponentNodeData>,
+				sourceNode as Node<ComponentNodeData>,
+				existingParents as Node<ComponentNodeData>[],
+			);
+			if (!check.allowed) return;
+
+			const stroke = getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType);
 
 			setEdges((eds) => eds.map((candidate) => (candidate.id === edgeId ? { ...candidate, source: nextSource, target: nextTarget, style: { ...candidate.style, stroke } } : candidate)));
 
-			// Keep the target's logical parent in sync with the new edge.
-			setNodes((nds) => nds.map((node) => (node.id === nextTarget ? { ...node, data: { ...node.data, parentId: nextSource } } : node)));
+			// Keep the target's logical parent in sync with the new edge. Structural
+			// parents win so a variant's breadcrumb stays anchored to its main component.
+			const primaryParentId = getPrimaryParentId([...existingParents, sourceNode as Node<ComponentNodeData>]);
+			setNodes((nds) => nds.map((node) => (node.id === nextTarget ? { ...node, data: { ...node.data, parentId: primaryParentId } } : node)));
 
-			// Drop a stale explicit parent when the edge no longer connects the old
-			// target to the old source. The new parent (if any) was set above.
+			// Re-point the old target's breadcrumb when the edge no longer connects it
+			// to the old source. The new parent was set above.
 			const detachStaleParent = () => {
 				const stillConnected = edges.some((candidate) => candidate.id !== edgeId && candidate.source === edge.source && candidate.target === edge.target);
 				if (stillConnected) return;
+				const remainingParents = edges
+					.filter((candidate) => candidate.id !== edgeId && candidate.target === edge.target)
+					.map((candidate) => nodes.find((node) => node.id === candidate.source))
+					.filter((node): node is Node<ComponentNodeData> => !!node);
+				const nextPrimaryParentId = getPrimaryParentId(remainingParents);
 				setNodes((nds) =>
-					nds.map((node) => (node.id === edge.target && node.data.parentId === edge.source ? { ...node, data: { ...node.data, parentId: undefined } } : node)),
+					nds.map((node) => (node.id === edge.target && node.data.parentId === edge.source ? { ...node, data: { ...node.data, parentId: nextPrimaryParentId } } : node)),
 				);
 			};
 
@@ -568,35 +690,40 @@ export const ComponentLibraryPlanner = ({
 		[edges, nodes, setEdges, setNodes],
 	);
 
-	// Assign or clear the primary parent connection from the properties panel.
-	// This is the direct path for making a first-column chip a child.
-	const setNodeParent = useCallback(
-		(nodeId: string, parentId: string | null) => {
-			const primaryEdge = edges.find((edge) => edge.target === nodeId);
+	// Replace the selected node's parent connections from the properties panel.
+	// The picker computes the valid set; this validates it again and rewrites the
+	// incoming edges so the canvas and grid stay in sync.
+	const setNodeParents = useCallback(
+		(nodeId: string, parentIds: string[]) => {
+			const child = nodes.find((node) => node.id === nodeId);
+			if (!child) return;
 
-			if (parentId && primaryEdge?.source === parentId) {
-				setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, parentId } } : node)));
-				return;
+			const parentNodes = parentIds
+				.map((id) => nodes.find((node) => node.id === id))
+				.filter((node): node is Node<ComponentNodeData> => !!node);
+
+			const validParents: Node<ComponentNodeData>[] = [];
+			for (const parent of parentNodes) {
+				const check = canAssignParent(child as Node<ComponentNodeData>, parent, validParents);
+				if (check.allowed) validParents.push(parent);
 			}
 
 			setEdges((eds) => {
-				const withoutPrimary = primaryEdge ? eds.filter((edge) => edge.id !== primaryEdge.id) : eds;
-				if (!parentId) return withoutPrimary;
-				if (withoutPrimary.some((edge) => edge.source === parentId && edge.target === nodeId)) return withoutPrimary;
-
-				const sourceNode = nodes.find((node) => node.id === parentId);
-				const targetNode = nodes.find((node) => node.id === nodeId);
-				const stroke =
-					sourceNode && targetNode
-						? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType)
-						: undefined;
-
-				return [...withoutPrimary, { id: `edge-${Date.now()}`, source: parentId, target: nodeId, type: "default", style: { stroke } }];
+				const withoutIncoming = eds.filter((edge) => edge.target !== nodeId);
+				const newEdges = validParents.map((parent, index) => ({
+					id: `edge-${Date.now()}-${index}-${parent.id}`,
+					source: parent.id,
+					target: nodeId,
+					type: "default",
+					style: { stroke: getEdgeColor(parent.data.componentType as ComponentType, child.data.componentType as ComponentType) },
+				}));
+				return [...withoutIncoming, ...newEdges];
 			});
 
-			setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, parentId } } : node)));
+			const primaryParentId = getPrimaryParentId(validParents);
+			setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, parentId: primaryParentId } } : node)));
 		},
-		[edges, nodes, setEdges, setNodes],
+		[nodes, setEdges, setNodes],
 	);
 
 	const onLayout = useCallback(
@@ -743,7 +870,7 @@ export const ComponentLibraryPlanner = ({
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
 						</Badge>
-						<PropertiesPanel selectedNode={selectedNode} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParent={setNodeParent} />
+						<PropertiesPanel selectedNode={selectedNode} selectedOccurrenceId={selectedOccurrenceId} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParents={setNodeParents} />
 					</aside>
 				)}
 
@@ -759,8 +886,32 @@ export const ComponentLibraryPlanner = ({
 					)}
 
 					{viewMode === "canvas" ? (
-						<ReactFlow nodes={nodes} edges={edges} onNodesChange={isSharedView || isMobile ? undefined : onNodesChange} onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange} onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)} onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)} nodesDraggable={!isSharedView && !isMobile && !isCanvasLocked} nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked} elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked} multiSelectionKeyCode="Shift" selectionKeyCode="Shift" selectionMode={SelectionMode.Partial} fitViewOptions={FIT_VIEW_OPTIONS} className="relative bg-canvas overflow-hidden md:border-l">
+						<ReactFlow
+							nodes={nodes}
+							edges={edges}
+							onNodesChange={isSharedView || isMobile ? undefined : onNodesChange}
+							onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange}
+							onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect}
+							onConnectStart={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectStart}
+							onConnectEnd={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectEnd}
+							onNodeMouseEnter={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseEnter}
+							onNodeMouseLeave={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseLeave}
+							isValidConnection={isSharedView || isMobile || isCanvasLocked ? undefined : isValidConnection}
+							nodeTypes={nodeTypes}
+							edgeTypes={edgeTypes}
+							onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)}
+							onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)}
+							nodesDraggable={!isSharedView && !isMobile && !isCanvasLocked}
+							nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked}
+							elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked}
+							multiSelectionKeyCode="Shift"
+							selectionKeyCode="Shift"
+							selectionMode={SelectionMode.Partial}
+							fitViewOptions={FIT_VIEW_OPTIONS}
+							className="relative bg-canvas overflow-hidden md:border-l"
+						>
 							<Background className="[&>*]:!stroke-border" gap={16} />
+							<ConnectionRuleTooltip hover={connectionHover} />
 							{!isUIHidden && (
 								<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
 									<ConnectionLegend />
