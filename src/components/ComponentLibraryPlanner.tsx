@@ -855,7 +855,7 @@ export const ComponentLibraryPlanner = ({
 	return (
 		<ReactFlowProvider>
 			{!isSharedView && <ProjectManager onProjectLoaded={handleProjectLoaded} onInitialized={setIsProjectInitialized} />}
-			<div className="flex h-dvh bg-canvas">
+			<div className="flex h-dvh bg-canvas divide-x">
 				{!isSharedView && (
 					<>
 						<ProjectBrowser open={showProjectBrowser} onOpenChange={setShowProjectBrowser} />
@@ -932,7 +932,7 @@ export const ComponentLibraryPlanner = ({
 							panOnScroll
 							minZoom={MIN_ZOOM}
 							fitViewOptions={FIT_VIEW_OPTIONS}
-							className="relative bg-canvas overflow-hidden md:border-l"
+							className="relative bg-canvas overflow-hidden"
 						>
 							<Background className="[&>*]:!stroke-border" gap={16} />
 							<ConnectionRuleTooltip hover={connectionHover} />

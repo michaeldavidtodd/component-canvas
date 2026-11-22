@@ -5,16 +5,7 @@ import { Columns3, GripVertical, Redo2, Undo2, X } from "lucide-react";
 import type { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
-import {
-	buildTokenLayout,
-	TOKEN_COLUMN_WIDTH,
-	TOKEN_HEADER_HEIGHT,
-	TOKEN_NODE_HEIGHT,
-	TOKEN_NODE_WIDTH,
-	TOKEN_ROW_HEIGHT,
-	type TokenLayoutItem,
-	type TokenLayoutLink,
-} from "@/lib/tokenLayout";
+import { buildTokenLayout, TOKEN_COLUMN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_NODE_WIDTH, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
 import { canAssignParent } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +32,7 @@ interface GridViewProps {
 
 type LinkEndpoint = "source" | "target";
 
-const isLinkActive = (link: TokenLayoutLink, activeNodeId: string | null): boolean =>
-	!!activeNodeId && (link.sourceId === activeNodeId || link.targetId === activeNodeId);
+const isLinkActive = (link: TokenLayoutLink, activeNodeId: string | null): boolean => !!activeNodeId && (link.sourceId === activeNodeId || link.targetId === activeNodeId);
 
 /** Occurrence-based key, so a node shown under multiple parents stays distinct. */
 const getLinkKey = (link: TokenLayoutLink): string => `${link.sourceItemId}-${link.targetItemId}`;
@@ -79,121 +69,113 @@ interface TokenChipProps {
 	onDragEnd: () => void;
 }
 
-const TokenChip = memo(
-	({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd }: TokenChipProps) => {
-		const data = item.node.data;
-		const meta = getComponentTypeMeta(data.componentType);
-		const Icon = meta.icon;
+const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd }: TokenChipProps) => {
+	const data = item.node.data;
+	const meta = getComponentTypeMeta(data.componentType);
+	const Icon = meta.icon;
 
-		const isToken = data.componentType === "token";
-		const isAlias = isToken && isAliasToken(data.tokenKind);
-		const tokenFormat = data.tokenFormat ?? (data.tokenType ? getDefaultTokenFormat(data.tokenType) : undefined);
-		const displayName = isAlias && data.tokenAlias ? data.tokenAlias : data.label;
-		const valueLabel = isToken && !isAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
-		const colorPreview = isToken && isColorToken(data.tokenType) ? toCssColor(data.tokenValue, tokenFormat) : null;
-		const typeLabel = isToken ? getNodeTypeLabel(data.componentType, data.tokenKind) : meta.label;
+	const isToken = data.componentType === "token";
+	const isAlias = isToken && isAliasToken(data.tokenKind);
+	const tokenFormat = data.tokenFormat ?? (data.tokenType ? getDefaultTokenFormat(data.tokenType) : undefined);
+	const displayName = isAlias && data.tokenAlias ? data.tokenAlias : data.label;
+	const valueLabel = isToken && !isAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
+	const colorPreview = isToken && isColorToken(data.tokenType) ? toCssColor(data.tokenValue, tokenFormat) : null;
+	const typeLabel = isToken ? getNodeTypeLabel(data.componentType, data.tokenKind) : meta.label;
 
-		const fullName = [...item.ancestors.map((layer) => layer.label), displayName].join(" / ");
-		const siblingIndex = item.siblingIds.indexOf(item.node.id);
-		const canReorder = !isLocked && item.siblingIds.length > 1;
+	const fullName = [...item.ancestors.map((layer) => layer.label), displayName].join(" / ");
+	const siblingIndex = item.siblingIds.indexOf(item.node.id);
+	const canReorder = !isLocked && item.siblingIds.length > 1;
 
-		const moveByKeyboard = (direction: "up" | "down") => {
-			const targetIndex = direction === "up" ? siblingIndex - 1 : siblingIndex + 1;
-			if (targetIndex < 0 || targetIndex >= item.siblingIds.length) return;
-			onReorder(item.siblingIds, item.node.id, item.siblingIds[targetIndex]);
-		};
+	const moveByKeyboard = (direction: "up" | "down") => {
+		const targetIndex = direction === "up" ? siblingIndex - 1 : siblingIndex + 1;
+		if (targetIndex < 0 || targetIndex >= item.siblingIds.length) return;
+		onReorder(item.siblingIds, item.node.id, item.siblingIds[targetIndex]);
+	};
 
-		return (
-			<div
-				data-token-chip
-				role="button"
-				tabIndex={0}
-				aria-pressed={selected}
-				aria-disabled={isLocked}
-				aria-label={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
-				title={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
-				onClick={(event) => {
-					event.stopPropagation();
+	return (
+		<div
+			data-token-chip
+			role="button"
+			tabIndex={0}
+			aria-pressed={selected}
+			aria-disabled={isLocked}
+			aria-label={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
+			title={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
+			onClick={(event) => {
+				event.stopPropagation();
+				if (!isLocked) onSelect(item.node, item.id);
+			}}
+			onKeyDown={(event) => {
+				if (event.target !== event.currentTarget) return;
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
 					if (!isLocked) onSelect(item.node, item.id);
-				}}
-				onKeyDown={(event) => {
-					if (event.target !== event.currentTarget) return;
-					if (event.key === "Enter" || event.key === " ") {
-						event.preventDefault();
-						if (!isLocked) onSelect(item.node, item.id);
-					}
-				}}
-				onMouseEnter={() => onHover(item.node.id)}
-				onMouseLeave={() => onHover(null)}
-				onFocus={(event) => {
-					if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
-					onHover(item.node.id);
-				}}
-				onBlur={(event) => {
-					if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
-					onHover(null);
-				}}
-				className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-					isDragging
-						? "border-primary ring-2 ring-primary"
-						: selected
-							? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20`
-							: "border-border hover:border-muted-foreground/40"
-				} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
-				style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
-			>
-				<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
-					<Icon className="size-3" />
-				</span>
-				<span className={`min-w-0 flex-1 truncate text-xs ${isAlias ? "font-mono" : ""}`}>
-					{item.ancestors.map((layer) => (
-						<span key={layer.id} className="text-muted-foreground">
-							{layer.label}
-							<span className="px-1 text-muted-foreground/60">/</span>
-						</span>
-					))}
-					<span className="font-medium text-foreground">{displayName}</span>
-				</span>
-				{colorPreview && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: colorPreview }} aria-hidden="true" />}
-				{valueLabel && <span className="max-w-[35%] shrink-0 truncate font-mono text-[10px] text-muted-foreground">{valueLabel}</span>}
-				{canReorder && (
-					<span
-						draggable
-						role="button"
-						tabIndex={0}
-						aria-label="Drag to reorder"
-						title="Drag to reorder"
-						onDragStart={(event) => {
-							event.dataTransfer.effectAllowed = "move";
-							event.dataTransfer.setData("text/plain", item.node.id);
-							onDragStart(item.id, item.node.id);
-							try {
-								const chip = event.currentTarget.closest("[data-token-chip]");
-								if (chip instanceof HTMLElement) {
-									const rect = chip.getBoundingClientRect();
-									event.dataTransfer.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top);
-								}
-							} catch {
-								// The browser will fall back to its default drag image.
-							}
-						}}
-						onDragEnd={() => onDragEnd()}
-						onClick={(event) => event.stopPropagation()}
-						onKeyDown={(event) => {
-							if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-							event.preventDefault();
-							event.stopPropagation();
-							moveByKeyboard(event.key === "ArrowUp" ? "up" : "down");
-						}}
-						className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
-					>
-						<GripVertical className="size-3.5" />
+				}
+			}}
+			onMouseEnter={() => onHover(item.node.id)}
+			onMouseLeave={() => onHover(null)}
+			onFocus={(event) => {
+				if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
+				onHover(item.node.id);
+			}}
+			onBlur={(event) => {
+				if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
+				onHover(null);
+			}}
+			className={`group absolute flex items-center gap-1.5 first:ml-2 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
+			style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
+		>
+			<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
+				<Icon className="size-3" />
+			</span>
+			<span className={`min-w-0 flex-1 truncate text-xs ${isAlias ? "font-mono" : ""}`}>
+				{item.ancestors.map((layer) => (
+					<span key={layer.id} className="text-muted-foreground">
+						{layer.label}
+						<span className="px-1 text-muted-foreground/60">/</span>
 					</span>
-				)}
-			</div>
-		);
-	},
-);
+				))}
+				<span className="font-medium text-foreground">{displayName}</span>
+			</span>
+			{colorPreview && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: colorPreview }} aria-hidden="true" />}
+			{valueLabel && <span className="max-w-[35%] shrink-0 truncate font-mono text-[10px] text-muted-foreground">{valueLabel}</span>}
+			{canReorder && (
+				<span
+					draggable
+					role="button"
+					tabIndex={0}
+					aria-label="Drag to reorder"
+					title="Drag to reorder"
+					onDragStart={(event) => {
+						event.dataTransfer.effectAllowed = "move";
+						event.dataTransfer.setData("text/plain", item.node.id);
+						onDragStart(item.id, item.node.id);
+						try {
+							const chip = event.currentTarget.closest("[data-token-chip]");
+							if (chip instanceof HTMLElement) {
+								const rect = chip.getBoundingClientRect();
+								event.dataTransfer.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top);
+							}
+						} catch {
+							// The browser will fall back to its default drag image.
+						}
+					}}
+					onDragEnd={() => onDragEnd()}
+					onClick={(event) => event.stopPropagation()}
+					onKeyDown={(event) => {
+						if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+						event.preventDefault();
+						event.stopPropagation();
+						moveByKeyboard(event.key === "ArrowUp" ? "up" : "down");
+					}}
+					className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
+				>
+					<GripVertical className="size-3.5" />
+				</span>
+			)}
+		</div>
+	);
+});
 
 TokenChip.displayName = "TokenChip";
 
@@ -204,23 +186,7 @@ TokenChip.displayName = "TokenChip";
  * compact orthogonal lines over a rigid grid, so the map stays readable as the
  * number of tokens and usages grows.
  */
-export const GridView = ({
-	nodes,
-	edges,
-	selectedNodeId,
-	onNodeSelect,
-	onSwitchToCanvas,
-	isLocked = false,
-	onUndo,
-	onRedo,
-	canUndo,
-	canRedo,
-	onReorder,
-	onDeleteEdge,
-	onReconnectEdge,
-	visibleTypes,
-	onToggleType,
-}: GridViewProps) => {
+export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchToCanvas, isLocked = false, onUndo, onRedo, canUndo, canRedo, onReorder, onDeleteEdge, onReconnectEdge, visibleTypes, onToggleType }: GridViewProps) => {
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
@@ -273,10 +239,7 @@ export const GridView = ({
 		});
 	}, [nodes, draggedItemId, dropTargetId, baseLayout.items]);
 
-	const layout = useMemo(
-		() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges, visibleTypes)),
-		[previewNodes, nodes, edges, baseLayout, visibleTypes],
-	);
+	const layout = useMemo(() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges, visibleTypes)), [previewNodes, nodes, edges, baseLayout, visibleTypes]);
 
 	const showLinkControls = useCallback((key: string) => {
 		if (hoverTimeoutRef.current !== null) {
@@ -657,11 +620,7 @@ export const GridView = ({
 		const hasNodes = nodes.some((node) => !node.hidden);
 		const hasVisibleTypes = visibleTypes.size > 0;
 		const title = !hasNodes ? "Nothing to map yet" : !hasVisibleTypes ? "No node types selected" : "No nodes match the current filters";
-		const description = !hasNodes
-			? "Add components, variants, or tokens on the canvas, then connect them. They'll appear here as a structured map."
-			: !hasVisibleTypes
-				? "Turn on a node type in the header to see it in the map."
-				: "The current filters hide every node. Turn on a node type in the header to see it.";
+		const description = !hasNodes ? "Add components, variants, or tokens on the canvas, then connect them. They'll appear here as a structured map." : !hasVisibleTypes ? "Turn on a node type in the header to see it in the map." : "The current filters hide every node. Turn on a node type in the header to see it.";
 
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 bg-canvas p-8 text-center" onClick={() => onNodeSelect(null)}>
@@ -687,77 +646,69 @@ export const GridView = ({
 				onNodeSelect(null);
 			}}
 		>
-			<header className="flex flex-wrap items-center justify-between gap-3 pr-6 py-4">
-				<div className="flex flex-wrap items-center gap-1.5">
-					{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
-						const isVisible = visibleTypes.has(type);
-						const count = typeCounts.get(type) ?? 0;
+			<header className="flex flex-col">
+				<div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+					<div className="flex flex-wrap items-center gap-1.5">
+						{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
+							const isVisible = visibleTypes.has(type);
+							const count = typeCounts.get(type) ?? 0;
 
-						return (
-							<button
-								key={type}
-								type="button"
-								aria-pressed={isVisible}
-								title={`${isVisible ? "Hide" : "Show"} ${label}`}
-								onClick={() => onToggleType(type)}
-								className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-									isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
-								}`}
+							return (
+								<button key={type} type="button" aria-pressed={isVisible} title={`${isVisible ? "Hide" : "Show"} ${label}`} onClick={() => onToggleType(type)} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"}`}>
+									<Icon className="size-3.5" />
+									<span>{label}</span>
+									<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white dark:text-black" : "bg-background text-muted-foreground"}`}>{count}</span>
+								</button>
+							);
+						})}
+					</div>
+					<div className="flex flex-wrap items-center gap-2">
+						{isLocked && <Badge variant="outline">Canvas locked</Badge>}
+						<div className="flex items-center gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								className="size-8"
+								onClick={(event) => {
+									event.stopPropagation();
+									onUndo();
+								}}
+								disabled={isLocked || !canUndo}
+								aria-label="Undo"
 							>
-								<Icon className="size-3.5" />
-								<span>{label}</span>
-								<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white dark:text-black" : "bg-background text-muted-foreground"}`}>{count}</span>
-							</button>
-						);
-					})}
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					{isLocked && <Badge variant="outline">Canvas locked</Badge>}
-					<div className="flex items-center gap-1">
-						<Button
-							variant="outline"
-							size="icon"
-							className="size-8"
-							onClick={(event) => {
-								event.stopPropagation();
-								onUndo();
-							}}
-							disabled={isLocked || !canUndo}
-							aria-label="Undo"
-						>
-							<Undo2 className="size-3.5" />
-						</Button>
-						<Button
-							variant="outline"
-							size="icon"
-							className="size-8"
-							onClick={(event) => {
-								event.stopPropagation();
-								onRedo();
-							}}
-							disabled={isLocked || !canRedo}
-							aria-label="Redo"
-						>
-							<Redo2 className="size-3.5" />
+								<Undo2 className="size-3.5" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								className="size-8"
+								onClick={(event) => {
+									event.stopPropagation();
+									onRedo();
+								}}
+								disabled={isLocked || !canRedo}
+								aria-label="Redo"
+							>
+								<Redo2 className="size-3.5" />
+							</Button>
+						</div>
+						<Button variant="outline" size="sm" onClick={onSwitchToCanvas}>
+							Open canvas
 						</Button>
 					</div>
-					<Button variant="outline" size="sm" onClick={onSwitchToCanvas}>
-						Open canvas
-					</Button>
+				</div>
+				<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
+					{layout.columns.map((column) => (
+						<div key={column.depth} className="flex items-center justify-between gap-2 border-r border-border/40 px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
+							<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
+							<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
+						</div>
+					))}
 				</div>
 			</header>
 
-			<div ref={scrollRef} className="flex-1 overflow-auto px-2 pb-24">
+			<div ref={scrollRef} className="flex-1 overflow-auto pb-24">
 				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
-					<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
-						{layout.columns.map((column) => (
-							<div key={column.depth} className="flex items-center justify-between gap-2 border-r border-border/40 px-4 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
-								<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
-								<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
-							</div>
-						))}
-					</div>
-
 					<div
 						ref={gridRef}
 						className={`relative ${reconnectDrag ? "touch-none cursor-grabbing [&_[data-token-chip]]:pointer-events-none" : ""}`}
@@ -808,14 +759,7 @@ export const GridView = ({
 									const isReconnectingLink = reconnectDrag?.edgeId === link.edgeId;
 									return (
 										<g key={linkKey}>
-											<path
-												d={link.path}
-												fill="none"
-												stroke={link.color}
-												strokeWidth={isActive ? 2 : 1.5}
-												strokeLinecap="round"
-												opacity={isReconnectingLink ? 0.15 : activeNodeId && !isActive ? 0.2 : 0.75}
-											/>
+											<path d={link.path} fill="none" stroke={link.color} strokeWidth={isActive ? 2 : 1.5} strokeLinecap="round" opacity={isReconnectingLink ? 0.15 : activeNodeId && !isActive ? 0.2 : 0.75} />
 											{!isLocked && (
 												<path
 													d={link.path}
@@ -841,19 +785,7 @@ export const GridView = ({
 						</svg>
 
 						{layout.items.map((item) => (
-							<TokenChip
-								key={item.id}
-								item={item}
-								selected={item.node.id === selectedNodeId}
-								dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId}
-								isLocked={isLocked}
-								isDragging={item.id === draggedItemId}
-								onSelect={onNodeSelect}
-								onHover={handleChipHover}
-								onReorder={onReorder}
-								onDragStart={handleDragStart}
-								onDragEnd={handleDragEnd}
-							/>
+							<TokenChip key={item.id} item={item} selected={item.node.id === selectedNodeId} dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId} isLocked={isLocked} isDragging={item.id === draggedItemId} onSelect={onNodeSelect} onHover={handleChipHover} onReorder={onReorder} onDragStart={handleDragStart} onDragEnd={handleDragEnd} />
 						))}
 
 						{/* Connection controls: a delete button at the midpoint and a
@@ -887,31 +819,9 @@ export const GridView = ({
 											<X className="size-3.5" />
 										</button>
 
-										<button
-											type="button"
-											tabIndex={-1}
-											aria-label="Reconnect source"
-											title="Drag to reconnect"
-											onPointerDown={(event) => startReconnect(event, link, "source")}
-											onClick={(event) => event.stopPropagation()}
-											onMouseEnter={() => showLinkControls(linkKey)}
-											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
-											className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-											style={{ left: link.startX, top: link.startY }}
-										/>
+										<button type="button" tabIndex={-1} aria-label="Reconnect source" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "source")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.startX, top: link.startY }} />
 
-										<button
-											type="button"
-											tabIndex={-1}
-											aria-label="Reconnect target"
-											title="Drag to reconnect"
-											onPointerDown={(event) => startReconnect(event, link, "target")}
-											onClick={(event) => event.stopPropagation()}
-											onMouseEnter={() => showLinkControls(linkKey)}
-											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
-											className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-											style={{ left: link.endX, top: link.endY }}
-										/>
+										<button type="button" tabIndex={-1} aria-label="Reconnect target" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "target")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.endX, top: link.endY }} />
 									</div>
 								);
 							})}
@@ -919,47 +829,15 @@ export const GridView = ({
 						{/* Live preview while an endpoint is being dragged. */}
 						{reconnectDrag && (
 							<svg className="pointer-events-none absolute inset-0" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
-								<line
-									x1={reconnectDrag.anchorX}
-									y1={reconnectDrag.anchorY}
-									x2={reconnectDrag.pointerX}
-									y2={reconnectDrag.pointerY}
-									stroke={reconnectDrag.color}
-									strokeWidth={2}
-									strokeDasharray="6 4"
-									strokeLinecap="round"
-									opacity={0.9}
-								/>
-								<circle
-									cx={reconnectDrag.pointerX}
-									cy={reconnectDrag.pointerY}
-									r={5}
-									fill={reconnectDrag.color}
-									className="stroke-background"
-									strokeWidth={2}
-								/>
-								{reconnectHoverItem && (
-									<rect
-										x={reconnectHoverItem.x - 2}
-										y={reconnectHoverItem.y - 2}
-										width={TOKEN_NODE_WIDTH + 4}
-										height={TOKEN_NODE_HEIGHT + 4}
-										rx={10}
-										fill="none"
-										stroke={reconnectDrag.hoverAllowed ? reconnectDrag.color : "hsl(var(--destructive))"}
-										strokeWidth={2}
-										strokeDasharray="4 3"
-									/>
-								)}
+								<line x1={reconnectDrag.anchorX} y1={reconnectDrag.anchorY} x2={reconnectDrag.pointerX} y2={reconnectDrag.pointerY} stroke={reconnectDrag.color} strokeWidth={2} strokeDasharray="6 4" strokeLinecap="round" opacity={0.9} />
+								<circle cx={reconnectDrag.pointerX} cy={reconnectDrag.pointerY} r={5} fill={reconnectDrag.color} className="stroke-background" strokeWidth={2} />
+								{reconnectHoverItem && <rect x={reconnectHoverItem.x - 2} y={reconnectHoverItem.y - 2} width={TOKEN_NODE_WIDTH + 4} height={TOKEN_NODE_HEIGHT + 4} rx={10} fill="none" stroke={reconnectDrag.hoverAllowed ? reconnectDrag.color : "hsl(var(--destructive))"} strokeWidth={2} strokeDasharray="4 3" />}
 							</svg>
 						)}
 
 						{/* Explain why a hovered chip can't be used as the new parent. */}
 						{reconnectDrag?.hoverReason && (
-							<div
-								className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md"
-								style={{ left: reconnectDrag.pointerX + 12, top: reconnectDrag.pointerY + 12 }}
-							>
+							<div className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md" style={{ left: reconnectDrag.pointerX + 12, top: reconnectDrag.pointerY + 12 }}>
 								{reconnectDrag.hoverReason}
 							</div>
 						)}
