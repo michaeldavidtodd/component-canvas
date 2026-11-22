@@ -341,6 +341,14 @@ export const ComponentLibraryPlanner = ({
 		enabled: !isSharedView && !isMobile && !isCanvasLocked,
 	});
 
+	// The selection-sync effect below runs on node changes, not view changes, so
+	// it reads the current view mode from a ref. That keeps a grid selection from
+	// being cleared when the user switches back to the canvas.
+	const viewModeRef = useRef(viewMode);
+	useEffect(() => {
+		viewModeRef.current = viewMode;
+	}, [viewMode]);
+
 	// Keep the properties panel pointed at the live node object after undo/redo,
 	// when the selected node is removed, or when it's deselected (Shift+click
 	// toggles a node off). Position-only updates (dragging) keep the same data
@@ -352,6 +360,12 @@ export const ComponentLibraryPlanner = ({
 			if (!current) return null;
 			const next = nodes.find((node) => node.id === current.id);
 			if (next?.selected) {
+				return next.data === current.data ? current : (next as Node<ComponentNodeData>);
+			}
+			// The structured map tracks its selection separately from the node's
+			// `selected` flag, so editing a property there shouldn't clear the panel.
+			// Keep the live node as long as it still exists.
+			if (viewModeRef.current === "tokens" && next) {
 				return next.data === current.data ? current : (next as Node<ComponentNodeData>);
 			}
 			const fallback = nodes.find((node) => node.selected);
