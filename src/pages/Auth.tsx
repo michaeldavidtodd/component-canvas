@@ -30,11 +30,11 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     console.log('🔧 Auth: Attempting sign in...', { email: signInForm.email });
     const { error } = await signIn(signInForm.email, signInForm.password);
     console.log('🔧 Auth: Sign in result:', { error: !!error, errorMessage: error?.message });
-    
+
     if (error) {
       toast({
         title: "Error signing in",
@@ -51,7 +51,7 @@ const Auth = () => {
         navigate('/app');
       }, 500);
     }
-    
+
     setLoading(false);
   };
 
@@ -60,7 +60,7 @@ const Auth = () => {
     setLoading(true);
 
     const { error } = await signUp(signUpForm.email, signUpForm.password, signUpForm.username);
-    
+
     if (error) {
       toast({
         title: "Error creating account",
@@ -73,7 +73,7 @@ const Auth = () => {
         description: "Please check your email to verify your account."
       });
     }
-    
+
     setLoading(false);
   };
 
@@ -186,7 +186,7 @@ const Auth = () => {
                 className="w-full"
                 onClick={handleAnonymousAccess}
               >
-                <UserCheck className="h-4 w-4 mr-2" />
+                <UserCheck className="size-4 mr-2" />
                 Continue as Guest (No Saving)
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2">

@@ -54,7 +54,7 @@ const SharedProject = () => {
           <h1 className="text-2xl font-bold text-foreground">Project Not Found</h1>
           <p className="text-muted-foreground">{error}</p>
           <Button onClick={() => navigate('/')} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="size-4" />
             Go to Planner
           </Button>
         </div>
@@ -68,13 +68,13 @@ const SharedProject = () => {
       <div className="border-b border-border bg-workspace">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => navigate('/')}
               className="gap-2"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="size-4" />
               Create Your Own
             </Button>
             <div>
@@ -87,13 +87,13 @@ const SharedProject = () => {
             </div>
           </div>
           <Button onClick={() => navigate('/')} className="gap-2">
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="size-4" />
             Create Your Own Project
           </Button>
         </div>
       </div>
-      
-      <ComponentLibraryPlanner 
+
+      <ComponentLibraryPlanner
         isSharedView={true}
         sharedProjectData={sharedData}
       />

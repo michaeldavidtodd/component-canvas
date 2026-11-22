@@ -897,7 +897,7 @@ export const ComponentLibraryPlanner = ({
 					{isMobile && !isSharedView && (
 						<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
 							<Button size="sm" variant="outline" onClick={isAnonymous ? () => navigate("/auth") : handleSignOut} className="bg-background/80 backdrop-blur-sm border shadow-lg">
-								<LogOut className="h-4 w-4 mr-2" />
+								<LogOut className="size-4 mr-2" />
 								{isAnonymous ? "Sign In" : "Sign Out"}
 							</Button>
 						</div>

@@ -255,7 +255,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -265,7 +265,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
             />
           </div>
           <Button onClick={handleToggleCreate} className="gap-2" disabled={duplicatingId !== null}>
-            <Plus className="h-4 w-4" />
+            <Plus className="size-4" />
             New project
           </Button>
         </div>
@@ -305,7 +305,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                 Cancel
               </Button>
               <Button size="sm" onClick={handleCreateProject} disabled={!newName.trim() || creating || duplicatingId !== null}>
-                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create'}
+                {creating ? <Loader2 className="size-4 animate-spin" /> : 'Create'}
               </Button>
             </div>
           </div>
@@ -315,7 +315,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
           <div className="min-h-full space-y-2 pr-3">
             {loading || summariesLoading || !summariesLoaded ? (
               <div className="flex h-full items-center justify-center py-8 text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
                 Loading projects…
               </div>
             ) : filteredProjects.length === 0 ? (
@@ -324,7 +324,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                 <p>{projects.length === 0 ? 'No projects yet' : 'No projects match your search'}</p>
                 {projects.length === 0 && (
                   <Button variant="outline" size="sm" className="mt-3 gap-2" onClick={() => setShowCreate(true)}>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="size-4" />
                     Create your first project
                   </Button>
                 )}
@@ -348,7 +348,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                           isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
                         }`}
                       >
-                        <FolderOpen className="h-4 w-4" />
+                        <FolderOpen className="size-4" />
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                               disabled={!editName.trim()}
                               aria-label="Save name"
                             >
-                              <Check className="h-4 w-4" />
+                              <Check className="size-4" />
                             </Button>
                           </div>
                         ) : (
@@ -498,7 +498,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {deleting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

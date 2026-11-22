@@ -93,7 +93,8 @@
     --card: 222.2 54% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    /*--popover: 222.2 84% 4.9%;*/
+    --popover: var(--card);
     --popover-foreground: 210 40% 98%;
 
     /* Figma purple/violet primary palette for dark mode */
@@ -125,7 +126,7 @@
     --success: 152 60% 45%;
     --warning: 45 95% 50%;
 
-    --border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 10.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 258 100% 68%;
 

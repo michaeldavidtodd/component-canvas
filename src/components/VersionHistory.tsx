@@ -92,9 +92,9 @@ export const VersionHistory = ({
                        <div className="flex items-center gap-3 flex-1">
                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                            {version.is_auto_save ? (
-                             <Clock className="h-4 w-4" />
+                             <Clock className="size-4" />
                            ) : (
-                             <User className="h-4 w-4" />
+                             <User className="size-4" />
                            )}
                          </div>
 

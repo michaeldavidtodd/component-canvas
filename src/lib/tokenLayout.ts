@@ -14,6 +14,8 @@ export const TOKEN_COLUMN_WIDTH = 240;
 export const TOKEN_NODE_WIDTH = 200;
 export const TOKEN_NODE_HEIGHT = 36;
 export const TOKEN_HEADER_HEIGHT = 44;
+/** Breathing room before the first column so chips don't touch the left edge. */
+export const TOKEN_LAYOUT_PADDING_X = 8;
 
 interface TreeNode {
 	/** Unique per occurrence, so a node can appear under multiple parents. */
@@ -368,7 +370,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 			depth,
 			rowStart: span.start,
 			rowEnd: span.end,
-			x: depth * TOKEN_COLUMN_WIDTH,
+			x: TOKEN_LAYOUT_PADDING_X + depth * TOKEN_COLUMN_WIDTH,
 			y: (centerRow + 0.5) * TOKEN_ROW_HEIGHT - TOKEN_NODE_HEIGHT / 2,
 			// Ancestors come from the full graph, so a hidden main component still
 			// appears in a variant's breadcrumb for context.
@@ -430,7 +432,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		blocks,
 		rowCount,
 		columnCount,
-		totalWidth: columnCount * TOKEN_COLUMN_WIDTH,
+		totalWidth: columnCount * TOKEN_COLUMN_WIDTH + TOKEN_LAYOUT_PADDING_X,
 		gridHeight: rowCount * TOKEN_ROW_HEIGHT,
 	};
 };

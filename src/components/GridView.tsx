@@ -122,7 +122,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 				if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
 				onHover(null);
 			}}
-			className={`group absolute flex items-center gap-1.5 first:ml-2 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
+			className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
 			style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
 		>
 			<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
@@ -646,7 +646,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 				onNodeSelect(null);
 			}}
 		>
-			<header className="flex flex-col">
+			<header className="flex flex-col divide-y border-b">
 				<div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
 					<div className="flex flex-wrap items-center gap-1.5">
 						{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
@@ -663,7 +663,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 						})}
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
-						{isLocked && <Badge variant="outline">Canvas locked</Badge>}
+						{isLocked && <Badge variant="outline">Editing locked</Badge>}
 						<div className="flex items-center gap-1">
 							<Button
 								variant="outline"
@@ -699,7 +699,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 				</div>
 				<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
 					{layout.columns.map((column) => (
-						<div key={column.depth} className="flex items-center justify-between gap-2 border-r border-border/40 px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
+						<div key={column.depth} className="flex items-center justify-between gap-2 border-r px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
 							<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
 							<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
 						</div>
@@ -707,7 +707,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 				</div>
 			</header>
 
-			<div ref={scrollRef} className="flex-1 overflow-auto pb-24">
+			<div ref={scrollRef} className="flex-1 overflow-auto pt-0.5 pb-24">
 				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
 					<div
 						ref={gridRef}
