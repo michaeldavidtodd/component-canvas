@@ -11,16 +11,18 @@ import { GridView } from "./GridView";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { ConnectionLegend } from "./ConnectionLegend";
 import { VersionHistory } from "@/components/VersionHistory";
+import { VersionPreview } from "@/components/VersionPreview";
 import { ProjectBrowser } from "@/components/ProjectBrowser";
 import { AutoSaveHandler } from "./AutoSaveHandler";
 import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
+import { FIT_VIEW_OPTIONS, MIN_ZOOM } from "@/lib/canvas";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
 import { canAssignParent, getPrimaryParentId } from "@/lib/parentRules";
-import type { SharedProjectData } from "@/types/project";
+import type { ProjectVersion, SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from '@/hooks/project-context';
@@ -29,8 +31,10 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatVersionName } from "@/lib/versions";
 
 const nodeWidth = 172;
 const nodeHeight = 36;
@@ -221,17 +225,6 @@ const KeyboardShortcuts = ({
 // leaves this much extra room at the bottom so nodes aren't hidden behind it.
 const DOCK_CLEARANCE = 68;
 
-// How far the canvas can zoom out. React Flow defaults to 0.5; Figma-style
-// navigation needs a much wider range so large graphs can be seen at a glance.
-const MIN_ZOOM = 0.1;
-
-const FIT_VIEW_OPTIONS = {
-	padding: 0.2,
-	includeHiddenNodes: false,
-	minZoom: MIN_ZOOM,
-	maxZoom: 2,
-};
-
 // Extra breathing room (in screen pixels) added on every side when fitting the
 // view, on top of the proportional padding above.
 const FIT_VIEW_MARGIN_PX = 100;
@@ -311,6 +304,12 @@ export const ComponentLibraryPlanner = ({
 	// places in the structured map, so this disambiguates which parent to show.
 	const [selectedOccurrenceId, setSelectedOccurrenceId] = useState<string | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
+	// The version currently being previewed in the canvas while the history
+	// list stays open in the aside.
+	const [previewVersion, setPreviewVersion] = useState<ProjectVersion | null>(null);
+	const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
+	// Restoring replaces the canvas, so it waits for confirmation first.
+	const [pendingRestoreVersion, setPendingRestoreVersion] = useState<ProjectVersion | null>(null);
 	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
 	// Tracks which project's data is currently on the canvas so auto-save can't
@@ -377,7 +376,7 @@ export const ComponentLibraryPlanner = ({
 		});
 	}, [nodes]);
 
-	const { currentProject, versions, autoSaveEnabled, setAutoSaveEnabled, saveVersion, autoSave, loadVersion } = useProject();
+	const { currentProject, versions, versionsLoading, autoSaveEnabled, setAutoSaveEnabled, saveVersion, autoSave, loadVersion, deleteVersion } = useProject();
 
 	// Load shared project data
 	useEffect(() => {
@@ -832,6 +831,73 @@ export const ComponentLibraryPlanner = ({
 		await saveVersion(currentProject.id, nodes, edges, undefined, versionName, false);
 	}, [currentProject, nodes, edges, saveVersion]);
 
+	// Restore a saved version onto the live canvas, then leave preview mode and
+	// return the aside to the properties panel.
+	const handleRestoreVersion = useCallback(
+		async (versionId: string) => {
+			setRestoringVersionId(versionId);
+			try {
+				const version = await loadVersion(versionId);
+				if (!version) return;
+
+				const versionNodes = normalizeNodes(version.nodes as Node<ComponentNodeData>[]);
+				const versionEdges = normalizeEdges(version.edges);
+				setNodes(versionNodes);
+				setEdges(versionEdges);
+				resetHistory({ nodes: versionNodes, edges: versionEdges });
+				setPreviewVersion(null);
+				setShowVersionHistory(false);
+				setPendingRestoreVersion(null);
+			} finally {
+				setRestoringVersionId(null);
+			}
+		},
+		[loadVersion, setNodes, setEdges, resetHistory],
+	);
+
+	// Ask for confirmation before replacing the canvas with a saved version.
+	const requestRestoreVersion = useCallback(
+		(versionId: string) => {
+			const version = versions.find((item) => item.id === versionId);
+			if (version) setPendingRestoreVersion(version);
+		},
+		[versions],
+	);
+
+	const handleDeleteVersion = useCallback(
+		(versionId: string) => {
+			if (previewVersion?.id === versionId) setPreviewVersion(null);
+			void deleteVersion(versionId);
+		},
+		[previewVersion?.id, deleteVersion],
+	);
+
+	const handleCloseVersionHistory = useCallback(() => {
+		setShowVersionHistory(false);
+		setPreviewVersion(null);
+	}, []);
+
+	const handleToggleVersionHistory = useCallback(() => {
+		setShowVersionHistory((open) => !open);
+	}, []);
+
+	// Leaving the history panel should also drop any canvas preview so the live
+	// canvas comes back.
+	useEffect(() => {
+		if (!showVersionHistory) setPreviewVersion(null);
+	}, [showVersionHistory]);
+
+	// The history lives in the aside, so opening it must reveal the UI even if
+	// the user had hidden it.
+	useEffect(() => {
+		if (showVersionHistory) setIsUIHidden(false);
+	}, [showVersionHistory]);
+
+	// A project switch invalidates any preview from the previous project.
+	useEffect(() => {
+		setPreviewVersion(null);
+	}, [currentProject?.id]);
+
 	const handleSignOut = async () => {
 		await signOut();
 		navigate("/auth");
@@ -856,153 +922,194 @@ export const ComponentLibraryPlanner = ({
 		<ReactFlowProvider>
 			{!isSharedView && <ProjectManager onProjectLoaded={handleProjectLoaded} onInitialized={setIsProjectInitialized} />}
 			<div className="flex h-dvh bg-canvas divide-x">
-				{!isSharedView && (
-					<>
-						<ProjectBrowser open={showProjectBrowser} onOpenChange={setShowProjectBrowser} />
-
-						<VersionHistory
-							open={showVersionHistory}
-							onOpenChange={setShowVersionHistory}
-							projectName={currentProject?.name}
-							versions={versions}
-							onLoadVersion={loadVersion}
-							onVersionLoaded={(version) => {
-								const versionNodes = normalizeNodes(version.nodes as Node<ComponentNodeData>[]);
-								const versionEdges = normalizeEdges(version.edges);
-								setNodes(versionNodes);
-								setEdges(versionEdges);
-								resetHistory({ nodes: versionNodes, edges: versionEdges });
-							}}
-							nodeTypes={nodeTypes}
-						/>
-					</>
-				)}
+				{!isSharedView && <ProjectBrowser open={showProjectBrowser} onOpenChange={setShowProjectBrowser} />}
 
 				{/* Aside */}
 				{!isSharedView && !isMobile && !isUIHidden && (
-					<aside className="flex shrink-0 flex-col gap-4 w-80 m-2 xl:m-4">
-						<header>
-							<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">{viewMode === "canvas" ? "Component Canvas" : "Structured Map"}</h2>
-							<p className="text-xs text-muted-foreground">{viewMode === "canvas" ? "Design and visualize your component structure" : "Inspect and edit the selected node"}</p>
-						</header>
-						<Badge variant="default" className="md:hidden mt-4">
-							Read-only on mobile
-						</Badge>
-						<PropertiesPanel selectedNode={selectedNode} selectedOccurrenceId={selectedOccurrenceId} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParents={setNodeParents} />
+					<aside className="flex shrink-0 flex-col gap-4 w-80 m-2 xl:m-4 min-h-0">
+						{showVersionHistory ? (
+							<VersionHistory
+								projectName={currentProject?.name}
+								versions={versions}
+								loading={versionsLoading}
+								previewVersionId={previewVersion?.id ?? null}
+								onPreviewVersion={setPreviewVersion}
+								onRestoreVersion={requestRestoreVersion}
+								restoringVersionId={restoringVersionId}
+								onDeleteVersion={handleDeleteVersion}
+								onClose={handleCloseVersionHistory}
+							/>
+						) : (
+							<>
+								<header>
+									<h2 className="text-sm font-semibold text-foreground mb-2 leading-tight font-display">{viewMode === "canvas" ? "Component Canvas" : "Structured Map"}</h2>
+									<p className="text-xs text-muted-foreground">{viewMode === "canvas" ? "Design and visualize your component structure" : "Inspect and edit the selected node"}</p>
+								</header>
+								<Badge variant="default" className="md:hidden mt-4">
+									Read-only on mobile
+								</Badge>
+								<PropertiesPanel selectedNode={selectedNode} selectedOccurrenceId={selectedOccurrenceId} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParents={setNodeParents} />
+							</>
+						)}
 					</aside>
 				)}
 
 				<div className="flex-1 min-w-0 relative">
-					{/* Mobile Sign-out Button */}
-					{isMobile && !isSharedView && (
-						<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
-							<Button size="sm" variant="outline" onClick={isAnonymous ? () => navigate("/auth") : handleSignOut} className="bg-background/80 backdrop-blur-sm border shadow-lg">
-								<LogOut className="size-4 mr-2" />
-								{isAnonymous ? "Sign In" : "Sign Out"}
-							</Button>
-						</div>
-					)}
-
-					{viewMode === "canvas" ? (
-						<ReactFlow
-							nodes={nodes}
-							edges={edges}
-							onNodesChange={isSharedView || isMobile ? undefined : onNodesChange}
-							onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange}
-							onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect}
-							onConnectStart={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectStart}
-							onConnectEnd={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectEnd}
-							onNodeMouseEnter={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseEnter}
-							onNodeMouseLeave={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseLeave}
-							isValidConnection={isSharedView || isMobile || isCanvasLocked ? undefined : isValidConnection}
+					{previewVersion ? (
+						<VersionPreview
+							version={previewVersion}
+							projectName={currentProject?.name}
 							nodeTypes={nodeTypes}
-							edgeTypes={edgeTypes}
-							onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)}
-							onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)}
-							nodesDraggable={!isSharedView && !isMobile && !isCanvasLocked}
-							nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked}
-							elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked}
-							multiSelectionKeyCode="Shift"
-							// Figma-style navigation: plain drag marquee-selects, two-finger
-							// scroll pans, pinch zooms, and middle-mouse (or Space) drags pan.
-							selectionKeyCode={null}
-							selectionOnDrag
-							selectionMode={SelectionMode.Partial}
-							panOnDrag={[1]}
-							panOnScroll
-							minZoom={MIN_ZOOM}
-							fitViewOptions={FIT_VIEW_OPTIONS}
-							className="relative bg-canvas overflow-hidden"
-						>
-							<Background className="[&>*]:!stroke-border" gap={16} />
-							<ConnectionRuleTooltip hover={connectionHover} />
-							{!isUIHidden && (
-								<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
-									<ConnectionLegend />
-									<MiniMap
-										className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
-										nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
-									/>
-									<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
+							onRestore={requestRestoreVersion}
+							onExit={() => setPreviewVersion(null)}
+							restoring={restoringVersionId === previewVersion.id}
+						/>
+					) : (
+						<>
+							{/* Mobile Sign-out Button */}
+							{isMobile && !isSharedView && (
+								<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+									<Button size="sm" variant="outline" onClick={isAnonymous ? () => navigate("/auth") : handleSignOut} className="bg-background/80 backdrop-blur-sm border shadow-lg">
+										<LogOut className="size-4 mr-2" />
+										{isAnonymous ? "Sign In" : "Sign Out"}
+									</Button>
 								</div>
 							)}
-							{/* Auto layout handler */}
-							<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
-							{/* Keyboard shortcuts */}
-							<KeyboardShortcuts
-								enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
-								uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding}
-								onAddNode={addNode}
-								onSave={handleManualSave}
-								onOptimizeLayout={() => onLayout("TB")}
-								onShowHistory={() => setShowVersionHistory(true)}
-								onUndo={undo}
-								onRedo={redo}
-								onToggleUI={() => setIsUIHidden((hidden) => !hidden)}
-							/>
-						</ReactFlow>
-					) : (
-						<GridView
-							nodes={nodes as Node<ComponentNodeData>[]}
-							edges={edges}
-							selectedNodeId={selectedNode?.id ?? null}
-							onNodeSelect={handleNodeSelect}
-							onSwitchToCanvas={() => setViewMode("canvas")}
-							isLocked={isCanvasLocked}
-							onUndo={undo}
-							onRedo={redo}
-							canUndo={canUndo}
-							canRedo={canRedo}
-							onReorder={reorderNode}
-							onDeleteEdge={deleteEdge}
-							onReconnectEdge={reconnectEdge}
-							visibleTypes={visibleTypes}
-							onToggleType={toggleVisibleType}
-						/>
-					)}
 
-					{/* Primary navigation: floating dock with add, layout, view, project, and account menus */}
-					{!isSharedView && !isMobile && (isUIHidden ? (
-						<button
-							type="button"
-							onPointerDown={(event) => event.stopPropagation()}
-							onClick={(event) => {
-								event.stopPropagation();
-								setIsUIHidden(false);
-							}}
-							className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						>
-							<span>Press</span>
-							<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">⌘<span className="px-1 text-muted-foreground">+</span>\</kbd>
-							<span>to show UI</span>
-						</button>
-					) : (
-						<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={() => setShowVersionHistory(true)} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
-					))}
-					{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
-					{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
+							{viewMode === "canvas" ? (
+								<ReactFlow
+									nodes={nodes}
+									edges={edges}
+									onNodesChange={isSharedView || isMobile ? undefined : onNodesChange}
+									onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange}
+									onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect}
+									onConnectStart={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectStart}
+									onConnectEnd={isSharedView || isMobile || isCanvasLocked ? undefined : onConnectEnd}
+									onNodeMouseEnter={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseEnter}
+									onNodeMouseLeave={isSharedView || isMobile || isCanvasLocked ? undefined : onNodeMouseLeave}
+									isValidConnection={isSharedView || isMobile || isCanvasLocked ? undefined : isValidConnection}
+									nodeTypes={nodeTypes}
+									edgeTypes={edgeTypes}
+									onNodeClick={isSharedView || isMobile || isCanvasLocked ? undefined : (_, node) => handleNodeSelect(node as Node<ComponentNodeData>)}
+									onPaneClick={isSharedView || isMobile || isCanvasLocked ? undefined : () => handleNodeSelect(null)}
+									nodesDraggable={!isSharedView && !isMobile && !isCanvasLocked}
+									nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked}
+									elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked}
+									multiSelectionKeyCode="Shift"
+									// Figma-style navigation: plain drag marquee-selects, two-finger
+									// scroll pans, pinch zooms, and middle-mouse (or Space) drags pan.
+									selectionKeyCode={null}
+									selectionOnDrag
+									selectionMode={SelectionMode.Partial}
+									panOnDrag={[1]}
+									panOnScroll
+									minZoom={MIN_ZOOM}
+									fitViewOptions={FIT_VIEW_OPTIONS}
+									className="relative bg-canvas overflow-hidden"
+								>
+									<Background className="[&>*]:!stroke-border" gap={16} />
+									<ConnectionRuleTooltip hover={connectionHover} />
+									{!isUIHidden && (
+										<div id="floating-ui" className="z-10 absolute right-4 top-4 flex flex-col justify-end items-end gap-4">
+											<ConnectionLegend />
+											<MiniMap
+												className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden"
+												nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)}
+											/>
+											<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
+										</div>
+									)}
+									{/* Auto layout handler */}
+									<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
+									{/* Keyboard shortcuts */}
+									<KeyboardShortcuts
+										enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding}
+										uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding}
+										onAddNode={addNode}
+										onSave={handleManualSave}
+										onOptimizeLayout={() => onLayout("TB")}
+										onShowHistory={handleToggleVersionHistory}
+										onUndo={undo}
+										onRedo={redo}
+										onToggleUI={() => setIsUIHidden((hidden) => !hidden)}
+									/>
+								</ReactFlow>
+							) : (
+								<GridView
+									nodes={nodes as Node<ComponentNodeData>[]}
+									edges={edges}
+									selectedNodeId={selectedNode?.id ?? null}
+									onNodeSelect={handleNodeSelect}
+									onSwitchToCanvas={() => setViewMode("canvas")}
+									isLocked={isCanvasLocked}
+									onUndo={undo}
+									onRedo={redo}
+									canUndo={canUndo}
+									canRedo={canRedo}
+									onReorder={reorderNode}
+									onDeleteEdge={deleteEdge}
+									onReconnectEdge={reconnectEdge}
+									visibleTypes={visibleTypes}
+									onToggleType={toggleVisibleType}
+								/>
+							)}
+
+							{/* Primary navigation: floating dock with add, layout, view, project, and account menus */}
+							{!isSharedView && !isMobile && (isUIHidden ? (
+								<button
+									type="button"
+									onPointerDown={(event) => event.stopPropagation()}
+									onClick={(event) => {
+										event.stopPropagation();
+										setIsUIHidden(false);
+									}}
+									className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<span>Press</span>
+									<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">⌘<span className="px-1 text-muted-foreground">+</span>\</kbd>
+									<span>to show UI</span>
+								</button>
+							) : (
+								<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={handleToggleVersionHistory} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
+							))}
+							{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
+							{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
+						</>
+					)}
 				</div>
 			</div>
+
+			{/* Restore confirmation */}
+			<AlertDialog
+				open={!!pendingRestoreVersion}
+				onOpenChange={(open) => {
+					if (!open) setPendingRestoreVersion(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Restore this version?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This replaces the current canvas with{' '}
+							{pendingRestoreVersion ? `"${formatVersionName(pendingRestoreVersion)}"` : 'this version'}.
+							Any unsaved changes will be lost.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								if (!pendingRestoreVersion) return;
+								const versionId = pendingRestoreVersion.id;
+								setPendingRestoreVersion(null);
+								void handleRestoreVersion(versionId);
+							}}
+						>
+							Restore version
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{/* Onboarding Flow */}
 			{showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} />}

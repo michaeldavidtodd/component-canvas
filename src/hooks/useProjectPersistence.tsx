@@ -3,6 +3,8 @@ import { Node, Edge, Viewport } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { formatVersionName } from '@/lib/versions';
 import type { Json } from '@/integrations/supabase/types';
 import type { Project, ProjectVersion } from '@/types/project';
 
@@ -392,42 +394,75 @@ export const useProjectPersistence = () => {
       };
       
       return transformedVersion;
-    } catch (error) {
-      console.error('Error loading version:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load version",
-        variant: "destructive"
-      });
-      return null;
-    }
-  }, [toast]);
+      } catch (error) {
+        console.error('Error loading version:', error);
+        toast({
+          title: "Couldn't load version",
+          description: "Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+    }, [toast]);
 
-  // Delete version
-  const deleteVersion = useCallback(async (versionId: string) => {
-    try {
-      const { error } = await supabase
-        .from('project_versions')
-        .delete()
-        .eq('id', versionId);
-
-      if (error) throw error;
+    // Delete version with a short undo window. The row disappears immediately and
+    // the database delete is deferred so a misclick can be undone.
+    const deleteVersion = useCallback(async (versionId: string) => {
+      const version = versions.find((v) => v.id === versionId);
+      if (!version) return;
 
       versionsMutationRef.current += 1;
-      setVersions(prev => prev.filter(v => v.id !== versionId));
-      toast({
-        title: "Success",
-        description: "Version deleted successfully"
+      setVersions((prev) => prev.filter((v) => v.id !== versionId));
+
+      let undone = false;
+      const commitDelete = setTimeout(async () => {
+        if (undone) return;
+
+        try {
+          const { error } = await supabase
+            .from('project_versions')
+            .delete()
+            .eq('id', versionId);
+
+          if (error) throw error;
+        } catch (error) {
+          console.error('Error deleting version:', error);
+          // Put the version back so the UI matches the database.
+          versionsMutationRef.current += 1;
+          setVersions((prev) => {
+            if (prev.some((v) => v.id === versionId)) return prev;
+            return [...prev, version].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          });
+          toast({
+            title: "Couldn't delete version",
+            description: "The version is still here. Please try again.",
+            variant: "destructive"
+          });
+        }
+      }, 5500);
+
+      const { dismiss } = toast({
+        title: "Version deleted",
+        description: `"${formatVersionName(version)}" will be removed.`,
+        action: (
+          <ToastAction
+            altText="Undo delete"
+            onClick={() => {
+              undone = true;
+              clearTimeout(commitDelete);
+              versionsMutationRef.current += 1;
+              setVersions((prev) => {
+                if (prev.some((v) => v.id === versionId)) return prev;
+                return [...prev, version].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              });
+              dismiss();
+            }}
+          >
+            Undo
+          </ToastAction>
+        )
       });
-    } catch (error) {
-      console.error('Error deleting version:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete version",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
+    }, [versions, toast]);
 
   // Delete a project. Versions are removed by the database cascade.
   const deleteProject = useCallback(async (projectId: string, options?: { silent?: boolean }) => {

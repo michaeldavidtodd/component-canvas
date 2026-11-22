@@ -1,284 +1,129 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { History, Clock, User, RotateCcw, Maximize2, X } from 'lucide-react';
-import { getComponentTypeMeta } from '@/lib/componentTypes';
-import { normalizeEdges } from '@/lib/edges';
-import { formatDistanceToNow } from 'date-fns';
-import { ReactFlow, ReactFlowProvider, type NodeTypes } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import type { ProjectVersion } from '@/types/project';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { History, RotateCcw, X, Trash2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+import { formatVersionName } from "@/lib/versions";
+import type { ProjectVersion } from "@/types/project";
+import { Separator } from "./ui/separator";
 
 interface VersionHistoryProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  projectName?: string;
-  versions: ProjectVersion[];
-  onLoadVersion: (versionId: string) => Promise<ProjectVersion | null>;
-  onDeleteVersion?: (versionId: string) => void;
-  onVersionLoaded?: (version: ProjectVersion) => void;
-  nodeTypes?: NodeTypes;
+	projectName?: string;
+	versions: ProjectVersion[];
+	/** True while versions are being fetched for the active project. */
+	loading?: boolean;
+	/** The version currently shown in the canvas preview, if any. */
+	previewVersionId: string | null;
+	onPreviewVersion: (version: ProjectVersion | null) => void;
+	onRestoreVersion: (versionId: string) => void;
+	/** The version currently being restored, used to disable its button. */
+	restoringVersionId?: string | null;
+	onDeleteVersion?: (versionId: string) => void;
+	onClose?: () => void;
 }
 
-export const VersionHistory = ({
-  open,
-  onOpenChange,
-  projectName,
-  versions,
-  onLoadVersion,
-  onDeleteVersion,
-  onVersionLoaded,
-  nodeTypes
-}: VersionHistoryProps) => {
-  const [loading, setLoading] = useState<string | null>(null);
-  const [expandedVersion, setExpandedVersion] = useState<ProjectVersion | null>(null);
+/**
+ * Version history rendered inline in the canvas aside. Selecting a version
+ * previews it in the canvas beside the list, so browsing and previewing happen
+ * together instead of in a modal.
+ *
+ * The list is intentionally quiet: one surface, divided rows, and actions that
+ * appear on hover or focus so the version names stay the focus.
+ */
+export const VersionHistory = ({ projectName, versions, loading = false, previewVersionId, onPreviewVersion, onRestoreVersion, restoringVersionId, onDeleteVersion, onClose }: VersionHistoryProps) => {
+	const showLoading = loading && versions.length === 0;
 
-  const handleLoadVersion = async (versionId: string) => {
-    setLoading(versionId);
-    try {
-      const version = await onLoadVersion(versionId);
-      if (version && onVersionLoaded) {
-        onVersionLoaded(version);
-        onOpenChange(false);
-      }
-    } finally {
-      setLoading(null);
-    }
-  };
+	return (
+		<Card className="flex min-h-0 flex-1 flex-col">
+			<header className="flex items-start justify-between gap-2 p-4">
+				<div className="min-w-0">
+					<h2 className="flex items-center gap-2 text-sm font-semibold leading-tight text-foreground font-display">
+						<History className="size-4 shrink-0" />
+						Version History
+					</h2>
+					<p className="mt-1 text-xs text-muted-foreground">
+						{projectName ? `${projectName} · ` : ""}
+						{showLoading ? "Loading…" : `${versions.length} version${versions.length === 1 ? "" : "s"}`}
+					</p>
+				</div>
+				{onClose && (
+					<Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onClose} aria-label="Close version history">
+						<X className="size-4" />
+					</Button>
+				)}
+			</header>
 
-  const formatVersionName = (version: ProjectVersion) => {
-    if (version.name) return version.name;
-    if (version.is_auto_save) return `Auto-save #${version.version_number}`;
-    return `Version #${version.version_number}`;
-  };
+			<ScrollArea className="min-h-0 flex-1 border-t bg-secondary">
+				<div className="flex flex-col gap-4 p-4">
+					{showLoading ? (
+						<div className="space-y-3 py-2" aria-busy="true" aria-live="polite">
+							<span className="sr-only">Loading versions…</span>
+							{[0, 1, 2].map((index) => (
+								<div key={index} className="flex items-start gap-3 py-2">
+									{/*<Skeleton className="mt-1.5 size-2 shrink-0 rounded-full" />*/}
+									<div className="flex-1 space-y-2">
+										<Skeleton className="h-3.5 w-2/3" />
+										<Skeleton className="h-3 w-1/2" />
+									</div>
+								</div>
+							))}
+						</div>
+					) : versions.length === 0 ? (
+						<div className="py-10 text-center text-muted-foreground">
+							<History className="mx-auto mb-2 size-10 opacity-50" />
+							<p className="text-sm">No versions yet</p>
+							<p className="mt-1 text-xs">Use Project → Manual save to create one.</p>
+						</div>
+					) : (
+						versions.map((version, index) => {
+							const isPreviewing = previewVersionId === version.id;
+							const isRestoring = restoringVersionId === version.id;
+							const canDelete = !!onDeleteVersion && !version.is_auto_save && index !== 0;
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Version History
-              {projectName && (
-                <span className="text-sm font-normal text-muted-foreground">· {projectName}</span>
-              )}
-            </DialogTitle>
-            {projectName && (
-              <p className="text-xs text-muted-foreground">
-                {versions.length} version{versions.length === 1 ? '' : 's'} for this project
-              </p>
-            )}
-          </DialogHeader>
+							return (
+								<div key={version.id} className={cn("overflow-hidden flex flex-col gap-3 border rounded-xl bg-card hover:shadow-md", isPreviewing && "sticky top-4 bottom-4 bg-primary border-primary text-primary-foreground shadow-lg scale-105 transition-transform")}>
+									<button type="button" onClick={() => onPreviewVersion(isPreviewing ? null : version)} aria-pressed={isPreviewing} className={cn("flex w-full items-start gap-3 pt-3 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}>
+										{/*<span className={cn("mt-1.5 size-2 shrink-0 rounded-full", isPreviewing ? "bg-primary" : "bg-muted-foreground/40")} aria-hidden="true" />*/}
 
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-3">
-              {versions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No versions found</p>
-                  <p className="text-sm">Save your first version to see it here</p>
-                </div>
-              ) : (
-                versions.map((version, index) => (
-                   <div
-                     key={version.id}
-                     className="border border-border rounded-lg bg-card hover:bg-accent/50 transition-colors p-4"
-                   >
-                     <div className="flex items-center justify-between">
-                       <div className="flex items-center gap-3 flex-1">
-                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                           {version.is_auto_save ? (
-                             <Clock className="size-4" />
-                           ) : (
-                             <User className="size-4" />
-                           )}
-                         </div>
+										<span className="min-w-0 flex-1">
+											<span className="flex items-center gap-1.5">
+												<span className="flex-1 truncate text-sm font-medium">{formatVersionName(version)}</span>
+												{index === 0 && <Badge className="shrink-0 px-1.5 py-0 text-[11px]">Latest</Badge>}
+												{version.is_auto_save && (
+													<Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">
+														<span className="shrink-0 text-[11px] text-muted-foreground">Auto</span>
+													</Badge>
+												)}
+											</span>
+											<span className={cn("mt-0.5 block text-xs text-muted-foreground", isPreviewing && "text-primary-foreground/70")}>
+												{formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
+												{" · "}
+												{version.nodes.length} nodes · {version.edges.length} connections
+											</span>
+										</span>
+									</button>
 
-                         <div className="flex flex-col flex-1">
-                           <div className="flex items-center gap-2">
-                             <span className="font-medium text-sm">
-                               {formatVersionName(version)}
-                             </span>
-                             {index === 0 && (
-                               <Badge variant="secondary" className="text-xs">
-                                 Latest
-                               </Badge>
-                             )}
-                             {version.is_auto_save && (
-                               <Badge variant="outline" className="text-xs">
-                                 Auto-saved
-                               </Badge>
-                             )}
-                           </div>
-
-                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                             <span>
-                               {formatDistanceToNow(new Date(version.created_at), { addSuffix: true })}
-                             </span>
-                             <span>•</span>
-                             <span>
-                               {version.nodes.length} nodes, {version.edges.length} connections
-                             </span>
-                           </div>
-                         </div>
-                       </div>
-
-                       <div className="flex items-center gap-2">
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => setExpandedVersion(version)}
-                           className="gap-2"
-                         >
-                           <Maximize2 className="h-3 w-3" />
-                           Preview
-                         </Button>
-
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleLoadVersion(version.id)}
-                           disabled={loading === version.id}
-                           className="gap-2"
-                         >
-                           <RotateCcw className="h-3 w-3" />
-                           {loading === version.id ? 'Loading...' : 'Restore'}
-                         </Button>
-
-                         {onDeleteVersion && !version.is_auto_save && index !== 0 && (
-                           <Button
-                             variant="outline"
-                             size="sm"
-                             onClick={() => onDeleteVersion(version.id)}
-                             className="text-destructive hover:text-destructive"
-                           >
-                             Delete
-                           </Button>
-                         )}
-                       </div>
-                     </div>
-
-                   {/* Simple preview */}
-                   {version.nodes && version.nodes.length > 0 && (
-                     <div className="mt-3 p-3 bg-muted/30 rounded border">
-                       <div className="text-xs text-muted-foreground">
-                         <div className="flex items-center gap-4 mb-2">
-                           <span className="font-medium">Components:</span>
-                           <span>{version.nodes.length} total</span>
-                         </div>
-                         <div className="flex flex-wrap gap-1">
-                           {(() => {
-                             const componentCounts = version.nodes.reduce((acc, node) => {
-                               const type = (node.data?.componentType as string) || 'unknown';
-                               acc[type] = (acc[type] || 0) + 1;
-                               return acc;
-                             }, {} as Record<string, number>);
-
-                             return Object.entries(componentCounts).map(([type, count]: [string, number]) => {
-                               const { label, icon: Icon, bgClass } = getComponentTypeMeta(type);
-
-                               return (
-                                 <div key={type} className="flex items-center gap-2 px-2 py-1 rounded text-xs">
-                                   <div className={`p-1 rounded text-white ${bgClass}`}>
-                                     <Icon className="w-3 h-3" />
-                                   </div>
-                                   <span className="text-foreground">
-                                     {label}: {count}
-                                   </span>
-                                 </div>
-                               );
-                             });
-                           })()}
-                         </div>
-                       </div>
-                     </div>
-                   )}
-                   </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      {/* Expanded Preview Modal */}
-      <Dialog open={!!expandedVersion} onOpenChange={() => setExpandedVersion(null)}>
-        <DialogPortal>
-          <DialogOverlay />
-                    <DialogPrimitive.Content
-            className="fixed left-[50%] top-[50%] z-50 w-screen h-screen max-w-none translate-x-[-50%] translate-y-[-50%] bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          >
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Preview: {expandedVersion && formatVersionName(expandedVersion)}
-                  {projectName && (
-                    <span className="text-sm font-normal text-muted-foreground">· {projectName}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => expandedVersion && handleLoadVersion(expandedVersion.id)}
-                    disabled={loading === expandedVersion?.id}
-                    className="gap-2"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    {loading === expandedVersion?.id ? 'Loading...' : 'Restore This Version'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExpandedVersion(null)}
-                    className="gap-2"
-                  >
-                    <X className="h-3 w-3" />
-                    Close
-                  </Button>
-                </div>
-              </DialogTitle>
-            </DialogHeader>
-
-          {expandedVersion && (
-            <div className="flex flex-col h-full">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground p-6 pb-4">
-                <span>Created: {formatDistanceToNow(new Date(expandedVersion.created_at), { addSuffix: true })}</span>
-                <span>•</span>
-                <span>{expandedVersion.nodes.length} nodes</span>
-                <span>•</span>
-                <span>{expandedVersion.edges.length} connections</span>
-                {expandedVersion.is_auto_save && (
-                  <>
-                    <span>•</span>
-                    <Badge variant="outline" className="text-xs">Auto-saved</Badge>
-                  </>
-                )}
-              </div>
-
-              <div className="flex-1 bg-muted/30 border-t relative overflow-hidden">
-                <ReactFlowProvider>
-                  <ReactFlow
-                    nodes={expandedVersion.nodes}
-                    edges={normalizeEdges(expandedVersion.edges)}
-                    nodeTypes={nodeTypes}
-                    fitView
-                    fitViewOptions={{ padding: 0.1, includeHiddenNodes: false }}
-                    style={{ width: '100%', height: '100%' }}
-                    className="bg-canvas"
-                  />
-                </ReactFlowProvider>
-              </div>
-            </div>
-          )}
-          </DialogPrimitive.Content>
-        </DialogPortal>
-      </Dialog>
-    </>
-  );
+									<div className="flex items-center gap-2 pb-3 px-3">
+										<Button size="sm" variant="secondary" className="flex-1 rounded-lg" onClick={() => onRestoreVersion(version.id)} disabled={isRestoring}>
+											<RotateCcw className="!size-3" />
+											{isRestoring ? "Restoring..." : "Restore"}
+										</Button>
+										{canDelete && (
+											<Button size="sm" variant="destructive" className="flex-1 rounded-lg" onClick={() => onDeleteVersion?.(version.id)}>
+												<Trash2 className="!size-3" />
+												Delete
+											</Button>
+										)}
+									</div>
+								</div>
+							);
+						})
+					)}
+				</div>
+			</ScrollArea>
+		</Card>
+	);
 };
