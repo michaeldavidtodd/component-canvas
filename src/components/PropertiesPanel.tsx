@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Edge, Node } from "@xyflow/react";
 import { ComponentNodeData, ComponentType, TokenKind, TokenType, TokenSubType, TokenValueFormat } from "@/types/component";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Trash2, FileText } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown, FileText, Trash2, X } from "lucide-react";
+import { COMPONENT_TYPES, getComponentTypeMeta } from "@/lib/componentTypes";
+import { getAncestorChain, type TitleLayer } from "@/lib/nodeHierarchy";
+import { buildTokenLayout } from "@/lib/tokenLayout";
 import { Card } from "./ui/card";
 import { Field } from "./ui/field";
 import { getDefaultTokenFormat, getTokenFormatOptions, isAliasToken, isColorToken, isValidTokenValue, TOKEN_KIND_OPTIONS, toCssColor } from "@/lib/tokenValues";
@@ -15,8 +21,10 @@ interface PropertiesPanelProps {
 	selectedNode: Node<ComponentNodeData> | null;
 	nodes: Node<ComponentNodeData>[];
 	edges: Edge[];
+	visibleTypes: ReadonlySet<ComponentType>;
 	onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
 	onDeleteNode: () => void;
+	onSetParent: (nodeId: string, parentId: string | null) => void;
 }
 
 const componentTypeOptions: { value: ComponentType; label: string }[] = [
@@ -27,7 +35,83 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
 	{ value: "instance", label: "Instance" },
 ];
 
-export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDeleteNode }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, nodes, edges, visibleTypes, onUpdateNode, onDeleteNode, onSetParent }: PropertiesPanelProps) => {
+	const [parentOpen, setParentOpen] = useState(false);
+
+	// Close the parent picker when the selection changes.
+	useEffect(() => {
+		setParentOpen(false);
+	}, [selectedNode?.id]);
+
+	const parentNode = useMemo(() => {
+		if (!selectedNode) return null;
+		const edgeParentId = edges.find((edge) => edge.target === selectedNode.id)?.source;
+		const parentId = selectedNode.data.parentId === null ? null : selectedNode.data.parentId ?? edgeParentId ?? null;
+		return parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
+	}, [selectedNode, nodes, edges]);
+
+	// Visual order of the structured map, used to break ties between items that
+	// share the same breadcrumb prefix. Only needed while the picker is open.
+	const gridOrder = useMemo(() => {
+		if (!parentOpen) return new Map<string, number>();
+		const layout = buildTokenLayout(nodes, edges, visibleTypes);
+		const order = new Map<string, number>();
+		const orderedItems = [...layout.items].sort((a, b) => a.rowStart - b.rowStart || a.x - b.x);
+		orderedItems.forEach((item, index) => {
+			if (!order.has(item.node.id)) order.set(item.node.id, index);
+		});
+		return order;
+	}, [parentOpen, nodes, edges, visibleTypes]);
+
+	// Resolve the picker groups. Descendants are excluded so choosing a parent
+	// can't create a cycle.
+	const parentGroups = useMemo(() => {
+		if (!selectedNode || !parentOpen) return { groups: [], ancestorsById: new Map<string, TitleLayer[]>() };
+
+		const childrenOf = new Map<string, string[]>();
+		for (const edge of edges) {
+			if (!childrenOf.has(edge.source)) childrenOf.set(edge.source, []);
+			childrenOf.get(edge.source)!.push(edge.target);
+		}
+
+		const descendants = new Set<string>();
+		const stack = [...(childrenOf.get(selectedNode.id) ?? [])];
+		while (stack.length > 0) {
+			const id = stack.pop()!;
+			if (descendants.has(id)) continue;
+			descendants.add(id);
+			stack.push(...(childrenOf.get(id) ?? []));
+		}
+
+		const candidates = nodes.filter((node) => node.id !== selectedNode.id && !descendants.has(node.id));
+		const nodeLookup = new Map(nodes.map((node) => [node.id, node]));
+		const ancestorsById = new Map<string, TitleLayer[]>();
+		const prefixById = new Map<string, string>();
+		for (const node of candidates) {
+			const ancestors = getAncestorChain(node.id, nodeLookup, edges);
+			ancestorsById.set(node.id, ancestors);
+
+			const isToken = node.data.componentType === "token";
+			const isAlias = isToken && isAliasToken(node.data.tokenKind);
+			const tokenKindLabel = isToken ? (isAlias ? "Alias" : "Literal") : null;
+			prefixById.set(node.id, [tokenKindLabel, ...ancestors.map((layer) => layer.label)].filter(Boolean).join(" / "));
+		}
+
+		// Prefix first, then the order the node occupies in the grid.
+		const sortedCandidates = [...candidates].sort((a, b) => {
+			const prefixCompare = (prefixById.get(a.id) ?? "").localeCompare(prefixById.get(b.id) ?? "", undefined, { numeric: true, sensitivity: "base" });
+			if (prefixCompare !== 0) return prefixCompare;
+			return (gridOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (gridOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+		});
+
+		const groups = COMPONENT_TYPES.map((meta) => ({
+			...meta,
+			nodes: sortedCandidates.filter((node) => node.data.componentType === meta.type),
+		})).filter((group) => group.nodes.length > 0);
+
+		return { groups, ancestorsById };
+	}, [selectedNode, parentOpen, nodes, edges, gridOrder]);
+
 	if (!selectedNode) {
 		return (
 			<Card className="flex-1 p-6 overflow-y-auto rounded-xl">
@@ -58,9 +142,9 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 		onUpdateNode(selectedNode.id, { componentType: value });
 	};
 
-	const handleParentChange = (value: string) => {
-		// `null` explicitly detaches the variant, even if a canvas edge still exists.
-		onUpdateNode(selectedNode.id, { parentId: value === "none" ? null : value });
+	const handleParentSelect = (parentId: string | null) => {
+		onSetParent(selectedNode.id, parentId);
+		setParentOpen(false);
 	};
 
 	const handleTokenTypeChange = (value: TokenType) => {
@@ -148,14 +232,9 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 	const tokenValueIsInvalid = !!selectedNode.data.tokenValue && !isValidTokenValue(selectedNode.data.tokenValue, tokenFormat);
 	const tokenColorPreview = isColorToken(tokenType) ? toCssColor(selectedNode.data.tokenValue, tokenFormat) : null;
 
-	// Variant parent options: main components, plus an explicit "detached" choice.
-	const mainComponentOptions = nodes
-		.filter((node) => node.data.componentType === "main-component" && node.id !== selectedNode.id)
-		.map((node) => ({ value: node.id, label: node.data.label }));
-
-	// An explicit parentId wins; otherwise fall back to the canvas edge.
-	const edgeParentId = edges.find((edge) => edge.target === selectedNode.id)?.source;
-	const parentValue = selectedNode.data.parentId === null ? "none" : selectedNode.data.parentId ?? edgeParentId ?? "none";
+	const { groups: groupedParentCandidates, ancestorsById } = parentGroups;
+	const parentMeta = parentNode ? getComponentTypeMeta(parentNode.data.componentType) : null;
+	const ParentIcon = parentMeta?.icon;
 
 	return (
 		<Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto">
@@ -190,28 +269,82 @@ export const PropertiesPanel = ({ selectedNode, nodes, edges, onUpdateNode, onDe
 					</Select>
 				</Field>
 
-				{/* Variant parent relationship, independent of canvas edges */}
-				{selectedNode.data.componentType === "variant" && (
-					<Field>
-						<Label htmlFor="variant-parent" className="text-sm font-medium">
-							Parent Component
-						</Label>
-						<Select value={parentValue} onValueChange={handleParentChange}>
-							<SelectTrigger className="mt-1">
-								<SelectValue placeholder="Select parent" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="none">None (detached)</SelectItem>
-								{mainComponentOptions.map((option) => (
-									<SelectItem key={option.value} value={option.value}>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<p className="text-xs text-muted-foreground">Keeps the variant related even when detached on the canvas</p>
-					</Field>
-				)}
+				{/* Parent connection, editable for every node type */}
+				<Field>
+					<Label htmlFor="parent-chip" className="text-sm font-medium">
+						Parent Chip
+					</Label>
+					<Popover open={parentOpen} onOpenChange={setParentOpen}>
+						<PopoverTrigger asChild>
+							<Button id="parent-chip" variant="outline" role="combobox" className="w-full justify-between font-normal">
+								{parentNode ? (
+									<span className="flex min-w-0 items-center gap-2">
+										<span className={`flex size-5 shrink-0 items-center justify-center rounded ${parentMeta?.bgClass ?? "bg-muted"} text-background`}>
+											{ParentIcon && <ParentIcon className="size-3" />}
+										</span>
+										<span className="min-w-0 truncate">{parentNode.data.label}</span>
+									</span>
+								) : (
+									<span className="text-muted-foreground">No parent assigned</span>
+								)}
+								<ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+							<Command>
+								<CommandInput placeholder="Search chips..." />
+								<CommandList>
+									<CommandEmpty>No chips found.</CommandEmpty>
+									<CommandGroup heading="None">
+										<CommandItem value="none" onSelect={() => handleParentSelect(null)}>
+											<X className="mr-2 size-4 shrink-0" />
+											No parent (detached)
+											{!parentNode && <Check className="ml-auto size-4" />}
+										</CommandItem>
+									</CommandGroup>
+									{groupedParentCandidates.map((group) => {
+										const GroupIcon = group.icon;
+										return (
+											<CommandGroup key={group.type} heading={group.label}>
+												{group.nodes.map((node) => {
+													const ancestors = ancestorsById.get(node.id) ?? [];
+													const ancestorLabels = ancestors.map((layer) => layer.label).join(" ");
+													const isToken = node.data.componentType === "token";
+													const isAlias = isToken && isAliasToken(node.data.tokenKind);
+													const displayName = isAlias && node.data.tokenAlias ? node.data.tokenAlias : node.data.label;
+													const tokenKindLabel = isToken ? (isAlias ? "Alias" : "Literal") : null;
+													const searchPrefix = [tokenKindLabel, ancestorLabels].filter(Boolean).join(" ");
+													return (
+														<CommandItem key={node.id} value={`${searchPrefix} ${displayName} ${group.label} ${node.id}`} onSelect={() => handleParentSelect(node.id)}>
+															<GroupIcon className={`mr-2 size-4 shrink-0 ${group.textClass}`} />
+															<span className="min-w-0 truncate">
+																{tokenKindLabel && (
+																	<span className="opacity-60">
+																		{tokenKindLabel}
+																		<span className="px-1">/</span>
+																	</span>
+																)}
+																{ancestors.map((layer) => (
+																	<span key={layer.id} className="opacity-60">
+																		{layer.label}
+																		<span className="px-1">/</span>
+																	</span>
+																))}
+																<span>{displayName}</span>
+															</span>
+															{parentNode?.id === node.id && <Check className="ml-auto size-4 shrink-0" />}
+														</CommandItem>
+													);
+												})}
+											</CommandGroup>
+										);
+									})}
+								</CommandList>
+							</Command>
+						</PopoverContent>
+					</Popover>
+					<p className="text-xs text-muted-foreground">Assigning a parent creates a connection and moves the chip under it in the grid.</p>
+				</Field>
 
 				<Field>
 					<Label htmlFor="component-description" className="text-sm font-medium">

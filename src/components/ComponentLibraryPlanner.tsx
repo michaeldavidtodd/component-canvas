@@ -548,11 +548,8 @@ export const ComponentLibraryPlanner = ({
 
 			setEdges((eds) => eds.map((candidate) => (candidate.id === edgeId ? { ...candidate, source: nextSource, target: nextTarget, style: { ...candidate.style, stroke } } : candidate)));
 
-			// Mirror `onConnect`: keep the variant's logical parent in sync when it is
-			// re-parented under a main component.
-			if (sourceNode?.data.componentType === "main-component" && targetNode?.data.componentType === "variant") {
-				setNodes((nds) => nds.map((node) => (node.id === nextTarget ? { ...node, data: { ...node.data, parentId: nextSource } } : node)));
-			}
+			// Keep the target's logical parent in sync with the new edge.
+			setNodes((nds) => nds.map((node) => (node.id === nextTarget ? { ...node, data: { ...node.data, parentId: nextSource } } : node)));
 
 			// Drop a stale explicit parent when the edge no longer connects the old
 			// target to the old source. The new parent (if any) was set above.
@@ -567,6 +564,37 @@ export const ComponentLibraryPlanner = ({
 			if ((endpoint === "source" && edge.source !== nextSource) || (endpoint === "target" && edge.target !== nextTarget)) {
 				detachStaleParent();
 			}
+		},
+		[edges, nodes, setEdges, setNodes],
+	);
+
+	// Assign or clear the primary parent connection from the properties panel.
+	// This is the direct path for making a first-column chip a child.
+	const setNodeParent = useCallback(
+		(nodeId: string, parentId: string | null) => {
+			const primaryEdge = edges.find((edge) => edge.target === nodeId);
+
+			if (parentId && primaryEdge?.source === parentId) {
+				setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, parentId } } : node)));
+				return;
+			}
+
+			setEdges((eds) => {
+				const withoutPrimary = primaryEdge ? eds.filter((edge) => edge.id !== primaryEdge.id) : eds;
+				if (!parentId) return withoutPrimary;
+				if (withoutPrimary.some((edge) => edge.source === parentId && edge.target === nodeId)) return withoutPrimary;
+
+				const sourceNode = nodes.find((node) => node.id === parentId);
+				const targetNode = nodes.find((node) => node.id === nodeId);
+				const stroke =
+					sourceNode && targetNode
+						? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType)
+						: undefined;
+
+				return [...withoutPrimary, { id: `edge-${Date.now()}`, source: parentId, target: nodeId, type: "default", style: { stroke } }];
+			});
+
+			setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, parentId } } : node)));
 		},
 		[edges, nodes, setEdges, setNodes],
 	);
@@ -715,7 +743,7 @@ export const ComponentLibraryPlanner = ({
 						<Badge variant="default" className="md:hidden mt-4">
 							Read-only on mobile
 						</Badge>
-						<PropertiesPanel selectedNode={selectedNode} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} />
+						<PropertiesPanel selectedNode={selectedNode} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParent={setNodeParent} />
 					</aside>
 				)}
 
