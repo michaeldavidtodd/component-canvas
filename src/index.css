@@ -169,6 +169,22 @@
   font-family: inherit;
 }
 
+/* Figma-style cursors: the canvas shows the default arrow, while selectable
+   layers show a pointer. React Flow's own `.draggable` rules would otherwise
+   win and show the grab cursor. The `.dragging` rule still wins while a node
+   is actively being moved. */
+.react-flow__pane.selection {
+  cursor: default;
+}
+
+.react-flow__node.draggable {
+  cursor: default;
+}
+
+.react-flow__node.selectable {
+  cursor: pointer;
+}
+
 .react-flow__handle {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));

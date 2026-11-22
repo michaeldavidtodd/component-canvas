@@ -36,12 +36,15 @@ export default function SimpleDeleteEdge(props: EdgeProps) {
     }, 100);
   };
 
-  // Only pass safe props to BaseEdge
+  // Only pass safe props to BaseEdge. Selected edges get a thicker stroke so
+  // the selection is as obvious as it is on nodes; the semantic edge color is
+  // kept so the relationship type stays readable.
   const { style } = props;
+  const edgeStyle = props.selected ? { ...style, strokeWidth: 3 } : style;
 
   return (
     <>
-      <BaseEdge path={edgePath} style={style} />
+      <BaseEdge path={edgePath} style={edgeStyle} />
       {/* Wide invisible hit area for stable hover */}
       <path
         d={edgePath}

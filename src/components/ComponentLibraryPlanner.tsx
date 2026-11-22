@@ -221,10 +221,14 @@ const KeyboardShortcuts = ({
 // leaves this much extra room at the bottom so nodes aren't hidden behind it.
 const DOCK_CLEARANCE = 68;
 
+// How far the canvas can zoom out. React Flow defaults to 0.5; Figma-style
+// navigation needs a much wider range so large graphs can be seen at a glance.
+const MIN_ZOOM = 0.1;
+
 const FIT_VIEW_OPTIONS = {
 	padding: 0.2,
 	includeHiddenNodes: false,
-	minZoom: 0.5,
+	minZoom: MIN_ZOOM,
 	maxZoom: 2,
 };
 
@@ -919,8 +923,14 @@ export const ComponentLibraryPlanner = ({
 							nodesConnectable={!isSharedView && !isMobile && !isCanvasLocked}
 							elementsSelectable={!isSharedView && !isMobile && !isCanvasLocked}
 							multiSelectionKeyCode="Shift"
-							selectionKeyCode="Shift"
+							// Figma-style navigation: plain drag marquee-selects, two-finger
+							// scroll pans, pinch zooms, and middle-mouse (or Space) drags pan.
+							selectionKeyCode={null}
+							selectionOnDrag
 							selectionMode={SelectionMode.Partial}
+							panOnDrag={[1]}
+							panOnScroll
+							minZoom={MIN_ZOOM}
 							fitViewOptions={FIT_VIEW_OPTIONS}
 							className="relative bg-canvas overflow-hidden md:border-l"
 						>
