@@ -45,12 +45,19 @@ export interface TokenLayoutItem {
 }
 
 export interface TokenLayoutLink {
+	/** Edge id, used to delete or re-map the connection. */
+	edgeId: string;
 	/** Occurrence ids, used as the React key so duplicate nodes stay distinct. */
 	sourceItemId: string;
 	targetItemId: string;
 	/** Node ids, used for hover/selection highlighting. */
 	sourceId: string;
 	targetId: string;
+	/** Endpoint coordinates, used to place the reconnect handles. */
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
 	path: string;
 	color: string;
 }
@@ -255,8 +262,16 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 	const parentById = new Map<string, string | null>();
 	const parentItemById = new Map<string, string | null>();
 	const siblingsById = new Map<string, string[]>();
-	const parentChildPairs: { sourceItemId: string; targetItemId: string; sourceId: string; targetId: string }[] = [];
+	const parentChildPairs: { edgeId: string; sourceItemId: string; targetItemId: string; sourceId: string; targetId: string }[] = [];
 	const forest: TreeNode[] = [];
+
+	// The tree collapses duplicate edges between the same pair, so keep the first
+	// edge id for each relationship to drive delete/reconnect actions.
+	const edgeIdByPair = new Map<string, string>();
+	for (const edge of visibleEdges) {
+		const pairKey = `${edge.source}->${edge.target}`;
+		if (!edgeIdByPair.has(pairKey)) edgeIdByPair.set(pairKey, edge.id);
+	}
 
 	const buildTree = (node: Node<ComponentNodeData>, depth: number, parentId: string | null, parentOccurrenceId: string | null, path: Set<string>): TreeNode => {
 		const occurrenceId = `${parentOccurrenceId ?? "root"}/${node.id}`;
@@ -280,7 +295,13 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 
 				const childOccurrenceId = `${occurrenceId}/${child.id}`;
 				children.push(buildTree(child, depth + 1, node.id, occurrenceId, nextPath));
-				parentChildPairs.push({ sourceItemId: occurrenceId, targetItemId: childOccurrenceId, sourceId: node.id, targetId: child.id });
+				parentChildPairs.push({
+					edgeId: edgeIdByPair.get(`${node.id}->${child.id}`) ?? "",
+					sourceItemId: occurrenceId,
+					targetItemId: childOccurrenceId,
+					sourceId: node.id,
+					targetId: child.id,
+				});
 			}
 			children.sort(compareTreeNodes);
 
@@ -374,10 +395,15 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		const endY = target.y + TOKEN_NODE_HEIGHT / 2;
 
 		links.push({
+			edgeId: pair.edgeId,
 			sourceItemId: pair.sourceItemId,
 			targetItemId: pair.targetItemId,
 			sourceId: pair.sourceId,
 			targetId: pair.targetId,
+			startX,
+			startY,
+			endX,
+			endY,
 			path: orthogonalPath(startX, startY, endX, endY),
 			color: getEdgeColor(source.node.data.componentType, target.node.data.componentType),
 		});

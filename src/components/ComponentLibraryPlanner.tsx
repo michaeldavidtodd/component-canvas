@@ -520,6 +520,57 @@ export const ComponentLibraryPlanner = ({
 		[setNodes],
 	);
 
+	const deleteEdge = useCallback(
+		(edgeId: string) => {
+			setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
+		},
+		[setEdges],
+	);
+
+	// Re-map one end of an existing connection. The token map only commits this on
+	// pointer release, so the affected chip relocates once the drag is finished.
+	const reconnectEdge = useCallback(
+		(edgeId: string, endpoint: "source" | "target", nodeId: string) => {
+			const edge = edges.find((candidate) => candidate.id === edgeId);
+			if (!edge) return;
+
+			const nextSource = endpoint === "source" ? nodeId : edge.source;
+			const nextTarget = endpoint === "target" ? nodeId : edge.target;
+			if (nextSource === nextTarget) return;
+			if (edges.some((candidate) => candidate.id !== edgeId && candidate.source === nextSource && candidate.target === nextTarget)) return;
+
+			const sourceNode = nodes.find((node) => node.id === nextSource);
+			const targetNode = nodes.find((node) => node.id === nextTarget);
+			const stroke =
+				sourceNode && targetNode
+					? getEdgeColor(sourceNode.data.componentType as ComponentType, targetNode.data.componentType as ComponentType)
+					: edge.style?.stroke;
+
+			setEdges((eds) => eds.map((candidate) => (candidate.id === edgeId ? { ...candidate, source: nextSource, target: nextTarget, style: { ...candidate.style, stroke } } : candidate)));
+
+			// Mirror `onConnect`: keep the variant's logical parent in sync when it is
+			// re-parented under a main component.
+			if (sourceNode?.data.componentType === "main-component" && targetNode?.data.componentType === "variant") {
+				setNodes((nds) => nds.map((node) => (node.id === nextTarget ? { ...node, data: { ...node.data, parentId: nextSource } } : node)));
+			}
+
+			// Drop a stale explicit parent when the edge no longer connects the old
+			// target to the old source. The new parent (if any) was set above.
+			const detachStaleParent = () => {
+				const stillConnected = edges.some((candidate) => candidate.id !== edgeId && candidate.source === edge.source && candidate.target === edge.target);
+				if (stillConnected) return;
+				setNodes((nds) =>
+					nds.map((node) => (node.id === edge.target && node.data.parentId === edge.source ? { ...node, data: { ...node.data, parentId: undefined } } : node)),
+				);
+			};
+
+			if ((endpoint === "source" && edge.source !== nextSource) || (endpoint === "target" && edge.target !== nextTarget)) {
+				detachStaleParent();
+			}
+		},
+		[edges, nodes, setEdges, setNodes],
+	);
+
 	const onLayout = useCallback(
 		(direction = "TB") => {
 			console.log("🔧 LAYOUT STARTED:", { direction, nodesCount: nodes.length, edgesCount: edges.length });
@@ -720,6 +771,8 @@ export const ComponentLibraryPlanner = ({
 							canUndo={canUndo}
 							canRedo={canRedo}
 							onReorder={reorderNode}
+							onDeleteEdge={deleteEdge}
+							onReconnectEdge={reconnectEdge}
 							visibleTypes={visibleTypes}
 							onToggleType={toggleVisibleType}
 						/>

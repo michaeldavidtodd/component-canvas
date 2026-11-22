@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import { Columns3, GripVertical, Redo2, Undo2 } from "lucide-react";
+import { Columns3, GripVertical, Redo2, Undo2, X } from "lucide-react";
 
 import type { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
@@ -32,12 +32,36 @@ interface GridViewProps {
 	canUndo: boolean;
 	canRedo: boolean;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
+	onDeleteEdge: (edgeId: string) => void;
+	onReconnectEdge: (edgeId: string, endpoint: LinkEndpoint, nodeId: string) => void;
 	visibleTypes: ReadonlySet<ComponentType>;
 	onToggleType: (type: ComponentType) => void;
 }
 
+type LinkEndpoint = "source" | "target";
+
 const isLinkActive = (link: TokenLayoutLink, activeNodeId: string | null): boolean =>
 	!!activeNodeId && (link.sourceId === activeNodeId || link.targetId === activeNodeId);
+
+/** Occurrence-based key, so a node shown under multiple parents stays distinct. */
+const getLinkKey = (link: TokenLayoutLink): string => `${link.sourceItemId}-${link.targetItemId}`;
+
+interface ReconnectDrag {
+	linkKey: string;
+	edgeId: string;
+	pointerId: number;
+	endpoint: LinkEndpoint;
+	/** The endpoint that stays put while the other one follows the pointer. */
+	anchorX: number;
+	anchorY: number;
+	pointerX: number;
+	pointerY: number;
+	hoverItemId: string | null;
+	hoverNodeId: string | null;
+	color: string;
+	sourceId: string;
+	targetId: string;
+}
 
 interface TokenChipProps {
 	item: TokenLayoutItem;
@@ -189,6 +213,8 @@ export const GridView = ({
 	canUndo,
 	canRedo,
 	onReorder,
+	onDeleteEdge,
+	onReconnectEdge,
 	visibleTypes,
 	onToggleType,
 }: GridViewProps) => {
@@ -196,11 +222,23 @@ export const GridView = ({
 	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
 	const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+	const [hoveredLinkKey, setHoveredLinkKey] = useState<string | null>(null);
+	const [reconnectDrag, setReconnectDragState] = useState<ReconnectDrag | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const gridRef = useRef<HTMLDivElement>(null);
+	const hoverTimeoutRef = useRef<number | null>(null);
 	// Safari/WKWebView can deliver `dragover` before React commits the state
 	// update from `dragstart`, so keep synchronous copies of the dragged ids.
 	const draggedItemIdRef = useRef<string | null>(null);
 	const draggedNodeIdRef = useRef<string | null>(null);
+	// The pointer handlers read the live drag state without re-subscribing on
+	// every move, and the release handler needs the latest hovered chip.
+	const reconnectDragRef = useRef<ReconnectDrag | null>(null);
+
+	const setReconnectDrag = useCallback((next: ReconnectDrag | null) => {
+		reconnectDragRef.current = next;
+		setReconnectDragState(next);
+	}, []);
 
 	const activeNodeId = hoveredNodeId ?? selectedNodeId;
 
@@ -237,6 +275,170 @@ export const GridView = ({
 		[previewNodes, nodes, edges, baseLayout, visibleTypes],
 	);
 
+	const showLinkControls = useCallback((key: string) => {
+		if (hoverTimeoutRef.current !== null) {
+			window.clearTimeout(hoverTimeoutRef.current);
+			hoverTimeoutRef.current = null;
+		}
+		setHoveredLinkKey(key);
+	}, []);
+
+	// The controls sit just outside the line's hit area, so hide them on a short
+	// delay that a move onto the controls can cancel.
+	const scheduleHideLinkControls = useCallback((key: string) => {
+		if (hoverTimeoutRef.current !== null) window.clearTimeout(hoverTimeoutRef.current);
+		hoverTimeoutRef.current = window.setTimeout(() => {
+			hoverTimeoutRef.current = null;
+			setHoveredLinkKey((current) => (current === key ? null : current));
+		}, 120);
+	}, []);
+
+	useEffect(
+		() => () => {
+			if (hoverTimeoutRef.current !== null) window.clearTimeout(hoverTimeoutRef.current);
+		},
+		[],
+	);
+
+	// Hit-test the grid in layout coordinates so the drag doesn't depend on DOM
+	// stacking order. A little padding makes the chip edges forgiving.
+	const findItemAt = useCallback(
+		(x: number, y: number): TokenLayoutItem | null => {
+			const padding = 8;
+			let best: TokenLayoutItem | null = null;
+			let bestDistance = Number.POSITIVE_INFINITY;
+
+			for (const item of layout.items) {
+				if (x < item.x - padding || x > item.x + TOKEN_NODE_WIDTH + padding) continue;
+				if (y < item.y - padding || y > item.y + TOKEN_NODE_HEIGHT + padding) continue;
+
+				const dx = x - (item.x + TOKEN_NODE_WIDTH / 2);
+				const dy = y - (item.y + TOKEN_NODE_HEIGHT / 2);
+				const distance = dx * dx + dy * dy;
+				if (distance < bestDistance) {
+					best = item;
+					bestDistance = distance;
+				}
+			}
+
+			return best;
+		},
+		[layout.items],
+	);
+
+	const isValidReconnectTarget = useCallback(
+		(drag: ReconnectDrag, nodeId: string): boolean => {
+			if (drag.endpoint === "source" && nodeId === drag.targetId) return false;
+			if (drag.endpoint === "target" && nodeId === drag.sourceId) return false;
+
+			const nextSource = drag.endpoint === "source" ? nodeId : drag.sourceId;
+			const nextTarget = drag.endpoint === "target" ? nodeId : drag.targetId;
+
+			return !edges.some((edge) => edge.id !== drag.edgeId && edge.source === nextSource && edge.target === nextTarget);
+		},
+		[edges],
+	);
+
+	// Keep the highlight stable while an endpoint is being dragged; the pointer
+	// sweeping over chips shouldn't re-light the whole map mid-drag.
+	const handleChipHover = useCallback((nodeId: string | null) => {
+		if (reconnectDragRef.current) return;
+		setHoveredNodeId(nodeId);
+	}, []);
+
+	const startReconnect = useCallback(
+		(event: ReactPointerEvent<HTMLButtonElement>, link: TokenLayoutLink, endpoint: LinkEndpoint) => {
+			if (isLocked || reconnectDragRef.current || event.button !== 0) return;
+			event.preventDefault();
+			event.stopPropagation();
+			setHoveredNodeId(null);
+
+			const rect = gridRef.current?.getBoundingClientRect();
+			if (!rect) return;
+
+			setReconnectDrag({
+				linkKey: getLinkKey(link),
+				edgeId: link.edgeId,
+				pointerId: event.pointerId,
+				endpoint,
+				anchorX: endpoint === "source" ? link.endX : link.startX,
+				anchorY: endpoint === "source" ? link.endY : link.startY,
+				pointerX: event.clientX - rect.left,
+				pointerY: event.clientY - rect.top,
+				hoverItemId: null,
+				hoverNodeId: null,
+				color: link.color,
+				sourceId: link.sourceId,
+				targetId: link.targetId,
+			});
+		},
+		[isLocked, setReconnectDrag],
+	);
+
+	const isReconnecting = reconnectDrag !== null;
+
+	// Track the pointer on the window so the drag survives leaving the grid. The
+	// edge is only re-mapped on release, which lets the layout settle afterwards.
+	useEffect(() => {
+		if (!isReconnecting) return;
+
+		const handlePointerMove = (event: PointerEvent) => {
+			const current = reconnectDragRef.current;
+			const rect = gridRef.current?.getBoundingClientRect();
+			if (!current || !rect || event.pointerId !== current.pointerId) return;
+
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
+			const item = findItemAt(x, y);
+			const isValid = item ? isValidReconnectTarget(current, item.node.id) : false;
+
+			setReconnectDrag({
+				...current,
+				pointerX: x,
+				pointerY: y,
+				hoverItemId: isValid && item ? item.id : null,
+				hoverNodeId: isValid && item ? item.node.id : null,
+			});
+		};
+
+		const handlePointerUp = (event: PointerEvent) => {
+			const current = reconnectDragRef.current;
+			if (!current || event.pointerId !== current.pointerId) return;
+			if (current.hoverNodeId) {
+				onReconnectEdge(current.edgeId, current.endpoint, current.hoverNodeId);
+			}
+			setReconnectDrag(null);
+		};
+
+		const handlePointerCancel = (event: PointerEvent) => {
+			const current = reconnectDragRef.current;
+			if (!current || event.pointerId !== current.pointerId) return;
+			setReconnectDrag(null);
+		};
+
+		const previousUserSelect = document.body.style.userSelect;
+		const previousCursor = document.body.style.cursor;
+		document.body.style.userSelect = "none";
+		document.body.style.cursor = "grabbing";
+
+		window.addEventListener("pointermove", handlePointerMove);
+		window.addEventListener("pointerup", handlePointerUp);
+		window.addEventListener("pointercancel", handlePointerCancel);
+
+		return () => {
+			document.body.style.userSelect = previousUserSelect;
+			document.body.style.cursor = previousCursor;
+			window.removeEventListener("pointermove", handlePointerMove);
+			window.removeEventListener("pointerup", handlePointerUp);
+			window.removeEventListener("pointercancel", handlePointerCancel);
+		};
+	}, [isReconnecting, findItemAt, isValidReconnectTarget, onReconnectEdge, setReconnectDrag]);
+
+	const reconnectHoverItem = useMemo(() => {
+		if (!reconnectDrag?.hoverItemId) return null;
+		return layout.items.find((item) => item.id === reconnectDrag.hoverItemId) ?? null;
+	}, [reconnectDrag?.hoverItemId, layout.items]);
+
 	// Counts reflect the project, not the current filter, so a hidden type still
 	// shows how many nodes the toggle would reveal.
 	const typeCounts = useMemo(() => {
@@ -258,8 +460,10 @@ export const GridView = ({
 			setDraggedItemId(null);
 			setDraggedNodeId(null);
 			setDropTargetId(null);
+			setHoveredLinkKey(null);
+			setReconnectDrag(null);
 		}
-	}, [isLocked]);
+	}, [isLocked, setReconnectDrag]);
 
 	// Escape cancels a drag or clears the selection; Cmd+Z / Shift+Cmd+Z (or
 	// Shift+Cmd+R) undo and redo. The canvas shortcut handler is unmounted in
@@ -269,6 +473,10 @@ export const GridView = ({
 			if (isEditableTarget(event.target) || isModalOpen()) return;
 
 			if (event.key === "Escape") {
+				if (reconnectDragRef.current) {
+					setReconnectDrag(null);
+					return;
+				}
 				if (draggedItemIdRef.current) {
 					draggedItemIdRef.current = null;
 					draggedNodeIdRef.current = null;
@@ -300,7 +508,7 @@ export const GridView = ({
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [onNodeSelect, onUndo, onRedo, isLocked]);
+	}, [onNodeSelect, onUndo, onRedo, isLocked, setReconnectDrag]);
 
 	const handleDragStart = useCallback((itemId: string, nodeId: string) => {
 		draggedItemIdRef.current = itemId;
@@ -448,7 +656,13 @@ export const GridView = ({
 	}
 
 	return (
-		<div className="flex h-full flex-col bg-canvas" onClick={() => onNodeSelect(null)}>
+		<div
+			className="flex h-full flex-col bg-canvas"
+			onClick={() => {
+				setHoveredLinkKey(null);
+				onNodeSelect(null);
+			}}
+		>
 			<header className="flex flex-wrap items-center justify-between gap-3 pr-6 py-4">
 				<div className="flex flex-wrap items-center gap-1.5">
 					{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
@@ -521,7 +735,8 @@ export const GridView = ({
 					</div>
 
 					<div
-						className="relative"
+						ref={gridRef}
+						className={`relative ${reconnectDrag ? "touch-none cursor-grabbing [&_[data-token-chip]]:pointer-events-none" : ""}`}
 						style={{ height: layout.gridHeight }}
 						role="group"
 						aria-label="Token map"
@@ -543,7 +758,7 @@ export const GridView = ({
 							/>
 						))}
 
-						<svg className="pointer-events-none absolute inset-0 mb-4" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
+						<svg className="pointer-events-none absolute inset-0" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
 							{/*{Array.from({ length: layout.rowCount + 1 }).map((_, index) => (
 								<line key={`row-${index}`} x1={0} x2={layout.totalWidth} y1={index * TOKEN_ROW_HEIGHT} y2={index * TOKEN_ROW_HEIGHT} className="stroke-border/40" strokeWidth={1} />
 							))}*/}
@@ -565,16 +780,38 @@ export const GridView = ({
 								.sort((a, b) => Number(isLinkActive(a, activeNodeId)) - Number(isLinkActive(b, activeNodeId)))
 								.map((link) => {
 									const isActive = isLinkActive(link, activeNodeId);
+									const linkKey = getLinkKey(link);
+									const isReconnectingLink = reconnectDrag?.edgeId === link.edgeId;
 									return (
-										<path
-											key={`${link.sourceItemId}-${link.targetItemId}`}
-											d={link.path}
-											fill="none"
-											stroke={link.color}
-											strokeWidth={isActive ? 2 : 1.5}
-											strokeLinecap="round"
-											opacity={activeNodeId && !isActive ? 0.2 : 0.75}
-										/>
+										<g key={linkKey}>
+											<path
+												d={link.path}
+												fill="none"
+												stroke={link.color}
+												strokeWidth={isActive ? 2 : 1.5}
+												strokeLinecap="round"
+												opacity={isReconnectingLink ? 0.15 : activeNodeId && !isActive ? 0.2 : 0.75}
+											/>
+											{!isLocked && (
+												<path
+													d={link.path}
+													fill="none"
+													stroke="transparent"
+													strokeWidth={20}
+													style={{ pointerEvents: "stroke", cursor: reconnectDrag ? "grabbing" : "pointer" }}
+													onMouseEnter={() => {
+														if (!reconnectDragRef.current) showLinkControls(linkKey);
+													}}
+													onMouseLeave={() => {
+														if (!reconnectDragRef.current) scheduleHideLinkControls(linkKey);
+													}}
+													onClick={(event) => {
+														event.stopPropagation();
+														showLinkControls(linkKey);
+													}}
+												/>
+											)}
+										</g>
 									);
 								})}
 						</svg>
@@ -588,12 +825,110 @@ export const GridView = ({
 								isLocked={isLocked}
 								isDragging={item.id === draggedItemId}
 								onSelect={onNodeSelect}
-								onHover={setHoveredNodeId}
+								onHover={handleChipHover}
 								onReorder={onReorder}
 								onDragStart={handleDragStart}
 								onDragEnd={handleDragEnd}
 							/>
 						))}
+
+						{/* Connection controls: a delete button at the midpoint and a
+						    draggable handle on each end, revealed on hover. */}
+						{!isLocked &&
+							layout.links.map((link) => {
+								const linkKey = getLinkKey(link);
+								const showControls = hoveredLinkKey === linkKey || reconnectDrag?.linkKey === linkKey;
+								if (!showControls) return null;
+
+								const midX = (link.startX + link.endX) / 2;
+								const midY = (link.startY + link.endY) / 2;
+
+								return (
+									<div key={`controls-${linkKey}`} className="pointer-events-none absolute inset-0">
+										<button
+											type="button"
+											aria-label="Delete connection"
+											title="Delete connection"
+											onPointerDown={(event) => event.stopPropagation()}
+											onClick={(event) => {
+												event.stopPropagation();
+												setHoveredLinkKey(null);
+												onDeleteEdge(link.edgeId);
+											}}
+											onMouseEnter={() => showLinkControls(linkKey)}
+											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
+											className="pointer-events-auto absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-destructive text-destructive-foreground shadow-lg transition-colors hover:bg-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											style={{ left: midX, top: midY }}
+										>
+											<X className="size-3.5" />
+										</button>
+
+										<button
+											type="button"
+											tabIndex={-1}
+											aria-label="Reconnect source"
+											title="Drag to reconnect"
+											onPointerDown={(event) => startReconnect(event, link, "source")}
+											onClick={(event) => event.stopPropagation()}
+											onMouseEnter={() => showLinkControls(linkKey)}
+											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
+											className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+											style={{ left: link.startX, top: link.startY }}
+										/>
+
+										<button
+											type="button"
+											tabIndex={-1}
+											aria-label="Reconnect target"
+											title="Drag to reconnect"
+											onPointerDown={(event) => startReconnect(event, link, "target")}
+											onClick={(event) => event.stopPropagation()}
+											onMouseEnter={() => showLinkControls(linkKey)}
+											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
+											className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+											style={{ left: link.endX, top: link.endY }}
+										/>
+									</div>
+								);
+							})}
+
+						{/* Live preview while an endpoint is being dragged. */}
+						{reconnectDrag && (
+							<svg className="pointer-events-none absolute inset-0" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
+								<line
+									x1={reconnectDrag.anchorX}
+									y1={reconnectDrag.anchorY}
+									x2={reconnectDrag.pointerX}
+									y2={reconnectDrag.pointerY}
+									stroke={reconnectDrag.color}
+									strokeWidth={2}
+									strokeDasharray="6 4"
+									strokeLinecap="round"
+									opacity={0.9}
+								/>
+								<circle
+									cx={reconnectDrag.pointerX}
+									cy={reconnectDrag.pointerY}
+									r={5}
+									fill={reconnectDrag.color}
+									className="stroke-background"
+									strokeWidth={2}
+								/>
+								{reconnectHoverItem && (
+									<rect
+										x={reconnectHoverItem.x - 2}
+										y={reconnectHoverItem.y - 2}
+										width={TOKEN_NODE_WIDTH + 4}
+										height={TOKEN_NODE_HEIGHT + 4}
+										rx={10}
+										fill="none"
+										stroke={reconnectDrag.color}
+										strokeWidth={2}
+										strokeDasharray="4 3"
+									/>
+								)}
+							</svg>
+						)}
 					</div>
 				</div>
 			</div>
