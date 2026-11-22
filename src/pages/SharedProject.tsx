@@ -63,7 +63,7 @@ const SharedProject = () => {
   }
 
   return (
-    <div className="app-shell min-h-dvh bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Header for shared project */}
       <div className="border-b border-border bg-workspace">
         <div className="flex items-center justify-between p-4">

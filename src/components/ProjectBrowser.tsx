@@ -245,7 +245,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="app-shell !flex h-[min(640px,85vh)] max-w-2xl flex-col">
+      <DialogContent className="!flex h-[min(640px,85vh)] max-w-2xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
@@ -480,7 +480,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
           if (!nextOpen) setProjectToDelete(null);
         }}
       >
-        <AlertDialogContent className="app-shell">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -155,7 +155,8 @@
   }
 }
 
-/* In-app display typeface. Marketing surfaces keep the Boldonse default. */
+/* In-app display typeface. Applied on <body> so portaled surfaces (dialogs,
+   popovers, tooltips) inherit it along with the rest of the app. */
 .app-shell {
   --font-display: 'Unbounded';
   --font-mono: 'DM Mono';
