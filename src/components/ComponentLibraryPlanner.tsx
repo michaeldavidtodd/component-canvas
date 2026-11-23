@@ -22,7 +22,7 @@ import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } fr
 import { FIT_VIEW_OPTIONS, MIN_ZOOM, getBelowTreePlacement } from "@/lib/canvas";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
-import { canAssignParent, getChildDraft, getPrimaryParentId } from "@/lib/parentRules";
+import { canAssignParent, getChildTypeOptions, getPrimaryParentId } from "@/lib/parentRules";
 import type { ProjectVersion, SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
@@ -587,10 +587,10 @@ export const ComponentLibraryPlanner = ({
 	}, []);
 
 	// Start a draft from a grid node's hover add button. The hovered node becomes
-	// the parent, and the child's type and token attributes follow from it.
-	const handleStartChildDraft = useCallback((parent: Node<ComponentNodeData>) => {
-		const child = getChildDraft(parent);
-		if (!child.allowed) return;
+	// the parent, and the chosen child type drives the draft's attributes.
+	const handleStartChildDraft = useCallback((parent: Node<ComponentNodeData>, type: ComponentType) => {
+		const option = getChildTypeOptions(parent).find((candidate) => candidate.type === type);
+		if (!option?.allowed) return;
 		const parentData = parent.data;
 		const node: Node<ComponentNodeData> = {
 			id: `node-${Date.now()}`,
@@ -599,11 +599,11 @@ export const ComponentLibraryPlanner = ({
 			selected: false,
 			data: {
 				label: "New Component",
-				componentType: child.type,
+				componentType: type,
 				description: "",
-				// Token children default to an alias of the parent and inherit its type
-				// so the panel opens on the same category.
-				...(child.type === "token" ? { tokenKind: "alias" as const, ...(parentData.tokenType ? { tokenType: parentData.tokenType } : {}) } : {}),
+				// Token children inherit the parent's token type so the panel opens on
+				// the same category; the kind follows the parent's literal/alias state.
+				...(option.tokenKind ? { tokenKind: option.tokenKind, ...(parentData.tokenType ? { tokenType: parentData.tokenType } : {}) } : {}),
 			},
 		};
 		setDraft({ node, parentIds: [parent.id] });

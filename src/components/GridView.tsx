@@ -6,7 +6,7 @@ import type { ComponentNodeData, ComponentType } from "@/types/component";
 import { getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { buildTokenLayout, TOKEN_COLUMN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_NODE_WIDTH, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
-import { canAssignParent, getChildDraft } from "@/lib/parentRules";
+import { canAssignParent, getChildTypeOptions } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Button } from "@/components/ui/button";
 
@@ -28,8 +28,8 @@ interface GridViewProps {
 	revealNodeId?: string | null;
 	/** Called after the reveal scroll starts so the parent can clear the request. */
 	onRevealComplete?: () => void;
-	/** Start a draft whose parent is the hovered node. */
-	onAddChild?: (parent: Node<ComponentNodeData>) => void;
+	/** Start a draft beneath the hovered parent, using the chosen child type. */
+	onAddChild?: (parent: Node<ComponentNodeData>, type: ComponentType) => void;
 }
 
 type LinkEndpoint = "source" | "target";
@@ -69,7 +69,7 @@ interface TokenChipProps {
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
 	onDragStart: (itemId: string, nodeId: string) => void;
 	onDragEnd: () => void;
-	onAddChild?: (parent: Node<ComponentNodeData>) => void;
+	onAddChild?: (parent: Node<ComponentNodeData>, type: ComponentType) => void;
 }
 
 const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd, onAddChild }: TokenChipProps) => {
@@ -84,8 +84,23 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 	const valueLabel = isToken && !isAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
 	const colorPreview = isToken && isColorToken(data.tokenType) ? toCssColor(data.tokenValue, tokenFormat) : null;
 	const typeLabel = isToken ? getNodeTypeLabel(data.componentType, data.tokenKind) : meta.label;
-	// The child this node would produce, and whether the parent rules allow it.
-	const childDraft = getChildDraft(item.node);
+	// Every child type this node could produce, and whether the rules allow it.
+	const childOptions = getChildTypeOptions(item.node);
+	const allowedChildren = childOptions.filter((option) => option.allowed);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	// Close the radial menu when clicking anywhere outside it.
+	useEffect(() => {
+		if (!menuOpen) return;
+		const handlePointerDown = (event: PointerEvent) => {
+			if (menuRef.current && !menuRef.current.contains(event.target as globalThis.Node)) {
+				setMenuOpen(false);
+			}
+		};
+		document.addEventListener("pointerdown", handlePointerDown);
+		return () => document.removeEventListener("pointerdown", handlePointerDown);
+	}, [menuOpen]);
 
 	const fullName = [...item.ancestors.map((layer) => layer.label), displayName].join(" / ");
 	const siblingIndex = item.siblingIds.indexOf(item.node.id);
@@ -179,20 +194,41 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 				</span>
 			)}
 			{!isLocked && onAddChild && (
-				<button
-					type="button"
-					disabled={!childDraft.allowed}
-					aria-label={childDraft.allowed ? `Add a child to ${displayName}` : `Can't add a child to ${displayName}`}
-					title={childDraft.allowed ? `Add a ${getComponentTypeMeta(childDraft.type).label.toLowerCase()}${childDraft.requiresMainComponent ? " (needs a main component)" : ""}` : childDraft.reason}
-					onClick={(event) => {
-						event.stopPropagation();
-						if (childDraft.allowed) onAddChild(item.node);
-					}}
-					className={`absolute top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-workspace text-muted-foreground shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${childDraft.allowed ? "opacity-0 hover:border-muted-foreground hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100" : "cursor-not-allowed opacity-0 group-hover:opacity-40"}`}
-					style={{ left: "100%" }}
-				>
-					<Plus className="size-3.5" />
-				</button>
+				<div ref={menuRef} className="absolute flex items-center gap-1" style={{ left: "100%", top: "50%", transform: "translateY(-50%)" }}>
+					<button
+						type="button"
+						disabled={allowedChildren.length === 0}
+						aria-label={allowedChildren.length > 0 ? `Add a child to ${displayName}` : `Can't add a child to ${displayName}`}
+						title={allowedChildren.length > 0 ? "Add a child" : "No child types allowed"}
+						onClick={(event) => {
+							event.stopPropagation();
+							setMenuOpen((open) => !open);
+						}}
+						className={`flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-workspace text-muted-foreground shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${allowedChildren.length > 0 ? (menuOpen ? "opacity-100" : "opacity-0 hover:border-muted-foreground hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100") : "cursor-not-allowed opacity-0 group-hover:opacity-40"}`}
+					>
+						<Plus className="size-4" />
+					</button>
+					{menuOpen &&
+						allowedChildren.map((option) => {
+							const optionMeta = getComponentTypeMeta(option.type);
+							const OptionIcon = optionMeta.icon;
+							return (
+								<button
+									key={option.type}
+									type="button"
+									title={`Add a ${optionMeta.label.toLowerCase()}${option.requiresMainComponent ? " (needs a main component)" : ""}`}
+									onClick={(event) => {
+										event.stopPropagation();
+										onAddChild(item.node, option.type);
+										setMenuOpen(false);
+									}}
+									className={`flex size-7 shrink-0 items-center justify-center rounded-full ${optionMeta.bgClass} text-background shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+								>
+									<OptionIcon className="size-4" />
+								</button>
+							);
+						})}
+				</div>
 			)}
 		</div>
 	);
