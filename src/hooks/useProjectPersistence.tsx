@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { formatVersionName } from '@/lib/versions';
+import { serializeDocument } from '@/lib/documentSnapshot';
 import type { Json } from '@/integrations/supabase/types';
 import type { Project, ProjectVersion } from '@/types/project';
 
@@ -359,11 +360,10 @@ export const useProjectPersistence = () => {
   ) => {
     if (!autoSaveEnabled || !projectId) return;
 
-    // Check if there's been any actual change
+    // Check if there's been any actual change. Compare content only, so
+    // selection, drag state, and measured sizes don't create empty versions.
     const latestVersion = versions[0];
-    if (latestVersion && 
-        JSON.stringify(latestVersion.nodes) === JSON.stringify(nodes) &&
-        JSON.stringify(latestVersion.edges) === JSON.stringify(edges)) {
+    if (latestVersion && serializeDocument(latestVersion.nodes, latestVersion.edges) === serializeDocument(nodes, edges)) {
       return; // No changes, skip auto-save
     }
 
