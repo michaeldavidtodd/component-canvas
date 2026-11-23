@@ -1,4 +1,5 @@
 import type { ComponentNodeData, ComponentType } from "@/types/component";
+import { getChildComponentType } from "@/lib/componentTypes";
 import { isAliasToken } from "@/lib/tokenValues";
 
 /** Minimal node shape needed to evaluate parent rules. */
@@ -119,6 +120,47 @@ export const canAssignParent = (child: ParentNode, parent: ParentNode, existingP
 
 	return { allowed: true };
 };
+
+/** The type a child takes beneath `parent`, plus whether the rules allow it. */
+export interface ChildDraftCheck {
+	type: ComponentType;
+	allowed: boolean;
+	reason?: string;
+	/** True when the child needs a main component parent before it can be created. */
+	requiresMainComponent: boolean;
+}
+
+/**
+ * Resolve the child a hovered parent would produce. A token literal produces an
+ * alias token; a token alias produces a variant that uses the token. Variants
+ * need a main component parent, so a token alias's draft starts incomplete
+ * until one is assigned.
+ */
+export const getChildDraft = (parent: ParentNode): ChildDraftCheck => {
+	const parentIsTokenAlias = parent.data.componentType === "token" && isAliasToken(parent.data.tokenKind);
+	const type: ComponentType = parentIsTokenAlias ? "variant" : getChildComponentType(parent.data.componentType);
+	const child: ParentNode = {
+		id: "__draft__",
+		data: {
+			label: "",
+			componentType: type,
+			description: "",
+			...(type === "token" ? { tokenKind: "alias" as const } : {}),
+		},
+	};
+	const check = canAssignParent(child, parent, []);
+	// A variant whose parent is already a main component is complete; a variant
+	// hanging off a token still needs its main component assigned.
+	const requiresMainComponent = type === "variant" && parent.data.componentType !== "main-component";
+	return { type, allowed: check.allowed, reason: check.reason, requiresMainComponent };
+};
+
+/**
+ * Whether a variant's parents include a token but no main component. A variant
+ * that uses a token still needs the main component it belongs to.
+ */
+export const variantNeedsMainComponent = (parents: ParentNode[]): boolean =>
+	parents.some((parent) => parent.data.componentType === "token") && !parents.some((parent) => parent.data.componentType === "main-component");
 
 /** Whether a parent contributes to the structural breadcrumb. */
 export const isStructuralParent = (parent: ParentNode): boolean => STRUCTURAL_TYPES.has(parent.data.componentType);

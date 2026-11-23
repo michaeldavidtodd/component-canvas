@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, FileText, Trash2, X } from "lucide-react";
+import { Check, ChevronsUpDown, FileText, Plus, Trash2, X } from "lucide-react";
 import { COMPONENT_TYPES, getComponentTypeMeta } from "@/lib/componentTypes";
 import { getAncestorChain, type TitleLayer } from "@/lib/nodeHierarchy";
 import { buildTokenLayout } from "@/lib/tokenLayout";
-import { getParentRule, isParentTypeAllowed, toggleParent } from "@/lib/parentRules";
+import { getParentRule, isParentTypeAllowed, toggleParent, variantNeedsMainComponent } from "@/lib/parentRules";
 import { Card } from "./ui/card";
 import { Field } from "./ui/field";
 import { getDefaultTokenFormat, getTokenFormatOptions, isAliasToken, isColorToken, isValidTokenValue, TOKEN_KIND_OPTIONS, toCssColor } from "@/lib/tokenValues";
@@ -21,13 +21,19 @@ import { getDefaultTokenFormat, getTokenFormatOptions, isAliasToken, isColorToke
 interface PropertiesPanelProps {
 	selectedNode: Node<ComponentNodeData> | null;
 	/** The grid occurrence that was clicked, when the selection came from the map. */
-	selectedOccurrenceId?: string | null;
+	selectedOccurrenceId?: string;
 	nodes: Node<ComponentNodeData>[];
 	edges: Edge[];
 	visibleTypes: ReadonlySet<ComponentType>;
-	onUpdateNode: (nodeId: string, updates: Partial<ComponentNodeData>) => void;
+	onUpdateNode: (id: string, updates: Partial<ComponentNodeData>) => void;
 	onDeleteNode: () => void;
-	onSetParents: (nodeId: string, parentIds: string[]) => void;
+	onSetParents: (id: string, parentIds: string[]) => void;
+	/** When true, the panel edits a node that hasn't been added to the project yet. */
+	draft?: boolean;
+	/** Parent ids for the draft, which has no edges yet. */
+	draftParentIds?: string[];
+	onSaveDraft?: () => void;
+	onCancelDraft?: () => void;
 }
 
 const componentTypeOptions: { value: ComponentType; label: string }[] = [
@@ -38,7 +44,7 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
 	{ value: "instance", label: "Instance" },
 ];
 
-export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edges, visibleTypes, onUpdateNode, onDeleteNode, onSetParents }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edges, visibleTypes, onUpdateNode, onDeleteNode, onSetParents, draft = false, draftParentIds = [], onSaveDraft, onCancelDraft }: PropertiesPanelProps) => {
 	const [parentOpen, setParentOpen] = useState(false);
 
 	// Close the parent picker when the selection changes.
@@ -48,18 +54,23 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 
 	const currentParents = useMemo(() => {
 		if (!selectedNode) return [];
-		const parentIds = new Set(edges.filter((edge) => edge.target === selectedNode.id).map((edge) => edge.source));
+		const parentIds = new Set(draft ? draftParentIds : edges.filter((edge) => edge.target === selectedNode.id).map((edge) => edge.source));
 		return nodes.filter((node) => parentIds.has(node.id));
-	}, [selectedNode, nodes, edges]);
+	}, [selectedNode, nodes, edges, draft, draftParentIds]);
 
 	const parentRule = selectedNode ? getParentRule(selectedNode.data) : null;
+
+	// A variant that uses a token still needs the main component it belongs to,
+	// so a draft can't be created until one is assigned.
+	const needsMainComponent = draft && selectedNode?.data.componentType === "variant" && variantNeedsMainComponent(currentParents);
 
 	// The structured map is needed to order the picker and to choose which parent
 	// to show when the picker is closed. Compute it when either is needed.
 	const layout = useMemo(() => {
+		if (draft) return null;
 		if (!parentOpen && currentParents.length <= 1) return null;
 		return buildTokenLayout(nodes, edges, visibleTypes);
-	}, [parentOpen, currentParents.length, nodes, edges, visibleTypes]);
+	}, [draft, parentOpen, currentParents.length, nodes, edges, visibleTypes]);
 
 	// Visual order of the structured map, used to break ties between items that
 	// share the same breadcrumb prefix.
@@ -79,7 +90,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 	// selection didn't come from the map or the occurrence is no longer visible.
 	const displayParent = useMemo(() => {
 		if (!selectedNode || currentParents.length <= 1) return currentParents[0] ?? null;
-		if (!layout) return currentParents[0] ?? null;
+		if (draft || !layout) return currentParents[0] ?? null;
 
 		const parentById = new Map(currentParents.map((parent) => [parent.id, parent]));
 		const itemById = new Map(layout.items.map((item) => [item.id, item]));
@@ -114,7 +125,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 		}
 
 		return best?.parent ?? currentParents[0] ?? null;
-	}, [selectedNode, selectedOccurrenceId, currentParents, layout]);
+	}, [selectedNode, selectedOccurrenceId, currentParents, layout, draft]);
 
 	// Resolve the picker groups. Descendants are excluded so choosing a parent
 	// can't create a cycle.
@@ -308,8 +319,8 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 	return (
 		<Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto">
 			<div>
-				<h3 className="text-lg font-semibold text-foreground mb-1">Properties</h3>
-				<p className="text-sm text-muted-foreground">Configure the selected component</p>
+				<h3 className="text-lg font-semibold text-foreground mb-1">{draft ? "New component" : "Properties"}</h3>
+				<p className="text-sm text-muted-foreground">{draft ? "Configure the component before adding it" : "Configure the selected component"}</p>
 			</div>
 
 			<div className="flex flex-col gap-4">
@@ -562,10 +573,23 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 			</div>
 
 			<div className="mt-auto pt-4 space-y-2">
-				<Button variant="destructive" size="sm" onClick={onDeleteNode} className="w-full gap-2">
-					<Trash2 className="w-4 h-4" />
-					Delete Component
-				</Button>
+				{draft ? (
+					<>
+						<Button size="sm" onClick={onSaveDraft} className="w-full gap-2" disabled={!selectedNode.data.label.trim() || needsMainComponent}>
+							<Plus className="w-4 h-4" />
+							Create {getComponentTypeMeta(selectedNode.data.componentType).label}
+						</Button>
+						{needsMainComponent && <p className="text-xs text-muted-foreground">Assign a main component parent before creating this variant.</p>}
+						<Button variant="outline" size="sm" onClick={onCancelDraft} className="w-full">
+							Cancel
+						</Button>
+					</>
+				) : (
+					<Button variant="destructive" size="sm" onClick={onDeleteNode} className="w-full gap-2">
+						<Trash2 className="w-4 h-4" />
+						Delete Component
+					</Button>
+				)}
 			</div>
 		</Card>
 	);

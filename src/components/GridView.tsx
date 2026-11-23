@@ -1,12 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import { Columns3, GripVertical, X } from "lucide-react";
+import { Columns3, GripVertical, Plus, X } from "lucide-react";
 
 import type { ComponentNodeData, ComponentType } from "@/types/component";
 import { getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { buildTokenLayout, TOKEN_COLUMN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_NODE_WIDTH, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
-import { canAssignParent } from "@/lib/parentRules";
+import { canAssignParent, getChildDraft } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +24,12 @@ interface GridViewProps {
 	onDeleteEdge: (edgeId: string) => void;
 	onReconnectEdge: (edgeId: string, endpoint: LinkEndpoint, nodeId: string) => void;
 	visibleTypes: ReadonlySet<ComponentType>;
+	/** Node to scroll into view and vertically center, e.g. a newly created node. */
+	revealNodeId?: string | null;
+	/** Called after the reveal scroll starts so the parent can clear the request. */
+	onRevealComplete?: () => void;
+	/** Start a draft whose parent is the hovered node. */
+	onAddChild?: (parent: Node<ComponentNodeData>) => void;
 }
 
 type LinkEndpoint = "source" | "target";
@@ -63,9 +69,10 @@ interface TokenChipProps {
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
 	onDragStart: (itemId: string, nodeId: string) => void;
 	onDragEnd: () => void;
+	onAddChild?: (parent: Node<ComponentNodeData>) => void;
 }
 
-const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd }: TokenChipProps) => {
+const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd, onAddChild }: TokenChipProps) => {
 	const data = item.node.data;
 	const meta = getComponentTypeMeta(data.componentType);
 	const Icon = meta.icon;
@@ -77,6 +84,8 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 	const valueLabel = isToken && !isAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
 	const colorPreview = isToken && isColorToken(data.tokenType) ? toCssColor(data.tokenValue, tokenFormat) : null;
 	const typeLabel = isToken ? getNodeTypeLabel(data.componentType, data.tokenKind) : meta.label;
+	// The child this node would produce, and whether the parent rules allow it.
+	const childDraft = getChildDraft(item.node);
 
 	const fullName = [...item.ancestors.map((layer) => layer.label), displayName].join(" / ");
 	const siblingIndex = item.siblingIds.indexOf(item.node.id);
@@ -169,6 +178,22 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 					<GripVertical className="size-3.5" />
 				</span>
 			)}
+			{!isLocked && onAddChild && (
+				<button
+					type="button"
+					disabled={!childDraft.allowed}
+					aria-label={childDraft.allowed ? `Add a child to ${displayName}` : `Can't add a child to ${displayName}`}
+					title={childDraft.allowed ? `Add a ${getComponentTypeMeta(childDraft.type).label.toLowerCase()}${childDraft.requiresMainComponent ? " (needs a main component)" : ""}` : childDraft.reason}
+					onClick={(event) => {
+						event.stopPropagation();
+						if (childDraft.allowed) onAddChild(item.node);
+					}}
+					className={`absolute top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-workspace text-muted-foreground shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${childDraft.allowed ? "opacity-0 hover:border-muted-foreground hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100" : "cursor-not-allowed opacity-0 group-hover:opacity-40"}`}
+					style={{ left: "100%" }}
+				>
+					<Plus className="size-3.5" />
+				</button>
+			)}
 		</div>
 	);
 });
@@ -182,7 +207,7 @@ TokenChip.displayName = "TokenChip";
  * compact orthogonal lines over a rigid grid, so the map stays readable as the
  * number of tokens and usages grows.
  */
-export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchToCanvas, isLocked = false, onUndo, onRedo, onReorder, onDeleteEdge, onReconnectEdge, visibleTypes }: GridViewProps) => {
+export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchToCanvas, isLocked = false, onUndo, onRedo, onReorder, onDeleteEdge, onReconnectEdge, onAddChild, visibleTypes, revealNodeId = null, onRevealComplete }: GridViewProps) => {
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
@@ -199,6 +224,9 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 	// The pointer handlers read the live drag state without re-subscribing on
 	// every move, and the release handler needs the latest hovered chip.
 	const reconnectDragRef = useRef<ReconnectDrag | null>(null);
+	// Only reveal a given node once, so later layout changes don't yank the
+	// scroll position around.
+	const lastRevealedNodeIdRef = useRef<string | null>(null);
 
 	const setReconnectDrag = useCallback((next: ReconnectDrag | null) => {
 		reconnectDragRef.current = next;
@@ -585,6 +613,8 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 	useEffect(() => {
 		if (!selectedNodeId) return;
 		if (draggedItemIdRef.current) return;
+		// A newly created node is centered by the reveal effect below.
+		if (revealNodeId === selectedNodeId) return;
 
 		const item = layout.items.find((entry) => entry.node.id === selectedNodeId);
 		const container = scrollRef.current;
@@ -596,16 +626,35 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 		const visibleBottom = container.scrollTop + container.clientHeight;
 
 		if (itemTop < visibleTop || itemBottom > visibleBottom) {
-			const target = itemTop - TOKEN_HEADER_HEIGHT - (container.clientHeight - TOKEN_HEADER_HEIGHT) / 2;
+			const target = itemTop - TOKEN_HEADER_HEIGHT - (container.clientHeight - TOKEN_NODE_HEIGHT) / 2;
 			container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
 		}
-	}, [selectedNodeId, layout.items]);
+	}, [selectedNodeId, layout.items, revealNodeId]);
+
+	// Center a newly created node's row in the scroll area. This runs once per
+	// reveal id so editing the node afterwards doesn't move the viewport.
+	useEffect(() => {
+		if (!revealNodeId) return;
+		if (lastRevealedNodeIdRef.current === revealNodeId) return;
+
+		const item = layout.items.find((entry) => entry.node.id === revealNodeId);
+		const container = scrollRef.current;
+		if (!item || !container) return;
+
+		lastRevealedNodeIdRef.current = revealNodeId;
+		const rowCenter = ((item.rowStart + item.rowEnd + 1) * TOKEN_ROW_HEIGHT) / 2;
+		// Center within the area below the sticky header, not the full container.
+		const visibleCenter = TOKEN_HEADER_HEIGHT + (container.clientHeight - TOKEN_HEADER_HEIGHT) / 2;
+		const target = rowCenter - visibleCenter;
+		container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+		onRevealComplete?.();
+	}, [revealNodeId, layout.items, onRevealComplete]);
 
 	if (layout.items.length === 0) {
 		const hasNodes = nodes.some((node) => !node.hidden);
 		const hasVisibleTypes = visibleTypes.size > 0;
 		const title = !hasNodes ? "Nothing to map yet" : !hasVisibleTypes ? "No node types selected" : "No nodes match the current filters";
-		const description = !hasNodes ? "Add components, variants, or tokens on the canvas, then connect them. They'll appear here as a structured map." : !hasVisibleTypes ? "Turn on a node type in the header to see it in the map." : "The current filters hide every node. Turn on a node type in the header to see it.";
+		const description = !hasNodes ? "Add components, variants, or tokens from the Add menu or the canvas, then connect them. They'll appear here as a structured map." : !hasVisibleTypes ? "Turn on a node type in the header to see it in the map." : "The current filters hide every node. Turn on a node type in the header to see it.";
 
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 bg-canvas p-8 text-center" onClick={() => onNodeSelect(null)}>
@@ -719,7 +768,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 						</svg>
 
 						{layout.items.map((item) => (
-							<TokenChip key={item.id} item={item} selected={item.node.id === selectedNodeId} dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId} isLocked={isLocked} isDragging={item.id === draggedItemId} onSelect={onNodeSelect} onHover={handleChipHover} onReorder={onReorder} onDragStart={handleDragStart} onDragEnd={handleDragEnd} />
+							<TokenChip key={item.id} item={item} selected={item.node.id === selectedNodeId} dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId} isLocked={isLocked} isDragging={item.id === draggedItemId} onSelect={onNodeSelect} onHover={handleChipHover} onReorder={onReorder} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onAddChild={onAddChild} />
 						))}
 
 						{/* Connection controls: a delete button at the midpoint and a

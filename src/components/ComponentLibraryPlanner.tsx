@@ -19,10 +19,10 @@ import { ProjectManager } from "./ProjectManager";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ComponentNodeData, ComponentType } from "@/types/component";
 import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } from "@/lib/componentTypes";
-import { FIT_VIEW_OPTIONS, MIN_ZOOM } from "@/lib/canvas";
+import { FIT_VIEW_OPTIONS, MIN_ZOOM, getBelowTreePlacement } from "@/lib/canvas";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
-import { canAssignParent, getPrimaryParentId } from "@/lib/parentRules";
+import { canAssignParent, getChildDraft, getPrimaryParentId } from "@/lib/parentRules";
 import type { ProjectVersion, SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,7 +34,8 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LogOut } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LogOut, Rows3, Sparkles } from "lucide-react";
 import { formatVersionName } from "@/lib/versions";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,11 @@ const ALL_COMPONENT_TYPES: ReadonlySet<ComponentType> = new Set(COMPONENT_TYPES.
 
 const nodeWidth = 172;
 const nodeHeight = 36;
+
+interface DraftNode {
+	node: Node<ComponentNodeData>;
+	parentIds: string[];
+}
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = "TB") => {
 	// Create a fresh graph instance each time
@@ -123,7 +129,7 @@ const ConnectionRuleTooltip = ({ hover }: { hover: { nodeId: string; reason: str
 };
 
 // Component for auto layout functionality
-const AutoLayoutHandler = ({ autoSmartLayout, onLayout }: { autoSmartLayout: boolean; onLayout: (direction?: string) => void }) => {
+const AutoLayoutHandler = ({ autoSmartLayout, onLayout, skipNextRef }: { autoSmartLayout: boolean; onLayout: (direction?: string) => void; skipNextRef?: React.MutableRefObject<boolean> }) => {
 	const reactFlowInstance = useReactFlow();
 	const lastNodeCountRef = useRef(0);
 
@@ -132,6 +138,14 @@ const AutoLayoutHandler = ({ autoSmartLayout, onLayout }: { autoSmartLayout: boo
 		if (autoSmartLayout && reactFlowInstance) {
 			const currentNodes = reactFlowInstance.getNodes();
 			const currentCount = currentNodes.length;
+
+			// A node added from the structured map may have been placed below the
+			// tree on purpose. Skip the next auto-layout so that choice sticks.
+			if (skipNextRef?.current) {
+				skipNextRef.current = false;
+				lastNodeCountRef.current = currentCount;
+				return;
+			}
 
 			// Only trigger if nodes were added (not removed or just position changes)
 			if (currentCount > lastNodeCountRef.current && currentCount > 0) {
@@ -161,7 +175,7 @@ const AutoLayoutHandler = ({ autoSmartLayout, onLayout }: { autoSmartLayout: boo
 
 			lastNodeCountRef.current = currentCount;
 		}
-	}, [autoSmartLayout, reactFlowInstance, onLayout]);
+	}, [autoSmartLayout, reactFlowInstance, onLayout, skipNextRef]);
 
 	return null;
 };
@@ -278,6 +292,13 @@ export const ComponentLibraryPlanner = ({
 	// The specific grid occurrence that was clicked. A node can appear in several
 	// places in the structured map, so this disambiguates which parent to show.
 	const [selectedOccurrenceId, setSelectedOccurrenceId] = useState<string | null>(null);
+	// A node being configured in the properties panel before it's added to the
+	// project. It isn't in `nodes` yet, so the panel edits this copy.
+	const [draft, setDraft] = useState<DraftNode | null>(null);
+	// Set when a draft is saved so the grid scrolls to and centers the new row.
+	const [revealNodeId, setRevealNodeId] = useState<string | null>(null);
+	// The draft awaiting a canvas placement decision. Saving opens the dialog.
+	const [pendingPlacement, setPendingPlacement] = useState<DraftNode | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
 	// The version currently being previewed in the canvas while the history
 	// list stays open in the aside.
@@ -333,6 +354,21 @@ export const ComponentLibraryPlanner = ({
 		viewModeRef.current = viewMode;
 	}, [viewMode]);
 
+	// Callbacks and effects read the draft through a ref so they don't need to
+	// re-subscribe every time a property changes.
+	const draftRef = useRef<DraftNode | null>(null);
+	useEffect(() => {
+		draftRef.current = draft;
+	}, [draft]);
+
+	// Remembers the row used for "below the tree" placements so repeated
+	// additions form a row instead of stacking.
+	const belowTreeRowYRef = useRef<number | null>(null);
+
+	// Set when a draft is placed below the tree so the auto-layout handler leaves
+	// that placement alone.
+	const skipNextAutoLayoutRef = useRef(false);
+
 	// Keep the properties panel pointed at the live node object after undo/redo,
 	// when the selected node is removed, or when it's deselected (Shift+click
 	// toggles a node off). Position-only updates (dragging) keep the same data
@@ -342,6 +378,8 @@ export const ComponentLibraryPlanner = ({
 	useEffect(() => {
 		setSelectedNode((current) => {
 			if (!current) return null;
+			// A draft lives outside `nodes`, so keep it selected while it's configured.
+			if (draftRef.current?.node.id === current.id) return current;
 			const next = nodes.find((node) => node.id === current.id);
 			if (next?.selected) {
 				return next.data === current.data ? current : (next as Node<ComponentNodeData>);
@@ -512,9 +550,149 @@ export const ComponentLibraryPlanner = ({
 	}, []);
 
 	const handleNodeSelect = useCallback((node: Node<ComponentNodeData> | null, occurrenceId: string | null = null) => {
+		// Selecting another node abandons an in-progress draft. Clicking empty
+		// space leaves the draft alone so the user doesn't lose their work.
+		if (draftRef.current) {
+			if (!node) return;
+			setDraft(null);
+			setPendingPlacement(null);
+		}
 		setSelectedNode(node);
 		setSelectedOccurrenceId(node ? occurrenceId : null);
 	}, []);
+
+	const handleRevealComplete = useCallback(() => setRevealNodeId(null), []);
+
+	// Start a draft from the structured map's Add menu. The properties panel
+	// edits the draft; nothing is added to the project until it's saved.
+	const handleStartDraft = useCallback((type: ComponentType) => {
+		const node: Node<ComponentNodeData> = {
+			id: `node-${Date.now()}`,
+			type: "component",
+			position: { x: 0, y: 0 },
+			selected: false,
+			data: {
+				label: "New Component",
+				componentType: type,
+				description: "",
+			},
+		};
+		setDraft({ node, parentIds: [] });
+		setSelectedNode(node);
+		setSelectedOccurrenceId(null);
+		// A new draft supersedes any pending reveal from a previous addition.
+		setRevealNodeId(null);
+		// The properties panel is visible when the draft is configured.
+		setIsUIHidden(false);
+	}, []);
+
+	// Start a draft from a grid node's hover add button. The hovered node becomes
+	// the parent, and the child's type and token attributes follow from it.
+	const handleStartChildDraft = useCallback((parent: Node<ComponentNodeData>) => {
+		const child = getChildDraft(parent);
+		if (!child.allowed) return;
+		const parentData = parent.data;
+		const node: Node<ComponentNodeData> = {
+			id: `node-${Date.now()}`,
+			type: "component",
+			position: { x: 0, y: 0 },
+			selected: false,
+			data: {
+				label: "New Component",
+				componentType: child.type,
+				description: "",
+				// Token children default to an alias of the parent and inherit its type
+				// so the panel opens on the same category.
+				...(child.type === "token" ? { tokenKind: "alias" as const, ...(parentData.tokenType ? { tokenType: parentData.tokenType } : {}) } : {}),
+			},
+		};
+		setDraft({ node, parentIds: [parent.id] });
+		setSelectedNode(node);
+		setSelectedOccurrenceId(null);
+		// A new draft supersedes any pending reveal from a previous addition.
+		setRevealNodeId(null);
+		// The properties panel is visible when the draft is configured.
+		setIsUIHidden(false);
+	}, []);
+
+	const handleCancelDraft = useCallback(() => {
+		setDraft(null);
+		setPendingPlacement(null);
+		setSelectedNode(null);
+		setSelectedOccurrenceId(null);
+	}, []);
+
+	// Saving a draft asks where it should land on the canvas before committing.
+	const handleSaveDraft = useCallback(() => {
+		if (!draft) return;
+		setPendingPlacement(draft);
+	}, [draft]);
+
+	const commitDraft = useCallback(
+		(optimize: boolean) => {
+			if (!pendingPlacement) return;
+			const { node, parentIds } = pendingPlacement;
+
+			const parentNodes = parentIds.map((id) => nodes.find((candidate) => candidate.id === id)).filter((candidate): candidate is Node<ComponentNodeData> => !!candidate);
+
+			// Re-validate the chosen parents: changing the component type after
+			// picking parents can make some of them ineligible.
+			const validParents: Node<ComponentNodeData>[] = [];
+			for (const parent of parentNodes) {
+				if (canAssignParent(node, parent, validParents).allowed) validParents.push(parent);
+			}
+			const primaryParentId = getPrimaryParentId(validParents);
+
+			const newEdges: Edge[] = validParents.map((parent) => ({
+				id: `edge-${Date.now()}-${parent.id}`,
+				source: parent.id,
+				target: node.id,
+				type: "default",
+				style: { stroke: getEdgeColor(parent.data.componentType, node.data.componentType) },
+			}));
+
+			const committed: Node<ComponentNodeData> = {
+				...node,
+				selected: true,
+				data: { ...node.data, parentId: primaryParentId },
+			};
+			const deselected = nodes.map((candidate) => (candidate.selected ? { ...candidate, selected: false } : candidate));
+
+			if (optimize) {
+				// Re-laying out the tree invalidates any remembered below-tree row.
+				belowTreeRowYRef.current = null;
+				const layouted = getLayoutedElements([...deselected, committed], [...edges, ...newEdges], "TB");
+				setNodes(layouted.nodes);
+				setEdges(layouted.edges);
+				const positioned = layouted.nodes.find((candidate) => candidate.id === committed.id) ?? committed;
+				setSelectedNode(positioned as Node<ComponentNodeData>);
+			} else {
+				const placement = getBelowTreePlacement(nodes, belowTreeRowYRef.current);
+				belowTreeRowYRef.current = placement.rowY;
+				const positioned = { ...committed, position: placement.position };
+				setNodes([...deselected, positioned]);
+				setEdges([...edges, ...newEdges]);
+				setSelectedNode(positioned);
+			}
+
+			// The auto-layout handler would otherwise re-place the node and undo the
+			// user's choice. Skip it for this addition.
+			if (autoSmartLayout) skipNextAutoLayoutRef.current = true;
+
+			// Make sure the new node's type is visible in the map so the reveal can find it.
+			setVisibleTypes((current) => {
+				if (current.has(node.data.componentType)) return current;
+				const next = new Set(current);
+				next.add(node.data.componentType);
+				return next;
+			});
+
+			setRevealNodeId(node.id);
+			setDraft(null);
+			setPendingPlacement(null);
+		},
+		[pendingPlacement, nodes, edges, autoSmartLayout, setNodes, setEdges],
+	);
 
 	const toggleVisibleType = useCallback((type: ComponentType) => {
 		setVisibleTypes((current) => {
@@ -531,6 +709,9 @@ export const ComponentLibraryPlanner = ({
 		(locked: boolean) => {
 			setIsCanvasLocked(locked);
 			if (!locked) return;
+			// Locking the canvas is read-only, so discard any in-progress draft.
+			setDraft(null);
+			setPendingPlacement(null);
 			setSelectedNode(null);
 			setNodes((nds) => nds.map((n) => (n.selected ? { ...n, selected: false } : n)));
 			setEdges((eds) => eds.map((e) => (e.selected ? { ...e, selected: false } : e)));
@@ -554,6 +735,11 @@ export const ComponentLibraryPlanner = ({
 
 	const addNode = useCallback(
 		(type: ComponentType, position?: { x: number; y: number }) => {
+			// Adding from the canvas abandons any in-progress draft and any pending
+			// reveal, since the node is placed directly rather than in the map.
+			setDraft(null);
+			setPendingPlacement(null);
+			setRevealNodeId(null);
 			const newNode = {
 				id: `node-${Date.now()}`,
 				type: "component",
@@ -574,9 +760,16 @@ export const ComponentLibraryPlanner = ({
 
 	const updateNodeData = useCallback(
 		(nodeId: string, updates: Partial<ComponentNodeData>) => {
+			// A draft lives outside `nodes`, so update its copy directly.
+			if (draftRef.current?.node.id === nodeId) {
+				setDraft((current) => (current ? { ...current, node: { ...current.node, data: { ...current.node.data, ...updates } } } : current));
+				setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...updates } } : null));
+				return;
+			}
+
 			setNodes((nds) => nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, ...updates } } : node)));
 
-			// Update selected node if it's the one being modified
+			// Update the selected node if it's the one being modified
 			if (selectedNode && selectedNode.id === nodeId) {
 				setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...updates } } : null));
 			}
@@ -680,6 +873,12 @@ export const ComponentLibraryPlanner = ({
 	// incoming edges so the canvas and grid stay in sync.
 	const setNodeParents = useCallback(
 		(nodeId: string, parentIds: string[]) => {
+			// A draft's parents are stored on the draft until it's committed.
+			if (draftRef.current?.node.id === nodeId) {
+				setDraft((current) => (current ? { ...current, parentIds } : current));
+				return;
+			}
+
 			const child = nodes.find((node) => node.id === nodeId);
 			if (!child) return;
 
@@ -785,6 +984,10 @@ export const ComponentLibraryPlanner = ({
 			setNodes(normalizedNodes);
 			setEdges(normalizedEdges);
 			resetHistory({ nodes: normalizedNodes, edges: normalizedEdges });
+			// A new project starts a fresh below-tree row and abandons any draft.
+			belowTreeRowYRef.current = null;
+			setDraft(null);
+			setPendingPlacement(null);
 			setLoadedProjectId(currentProject?.id ?? null);
 		},
 		[setNodes, setEdges, resetHistory, currentProject?.id],
@@ -811,6 +1014,11 @@ export const ComponentLibraryPlanner = ({
 				setNodes(versionNodes);
 				setEdges(versionEdges);
 				resetHistory({ nodes: versionNodes, edges: versionEdges });
+				// Restoring replaces the canvas, so the remembered row no longer applies
+				// and any in-progress draft is abandoned.
+				belowTreeRowYRef.current = null;
+				setDraft(null);
+				setPendingPlacement(null);
 				setPreviewVersion(null);
 				setShowVersionHistory(false);
 				setPendingRestoreVersion(null);
@@ -1020,7 +1228,20 @@ export const ComponentLibraryPlanner = ({
 								/>
 							) : (
 								<div className="flex-1 flex flex-col gap-4 pb-4">
-									<PropertiesPanel selectedNode={selectedNode} selectedOccurrenceId={selectedOccurrenceId} nodes={nodes as Node<ComponentNodeData>[]} edges={edges} visibleTypes={visibleTypes} onUpdateNode={updateNodeData} onDeleteNode={deleteSelectedNode} onSetParents={setNodeParents} />
+									<PropertiesPanel
+										selectedNode={selectedNode}
+										selectedOccurrenceId={selectedOccurrenceId ?? undefined}
+										nodes={nodes as Node<ComponentNodeData>[]}
+										edges={edges}
+										visibleTypes={visibleTypes}
+										onUpdateNode={updateNodeData}
+										onDeleteNode={deleteSelectedNode}
+										onSetParents={setNodeParents}
+										draft={!!draft}
+										draftParentIds={draft?.parentIds ?? []}
+										onSaveDraft={handleSaveDraft}
+										onCancelDraft={handleCancelDraft}
+									/>
 								</div>
 							)}
 						</aside>
@@ -1117,12 +1338,12 @@ export const ComponentLibraryPlanner = ({
 											</div>
 										)}
 										{/* Auto layout handler */}
-										<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} />
+										<AutoLayoutHandler autoSmartLayout={autoSmartLayout} onLayout={onLayout} skipNextRef={skipNextAutoLayoutRef} />
 										{/* Keyboard shortcuts */}
 										<KeyboardShortcuts enabled={!isSharedView && !isMobile && !isCanvasLocked && !showOnboarding} uiToggleEnabled={!isSharedView && !isMobile && !showOnboarding} onAddNode={addNode} onSave={handleManualSave} onOptimizeLayout={() => onLayout("TB")} onShowHistory={handleToggleVersionHistory} onUndo={undo} onRedo={redo} onToggleUI={() => setIsUIHidden((hidden) => !hidden)} />
 									</ReactFlow>
 								) : (
-									<GridView nodes={nodes as Node<ComponentNodeData>[]} edges={edges} selectedNodeId={selectedNode?.id ?? null} onNodeSelect={handleNodeSelect} onSwitchToCanvas={() => setViewMode("canvas")} isLocked={isCanvasLocked} onUndo={undo} onRedo={redo} onReorder={reorderNode} onDeleteEdge={deleteEdge} onReconnectEdge={reconnectEdge} visibleTypes={visibleTypes} />
+									<GridView nodes={nodes as Node<ComponentNodeData>[]} edges={edges} selectedNodeId={selectedNode?.id ?? null} onNodeSelect={handleNodeSelect} onSwitchToCanvas={() => setViewMode("canvas")} isLocked={isCanvasLocked} onUndo={undo} onRedo={redo} onReorder={reorderNode} onDeleteEdge={deleteEdge} onReconnectEdge={reconnectEdge} onAddChild={handleStartChildDraft} visibleTypes={visibleTypes} revealNodeId={revealNodeId ?? undefined} onRevealComplete={handleRevealComplete} />
 								)}
 
 								{/* Primary navigation: floating dock with add, layout, view, project, and account menus */}
@@ -1145,7 +1366,7 @@ export const ComponentLibraryPlanner = ({
 											<span>to show UI</span>
 										</button>
 									) : (
-										<NodeDock onAddNode={addNode} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={handleToggleVersionHistory} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
+										<NodeDock onAddNode={addNode} onStartDraft={handleStartDraft} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={handleToggleVersionHistory} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
 									))}
 								{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
 								{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
@@ -1154,6 +1375,50 @@ export const ComponentLibraryPlanner = ({
 					</div>
 				</div>
 			</div>
+
+			{/* Canvas placement for a node created from the structured map */}
+			<Dialog
+				open={!!pendingPlacement}
+				onOpenChange={(open) => {
+					if (!open) setPendingPlacement(null);
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Add to canvas</DialogTitle>
+						<DialogDescription>{pendingPlacement ? `Choose how "${pendingPlacement.node.data.label}" should be placed on the canvas.` : "Choose how the new node should be placed on the canvas."}</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-2">
+						<button
+							type="button"
+							onClick={() => commitDraft(true)}
+							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+							<span className="space-y-0.5">
+								<span className="block text-sm font-medium text-foreground">Optimize layout</span>
+								<span className="block text-xs text-muted-foreground">Re-run the smart layout so the new node fits the tree.</span>
+							</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => commitDraft(false)}
+							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<Rows3 className="mt-0.5 size-4 shrink-0 text-primary" />
+							<span className="space-y-0.5">
+								<span className="block text-sm font-medium text-foreground">Place below the tree</span>
+								<span className="block text-xs text-muted-foreground">Keep the current layout and add the node in a new row beneath it.</span>
+							</span>
+						</button>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setPendingPlacement(null)}>
+							Cancel
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{/* Restore confirmation */}
 			<AlertDialog

@@ -125,6 +125,8 @@ const DockButton = ({ icon, label, description, selected, expanded, showTooltip 
 
 interface NodeDockProps {
 	onAddNode: (type: ComponentType, position: { x: number; y: number }) => void;
+	/** Start a draft in the properties panel instead of adding directly to the canvas. */
+	onStartDraft?: (type: ComponentType) => void;
 	// Layout
 	onSmartLayout?: () => void;
 	onCleanupLayout?: () => void;
@@ -160,7 +162,7 @@ interface NodeDockProps {
  * and expand a panel upward when activated. The dock is the app's primary
  * navigation.
  */
-export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, viewMode = "canvas", onViewModeChange, isLocked = false, onToggleLock, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
+export const NodeDock = ({ onAddNode, onStartDraft, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, viewMode = "canvas", onViewModeChange, isLocked = false, onToggleLock, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
 	const [activeGroup, setActiveGroup] = useState<DockGroupId | null>(null);
 	// Keep the last opened group mounted so its content stays visible while the
 	// container animates closed.
@@ -168,11 +170,11 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	const [contentHeight, setContentHeight] = useState(0);
 	const contentRef = useRef<HTMLDivElement>(null);
 
-	// The Add and Layout menus only exist on the canvas. If the view changes
-	// while one of them is open, close it.
+	// The Layout menu only exists on the canvas. If the view changes while it is
+	// open, close it. Add stays available in both views.
 	useEffect(() => {
 		if (viewMode !== "tokens") return;
-		setActiveGroup((current) => (current === "add" || current === "layout" ? null : current));
+		setActiveGroup((current) => (current === "layout" ? null : current));
 	}, [viewMode]);
 
 	const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -191,9 +193,9 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	const showProject = !!(user && !isAnonymous && currentProject);
 	// The panel keeps the last opened group mounted while it animates closed.
 	const basePanelGroup: DockGroupId = lastGroup === "project" && !showProject ? "add" : lastGroup;
-	// Add and Layout only exist on the canvas, so their panels are hidden in the
-	// structured view.
-	const panelGroup: DockGroupId | null = viewMode === "tokens" && (basePanelGroup === "add" || basePanelGroup === "layout") ? null : basePanelGroup;
+	// Layout only exists on the canvas, so its panel is hidden in the structured
+	// view. Add is available in both views.
+	const panelGroup: DockGroupId | null = viewMode === "tokens" && basePanelGroup === "layout" ? "add" : basePanelGroup;
 	const isPanelOpen = activeGroup !== null && panelGroup !== null;
 
 	// Measure the menu's natural height before paint so the container can
@@ -216,15 +218,22 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	}, [panelGroup, activeGroup]);
 
 	const showGroup = (group: DockGroupId) => {
-		// Add and Layout only exist on the canvas.
-		if (viewMode === "tokens" && (group === "add" || group === "layout")) return;
+		// Layout only exists on the canvas.
+		if (viewMode === "tokens" && group === "layout") return;
 		setLastGroup(group);
 		setActiveGroup(group);
 	};
 
-	// Place new nodes at the center of the visible canvas, since the menu
-	// covers the lower part of the canvas when it is open.
+	// In the canvas view, place new nodes at the center of the visible canvas,
+	// since the menu covers the lower part of the canvas when it is open. In the
+	// structured map, open a draft in the properties panel first.
 	const handleAdd = (type: ComponentType) => {
+		if (viewMode === "tokens") {
+			setActiveGroup(null);
+			onStartDraft?.(type);
+			return;
+		}
+
 		const { x, y, zoom } = getViewport();
 		onAddNode(type, {
 			x: (width / 2 - x) / zoom - NODE_WIDTH / 2,
@@ -316,12 +325,8 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 	};
 
 	const groups: { id: DockGroupId; label: string; description: string; icon: ReactNode }[] = [
-		...(viewMode === "tokens"
-			? []
-			: [
-					{ id: "add" as DockGroupId, label: "Add", description: "Add a component to the canvas", icon: <Plus className="size-4" /> },
-					{ id: "layout" as DockGroupId, label: "Layout", description: "Arrange and tidy the canvas", icon: <LayoutGrid className="size-4" /> },
-				]),
+		{ id: "add", label: "Add", description: "Add a component to the project", icon: <Plus className="size-4" /> },
+		...(viewMode === "tokens" ? [] : [{ id: "layout" as DockGroupId, label: "Layout", description: "Arrange and tidy the canvas", icon: <LayoutGrid className="size-4" /> }]),
 		...(showProject ? [{ id: "project" as DockGroupId, label: "Project", description: "Versions, sharing, and auto-save", icon: <FolderOpen className="size-4" /> }] : []),
 		{ id: "account", label: "Account", description: "Profile, theme, and sign out", icon: <User className="size-4" /> },
 	];
