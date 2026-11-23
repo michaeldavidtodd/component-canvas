@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/hooks/project-context";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useKeyboardShortcuts, isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
+import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -353,6 +354,7 @@ export const ComponentLibraryPlanner = ({
 	}, [nodes]);
 
 	const { currentProject, versions, versionsLoading, autoSaveEnabled, setAutoSaveEnabled, saveVersion, autoSave, loadVersion, deleteVersion } = useProject();
+	const { toast } = useToast();
 
 	// Load shared project data
 	useEffect(() => {
@@ -808,11 +810,15 @@ export const ComponentLibraryPlanner = ({
 				setPreviewVersion(null);
 				setShowVersionHistory(false);
 				setPendingRestoreVersion(null);
+				toast({
+					title: "Version restored",
+					description: `"${formatVersionName(version)}" is now on the canvas.`,
+				});
 			} finally {
 				setRestoringVersionId(null);
 			}
 		},
-		[loadVersion, setNodes, setEdges, resetHistory],
+		[loadVersion, setNodes, setEdges, resetHistory, toast],
 	);
 
 	// Ask for confirmation before replacing the canvas with a saved version.
