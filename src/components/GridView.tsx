@@ -1,11 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import { Columns3, GripVertical, Plus, X } from "lucide-react";
+import { AlertTriangle, Columns3, GripVertical, Plus, X } from "lucide-react";
 
 import type { ComponentNodeData, ComponentType } from "@/types/component";
 import { getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
-import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
-import { buildTokenLayout, TOKEN_COLUMN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_NODE_WIDTH, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
+import { formatTokenValue, getDefaultTokenFormat, isAliasToken } from "@/lib/tokenValues";
+import { buildTokenLayout, TOKEN_COLUMN_MAX_WIDTH, TOKEN_COLUMN_MIN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
+import { buildTokenSwatchMap } from "@/lib/tokenColors";
+import { getNodeValidationIssues } from "@/lib/nodeValidation";
 import { canAssignParent, getChildTypeOptions } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,35 @@ interface GridViewProps {
 }
 
 type LinkEndpoint = "source" | "target";
+
+/** Column widths are a view preference, so they survive switching views. */
+const COLUMN_WIDTHS_STORAGE_KEY = "component-canvas:grid-column-widths";
+/** Matches the grid's `px-3` scroll padding so the header scrolls in step. */
+const GRID_SCROLL_PADDING_X = 12;
+
+const clampColumnWidth = (width: number): number => Math.min(TOKEN_COLUMN_MAX_WIDTH, Math.max(TOKEN_COLUMN_MIN_WIDTH, width));
+
+const readStoredColumnWidths = (): Record<number, number> => {
+	if (typeof window === "undefined") return {};
+
+	try {
+		const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+		if (!raw) return {};
+
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object") return {};
+
+		const widths: Record<number, number> = {};
+		for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+			const depth = Number(key);
+			if (!Number.isInteger(depth) || depth < 0 || typeof value !== "number" || !Number.isFinite(value)) continue;
+			widths[depth] = clampColumnWidth(value);
+		}
+		return widths;
+	} catch {
+		return {};
+	}
+};
 
 const isLinkActive = (link: TokenLayoutLink, activeNodeId: string | null): boolean => !!activeNodeId && (link.sourceId === activeNodeId || link.targetId === activeNodeId);
 
@@ -64,6 +95,8 @@ interface TokenChipProps {
 	dimmed: boolean;
 	isLocked: boolean;
 	isDragging: boolean;
+	/** Resolved swatch color for color tokens, including aliases. */
+	swatchColor: string | null;
 	onSelect: (node: Node<ComponentNodeData>, occurrenceId: string) => void;
 	onHover: (nodeId: string | null) => void;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
@@ -72,7 +105,7 @@ interface TokenChipProps {
 	onAddChild?: (parent: Node<ComponentNodeData>, type: ComponentType) => void;
 }
 
-const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect, onHover, onReorder, onDragStart, onDragEnd, onAddChild }: TokenChipProps) => {
+const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, swatchColor, onSelect, onHover, onReorder, onDragStart, onDragEnd, onAddChild }: TokenChipProps) => {
 	const data = item.node.data;
 	const meta = getComponentTypeMeta(data.componentType);
 	const Icon = meta.icon;
@@ -82,7 +115,8 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 	const tokenFormat = data.tokenFormat ?? (data.tokenType ? getDefaultTokenFormat(data.tokenType) : undefined);
 	const displayName = isAlias && data.tokenAlias ? data.tokenAlias : data.label;
 	const valueLabel = isToken && !isAlias && data.tokenValue ? formatTokenValue(data.tokenValue, tokenFormat) : undefined;
-	const colorPreview = isToken && isColorToken(data.tokenType) ? toCssColor(data.tokenValue, tokenFormat) : null;
+	const issues = getNodeValidationIssues(item.node);
+	const issueSummary = issues.map((issue) => `${issue.field}: ${issue.message}`).join("; ");
 	const typeLabel = isToken ? getNodeTypeLabel(data.componentType, data.tokenKind) : meta.label;
 	// Every child type this node could produce, and whether the rules allow it.
 	const childOptions = getChildTypeOptions(item.node);
@@ -105,6 +139,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 	const fullName = [...item.ancestors.map((layer) => layer.label), displayName].join(" / ");
 	const siblingIndex = item.siblingIds.indexOf(item.node.id);
 	const canReorder = !isLocked && item.siblingIds.length > 1;
+	const ariaLabel = `${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}${issueSummary ? `. ${issueSummary}` : ""}`;
 
 	const moveByKeyboard = (direction: "up" | "down") => {
 		const targetIndex = direction === "up" ? siblingIndex - 1 : siblingIndex + 1;
@@ -119,8 +154,8 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 			tabIndex={0}
 			aria-pressed={selected}
 			aria-disabled={isLocked}
-			aria-label={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
-			title={`${typeLabel}: ${fullName}${valueLabel ? ` (${valueLabel})` : ""}`}
+			aria-label={ariaLabel}
+			title={ariaLabel}
 			onClick={(event) => {
 				event.stopPropagation();
 				if (!isLocked) onSelect(item.node, item.id);
@@ -143,7 +178,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 				onHover(null);
 			}}
 			className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
-			style={{ left: item.x, top: item.y, width: TOKEN_NODE_WIDTH, height: TOKEN_NODE_HEIGHT }}
+			style={{ left: item.x, top: item.y, width: item.width, height: TOKEN_NODE_HEIGHT }}
 		>
 			<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
 				<Icon className="size-3" />
@@ -157,8 +192,13 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, onSelect
 				))}
 				<span className="font-medium text-foreground">{displayName}</span>
 			</span>
-			{colorPreview && <span className="size-3 shrink-0 rounded-sm border border-border" style={{ backgroundColor: colorPreview }} aria-hidden="true" />}
-			{valueLabel && <span className="max-w-[35%] shrink-0 truncate font-mono text-[10px] text-muted-foreground">{valueLabel}</span>}
+			{swatchColor && <span className="size-3.5 shrink-0 rounded-[3px] border border-border" style={{ backgroundColor: swatchColor }} aria-hidden="true" />}
+			{valueLabel && <span className="max-w-[35%] min-w-0 shrink truncate font-mono text-[10px] text-muted-foreground">{valueLabel}</span>}
+			{issues.length > 0 && (
+				<span title={issueSummary} className="flex size-4 shrink-0 items-center justify-center text-destructive" aria-hidden="true">
+					<AlertTriangle className="size-3.5" />
+				</span>
+			)}
 			{canReorder && (
 				<span
 					draggable
@@ -250,9 +290,13 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 	const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 	const [hoveredLinkKey, setHoveredLinkKey] = useState<string | null>(null);
 	const [reconnectDrag, setReconnectDragState] = useState<ReconnectDrag | null>(null);
+	const [columnWidths, setColumnWidths] = useState<Record<number, number>>(readStoredColumnWidths);
+	const [resizingDepth, setResizingDepth] = useState<number | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const headerRef = useRef<HTMLDivElement>(null);
 	const gridRef = useRef<HTMLDivElement>(null);
 	const hoverTimeoutRef = useRef<number | null>(null);
+	const columnResizeRef = useRef<{ depth: number; startX: number; startWidth: number; pointerId: number } | null>(null);
 	// Safari/WKWebView can deliver `dragover` before React commits the state
 	// update from `dragstart`, so keep synchronous copies of the dragged ids.
 	const draggedItemIdRef = useRef<string | null>(null);
@@ -271,9 +315,17 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 
 	const activeNodeId = hoveredNodeId ?? selectedNodeId;
 
+	// Keep the column labels aligned with the grid when it scrolls sideways.
+	const handleGridScroll = useCallback(() => {
+		const grid = scrollRef.current;
+		const header = headerRef.current;
+		if (!grid || !header) return;
+		header.scrollLeft = grid.scrollLeft;
+	}, []);
+
 	// The committed layout. Drag previews are derived from this so the target
 	// lookup stays stable while the rows are visually re-ordered.
-	const baseLayout = useMemo(() => buildTokenLayout(nodes, edges, visibleTypes), [nodes, edges, visibleTypes]);
+	const baseLayout = useMemo(() => buildTokenLayout(nodes, edges, visibleTypes, columnWidths), [nodes, edges, visibleTypes, columnWidths]);
 
 	// Stage the re-ordered rows while dragging. The actual document is only
 	// updated on drop, so cancelling a drag restores the original order.
@@ -299,7 +351,81 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 		});
 	}, [nodes, draggedItemId, dropTargetId, baseLayout.items]);
 
-	const layout = useMemo(() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges, visibleTypes)), [previewNodes, nodes, edges, baseLayout, visibleTypes]);
+	const layout = useMemo(() => (previewNodes === nodes ? baseLayout : buildTokenLayout(previewNodes, edges, visibleTypes, columnWidths)), [previewNodes, nodes, edges, baseLayout, visibleTypes, columnWidths]);
+
+	// A resize can shrink the scrollable width, and the browser may clamp the
+	// grid's scroll position without firing a scroll event.
+	useEffect(() => {
+		handleGridScroll();
+	}, [layout.totalWidth, handleGridScroll]);
+
+	// Resolve swatches once per graph so alias tokens can show the color they
+	// point at, not just their own (empty) value.
+	const swatchByNodeId = useMemo(() => buildTokenSwatchMap(nodes, edges), [nodes, edges]);
+
+	useEffect(() => {
+		// Debounce so a drag doesn't hit localStorage on every pointer move.
+		const timeout = window.setTimeout(() => {
+			try {
+				window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+			} catch {
+				// Storage can be unavailable (private mode, quota); widths still work for the session.
+			}
+		}, 200);
+
+		return () => window.clearTimeout(timeout);
+	}, [columnWidths]);
+
+	// A resize drag owns the pointer, so keep the resize cursor and suppress
+	// text selection until it ends.
+	useEffect(() => {
+		if (resizingDepth === null) return;
+
+		const previousUserSelect = document.body.style.userSelect;
+		const previousCursor = document.body.style.cursor;
+		document.body.style.userSelect = "none";
+		document.body.style.cursor = "col-resize";
+
+		return () => {
+			document.body.style.userSelect = previousUserSelect;
+			document.body.style.cursor = previousCursor;
+		};
+	}, [resizingDepth]);
+
+	const handleColumnResizeStart = useCallback((event: ReactPointerEvent<HTMLDivElement>, depth: number, width: number) => {
+		if (event.button !== 0) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		columnResizeRef.current = { depth, startX: event.clientX, startWidth: width, pointerId: event.pointerId };
+		setResizingDepth(depth);
+	}, []);
+
+	const handleColumnResizeMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+		const current = columnResizeRef.current;
+		if (!current || event.pointerId !== current.pointerId) return;
+
+		const next = clampColumnWidth(current.startWidth + event.clientX - current.startX);
+		setColumnWidths((widths) => (widths[current.depth] === next ? widths : { ...widths, [current.depth]: next }));
+	}, []);
+
+	const handleColumnResizeEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+		const current = columnResizeRef.current;
+		if (!current || event.pointerId !== current.pointerId) return;
+
+		columnResizeRef.current = null;
+		setResizingDepth(null);
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+	}, []);
+
+	const resetColumnWidth = useCallback((depth: number) => {
+		setColumnWidths((widths) => {
+			if (!(depth in widths)) return widths;
+			const next = { ...widths };
+			delete next[depth];
+			return next;
+		});
+	}, []);
 
 	const showLinkControls = useCallback((key: string) => {
 		if (hoverTimeoutRef.current !== null) {
@@ -335,10 +461,10 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 			let bestDistance = Number.POSITIVE_INFINITY;
 
 			for (const item of layout.items) {
-				if (x < item.x - padding || x > item.x + TOKEN_NODE_WIDTH + padding) continue;
+				if (x < item.x - padding || x > item.x + item.width + padding) continue;
 				if (y < item.y - padding || y > item.y + TOKEN_NODE_HEIGHT + padding) continue;
 
-				const dx = x - (item.x + TOKEN_NODE_WIDTH / 2);
+				const dx = x - (item.x + item.width / 2);
 				const dy = y - (item.y + TOKEN_NODE_HEIGHT / 2);
 				const distance = dx * dx + dy * dy;
 				if (distance < bestDistance) {
@@ -717,16 +843,50 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 			}}
 		>
 			{/* Column labels mirror the grid columns; the shared header lives outside. */}
-			<div className="flex shrink-0 border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
-				{layout.columns.map((column) => (
-					<div key={column.depth} className="flex items-center justify-between gap-2 border-r px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
-						<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
-						<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
-					</div>
-				))}
+			<div ref={headerRef} className="shrink-0 overflow-x-hidden border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
+				<div className="flex h-full" style={{ width: layout.totalWidth + GRID_SCROLL_PADDING_X * 2 }}>
+					{layout.columns.map((column) => (
+						<div key={column.depth} className="relative flex shrink-0 items-center justify-between gap-2 border-r px-6 last:border-r-0" style={{ width: column.width }}>
+							<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
+							<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
+							<div
+								role="separator"
+								aria-orientation="vertical"
+								aria-label={`Resize ${column.label ? `${column.label} ` : ""}column`}
+								aria-valuenow={Math.round(column.width)}
+								aria-valuemin={TOKEN_COLUMN_MIN_WIDTH}
+								aria-valuemax={TOKEN_COLUMN_MAX_WIDTH}
+								tabIndex={0}
+								title="Drag to resize · double-click to reset"
+								onPointerDown={(event) => handleColumnResizeStart(event, column.depth, column.width)}
+								onPointerMove={handleColumnResizeMove}
+								onPointerUp={handleColumnResizeEnd}
+								onPointerCancel={handleColumnResizeEnd}
+								onClick={(event) => event.stopPropagation()}
+								onDoubleClick={(event) => {
+									event.stopPropagation();
+									resetColumnWidth(column.depth);
+								}}
+								onKeyDown={(event) => {
+									if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+									event.preventDefault();
+									event.stopPropagation();
+									const step = event.shiftKey ? 32 : 8;
+									const delta = event.key === "ArrowLeft" ? -step : step;
+									setColumnWidths((widths) => {
+										const current = widths[column.depth] ?? column.width;
+										const next = clampColumnWidth(current + delta);
+										return next === current ? widths : { ...widths, [column.depth]: next };
+									});
+								}}
+								className={`absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize touch-none select-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:outline-none ${resizingDepth === column.depth ? "bg-primary/60" : "bg-transparent"}`}
+							/>
+						</div>
+					))}
+				</div>
 			</div>
 
-			<div ref={scrollRef} className="flex-1 overflow-auto px-3 pt-0.5 pb-24">
+			<div ref={scrollRef} className="flex-1 overflow-auto px-3 pt-0.5 pb-24" onScroll={handleGridScroll}>
 				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
 					<div
 						ref={gridRef}
@@ -759,8 +919,8 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 							{/*{layout.columns.map((column) => (
 								<line
 									key={`column-${column.depth}`}
-									x1={column.depth * TOKEN_COLUMN_WIDTH}
-									x2={column.depth * TOKEN_COLUMN_WIDTH}
+									x1={column.x}
+									x2={column.x}
 									y1={0}
 									y2={layout.gridHeight}
 									className="stroke-border/30"
@@ -804,7 +964,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 						</svg>
 
 						{layout.items.map((item) => (
-							<TokenChip key={item.id} item={item} selected={item.node.id === selectedNodeId} dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId} isLocked={isLocked} isDragging={item.id === draggedItemId} onSelect={onNodeSelect} onHover={handleChipHover} onReorder={onReorder} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onAddChild={onAddChild} />
+							<TokenChip key={item.id} item={item} selected={item.node.id === selectedNodeId} dimmed={!!activeNeighbors && !activeNeighbors.has(item.node.id) && item.node.id !== draggedNodeId && item.node.id !== dropTargetId} isLocked={isLocked} isDragging={item.id === draggedItemId} swatchColor={swatchByNodeId.get(item.node.id) ?? null} onSelect={onNodeSelect} onHover={handleChipHover} onReorder={onReorder} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onAddChild={onAddChild} />
 						))}
 
 						{/* Connection controls: a delete button at the midpoint and a
@@ -850,7 +1010,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 							<svg className="pointer-events-none absolute inset-0" width={layout.totalWidth} height={layout.gridHeight} aria-hidden="true">
 								<line x1={reconnectDrag.anchorX} y1={reconnectDrag.anchorY} x2={reconnectDrag.pointerX} y2={reconnectDrag.pointerY} stroke={reconnectDrag.color} strokeWidth={2} strokeDasharray="6 4" strokeLinecap="round" opacity={0.9} />
 								<circle cx={reconnectDrag.pointerX} cy={reconnectDrag.pointerY} r={5} fill={reconnectDrag.color} className="stroke-background" strokeWidth={2} />
-								{reconnectHoverItem && <rect x={reconnectHoverItem.x - 2} y={reconnectHoverItem.y - 2} width={TOKEN_NODE_WIDTH + 4} height={TOKEN_NODE_HEIGHT + 4} rx={10} fill="none" stroke={reconnectDrag.hoverAllowed ? reconnectDrag.color : "hsl(var(--destructive))"} strokeWidth={2} strokeDasharray="4 3" />}
+								{reconnectHoverItem && <rect x={reconnectHoverItem.x - 2} y={reconnectHoverItem.y - 2} width={reconnectHoverItem.width + 4} height={TOKEN_NODE_HEIGHT + 4} rx={10} fill="none" stroke={reconnectDrag.hoverAllowed ? reconnectDrag.color : "hsl(var(--destructive))"} strokeWidth={2} strokeDasharray="4 3" />}
 							</svg>
 						)}
 

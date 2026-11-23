@@ -48,7 +48,7 @@ The planner has two views, switchable from the **View** menu in the dock:
 - **Canvas** — the free-form React Flow editor for creating nodes and connections.
 - **Structured map** — a table-like grid where columns are hierarchy levels (main component → variant, literal → alias → usage) and rows are leaves. Each root starts a new block of rows, and the header toggles filter which node types are visible.
 
-The **View** menu also has a **Lock editing** toggle that applies to both views. In the structured map, drag the grip handle at the start of a chip to re-order rows within its sibling group (or focus the handle and use the arrow keys), and use the header undo/redo buttons (or `Cmd+Z` / `Shift+Cmd+Z`) to step through changes.
+The **View** menu also has a **Lock editing** toggle that applies to both views. In the structured map, drag the edge between column headers to resize a column (double-click the edge to reset it), and drag the grip handle at the end of a chip to re-order rows within its sibling group (or focus the handle and use the arrow keys). Color tokens show a swatch, and a warning icon marks a saved token whose value isn't valid for its format. Use the header undo/redo buttons (or `Cmd+Z` / `Shift+Cmd+Z`) to step through changes.
 
 ## Tech stack
 

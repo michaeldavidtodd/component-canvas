@@ -11,7 +11,13 @@ import { isAliasToken } from "@/lib/tokenValues";
  */
 export const TOKEN_ROW_HEIGHT = 48;
 export const TOKEN_COLUMN_WIDTH = 240;
+/** Bounds for a column the user has resized by dragging its header edge. */
+export const TOKEN_COLUMN_MIN_WIDTH = 160;
+export const TOKEN_COLUMN_MAX_WIDTH = 520;
 export const TOKEN_NODE_WIDTH = 200;
+/** Chip width follows the column, so a narrow column still fits its chip. */
+export const TOKEN_NODE_MIN_WIDTH = 120;
+export const TOKEN_NODE_MAX_WIDTH = 480;
 export const TOKEN_NODE_HEIGHT = 36;
 export const TOKEN_HEADER_HEIGHT = 44;
 /** Breathing room before the first column so chips don't touch the left edge. */
@@ -36,6 +42,8 @@ export interface TokenLayoutItem {
 	rowEnd: number;
 	x: number;
 	y: number;
+	/** Chip width, derived from the column width so resizing widens the chip. */
+	width: number;
 	/** Structural ancestors shown as a breadcrumb, matching the canvas node. */
 	ancestors: TitleLayer[];
 	/** Parent node id; `null` for a root block. */
@@ -68,6 +76,10 @@ export interface TokenLayoutColumn {
 	depth: number;
 	label: string;
 	count: number;
+	/** Left edge of the column in layout coordinates. */
+	x: number;
+	/** Rendered width, including any user resize. */
+	width: number;
 }
 
 export interface TokenLayoutBlock {
@@ -211,8 +223,11 @@ const orthogonalPath = (startX: number, startY: number, endX: number, endY: numb
  *
  * A node may appear under every visible parent. Each occurrence gets its own
  * id, so the same variant can be connected to both a token and a main component.
+ *
+ * `columnWidths` holds per-depth overrides from the header resize handles;
+ * missing depths fall back to `TOKEN_COLUMN_WIDTH`.
  */
-export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[], visibleTypes: ReadonlySet<ComponentType>): TokenLayout => {
+export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[], visibleTypes: ReadonlySet<ComponentType>, columnWidths?: Readonly<Record<number, number>>): TokenLayout => {
 	const allNodes = nodes.filter((node) => !node.hidden);
 	const allEdges = edges.filter((edge) => !edge.hidden);
 
@@ -356,6 +371,37 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		blocks.push({ startRow, endRow: nextRow - 1 });
 	}
 
+	// Column geometry is resolved lazily and cached, so a resized column shifts
+	// every column after it without recomputing the whole chain per item.
+	const columnWidthCache = new Map<number, number>();
+	const columnXCache = new Map<number, number>();
+
+	const getColumnWidth = (depth: number): number => {
+		const cached = columnWidthCache.get(depth);
+		if (cached !== undefined) return cached;
+
+		const requested = columnWidths?.[depth] ?? TOKEN_COLUMN_WIDTH;
+		const width = Math.min(TOKEN_COLUMN_MAX_WIDTH, Math.max(TOKEN_COLUMN_MIN_WIDTH, requested));
+		columnWidthCache.set(depth, width);
+		return width;
+	};
+
+	const getColumnX = (depth: number): number => {
+		const cached = columnXCache.get(depth);
+		if (cached !== undefined) return cached;
+
+		const x = depth === 0 ? 0 : getColumnX(depth - 1) + getColumnWidth(depth - 1);
+		columnXCache.set(depth, x);
+		return x;
+	};
+
+	const getChipWidth = (depth: number): number => {
+		// Keep the default chip size and its connector gap, then grow or shrink it
+		// by the same amount the column was resized.
+		const requested = TOKEN_NODE_WIDTH + (getColumnWidth(depth) - TOKEN_COLUMN_WIDTH);
+		return Math.min(TOKEN_NODE_MAX_WIDTH, Math.max(TOKEN_NODE_MIN_WIDTH, requested));
+	};
+
 	const items: TokenLayoutItem[] = [];
 	const itemById = new Map<string, TokenLayoutItem>();
 
@@ -372,8 +418,9 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 			depth,
 			rowStart: span.start,
 			rowEnd: span.end,
-			x: TOKEN_LAYOUT_PADDING_X + depth * TOKEN_COLUMN_WIDTH,
+			x: getColumnX(depth) + TOKEN_LAYOUT_PADDING_X,
 			y: (centerRow + 0.5) * TOKEN_ROW_HEIGHT - TOKEN_NODE_HEIGHT / 2,
+			width: getChipWidth(depth),
 			// Ancestors come from the full graph, so a hidden main component still
 			// appears in a variant's breadcrumb for context.
 			ancestors: getAncestorChain(node.id, allNodeById, allEdges),
@@ -393,7 +440,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		const target = itemById.get(pair.targetItemId);
 		if (!source || !target) continue;
 
-		const startX = source.x + TOKEN_NODE_WIDTH;
+		const startX = source.x + source.width;
 		const startY = source.y + TOKEN_NODE_HEIGHT / 2;
 		const endX = target.x;
 		const endY = target.y + TOKEN_NODE_HEIGHT / 2;
@@ -422,7 +469,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 	const columnCount = items.length > 0 ? Math.max(...items.map((item) => item.depth)) + 1 : 0;
 	const columns: TokenLayoutColumn[] = Array.from({ length: columnCount }, (_, depth) => {
 		const columnNodes = nodesByDepth.get(depth) ?? [];
-		return { depth, label: getColumnLabel(columnNodes), count: columnNodes.length };
+		return { depth, label: getColumnLabel(columnNodes), count: columnNodes.length, x: getColumnX(depth), width: getColumnWidth(depth) };
 	});
 
 	const rowCount = nextRow;
@@ -434,7 +481,7 @@ export const buildTokenLayout = (nodes: Node<ComponentNodeData>[], edges: Edge[]
 		blocks,
 		rowCount,
 		columnCount,
-		totalWidth: columnCount * TOKEN_COLUMN_WIDTH + TOKEN_LAYOUT_PADDING_X,
+		totalWidth: columnCount > 0 ? getColumnX(columnCount - 1) + getColumnWidth(columnCount - 1) + TOKEN_LAYOUT_PADDING_X : TOKEN_LAYOUT_PADDING_X,
 		gridHeight: rowCount * TOKEN_ROW_HEIGHT,
 	};
 };
