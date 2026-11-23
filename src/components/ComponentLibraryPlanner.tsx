@@ -8,6 +8,7 @@ import SimpleDeleteEdge from "./edges/SimpleDeleteEdge";
 import { NodeDock, VersionPreviewDock } from "./NodeDock";
 import { GridView } from "./GridView";
 import { WorkspaceHeader } from "./WorkspaceHeader";
+import { CssImportDialog } from "./CssImportDialog";
 
 import { PropertiesPanel } from "./PropertiesPanel";
 import { ConnectionLegend } from "./ConnectionLegend";
@@ -22,6 +23,8 @@ import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } fr
 import { FIT_VIEW_OPTIONS, MIN_ZOOM, getBelowTreePlacement } from "@/lib/canvas";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
+import { buildCssImport } from "@/lib/importCssTokens";
+import type { NormalizedCssToken } from "@/lib/cssTokenNormalize";
 import { canAssignParent, getChildTypeOptions, getPrimaryParentId } from "@/lib/parentRules";
 import type { ProjectVersion, SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
@@ -35,6 +38,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ToastAction } from "@/components/ui/toast";
 import { LogOut, Rows3, Sparkles } from "lucide-react";
 import { formatVersionName } from "@/lib/versions";
 import { cn } from "@/lib/utils";
@@ -307,6 +311,7 @@ export const ComponentLibraryPlanner = ({
 	// Restoring replaces the canvas, so it waits for confirmation first.
 	const [pendingRestoreVersion, setPendingRestoreVersion] = useState<ProjectVersion | null>(null);
 	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
+	const [showCssImport, setShowCssImport] = useState(false);
 	const [isProjectInitialized, setIsProjectInitialized] = useState(false);
 	// Tracks which project's data is currently on the canvas so auto-save can't
 	// write the previous project's nodes into a newly selected project.
@@ -756,6 +761,43 @@ export const ComponentLibraryPlanner = ({
 			setSelectedNode(newNode);
 		},
 		[setNodes],
+	);
+
+	const handleCssImport = useCallback(
+		(source: string, tokens: NormalizedCssToken[]) => {
+			const result = buildCssImport({ source, tokens, nodes: nodes as Node<ComponentNodeData>[], edges });
+			setNodes(result.nodes);
+			setEdges(result.edges);
+
+			const group = result.nodes.find((node) => node.id === result.groupId);
+			if (group) setSelectedNode(group as Node<ComponentNodeData>);
+
+			const summary = [
+				result.imported > 0 ? `${result.imported} new` : null,
+				result.updated > 0 ? `${result.updated} updated` : null,
+				result.removed > 0 ? `${result.removed} no longer in the file` : null,
+			]
+				.filter(Boolean)
+				.join(", ");
+
+			toast({
+				title: "CSS import complete",
+				description: summary ? `${summary}.` : "No tokens were imported.",
+				action: (
+					<ToastAction altText="Undo CSS import" onClick={undo}>
+						Undo
+					</ToastAction>
+				),
+			});
+
+			if (result.warnings.length > 0) {
+				toast({
+					title: "Import warnings",
+					description: result.warnings.join(" "),
+				});
+			}
+		},
+		[nodes, edges, setNodes, setEdges, toast, undo],
 	);
 
 	const updateNodeData = useCallback(
@@ -1366,7 +1408,7 @@ export const ComponentLibraryPlanner = ({
 											<span>to show UI</span>
 										</button>
 									) : (
-										<NodeDock onAddNode={addNode} onStartDraft={handleStartDraft} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={handleToggleVersionHistory} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
+										<NodeDock onAddNode={addNode} onStartDraft={handleStartDraft} onImportCss={() => setShowCssImport(true)} onSmartLayout={() => onLayout("TB")} onCleanupLayout={cleanupLayout} autoSmartLayout={autoSmartLayout} onToggleAutoSmartLayout={() => setAutoSmartLayout(!autoSmartLayout)} onToggleUI={() => setIsUIHidden(true)} viewMode={viewMode} onViewModeChange={setViewMode} isLocked={isCanvasLocked} onToggleLock={() => handleCanvasLockChange(!isCanvasLocked)} user={user} isAnonymous={isAnonymous} currentProject={currentProject} onSave={handleManualSave} onShowVersions={handleToggleVersionHistory} onShowProjects={() => setShowProjectBrowser(true)} autoSaveEnabled={autoSaveEnabled} onToggleAutoSave={() => setAutoSaveEnabled(!autoSaveEnabled)} onSignOut={handleSignOut} onNavigateToAuth={() => navigate("/auth")} onResetOnboarding={handleResetOnboarding} />
 									))}
 								{/* Auto-save handler that needs ReactFlow context - only for authenticated users */}
 								{user && !isAnonymous && currentProject && !isSharedView && <AutoSaveHandler currentProject={currentProject} autoSaveEnabled={autoSaveEnabled} isInitialized={isProjectInitialized && loadedProjectId === currentProject?.id} nodes={nodes} edges={edges} onAutoSave={autoSave} />}
@@ -1375,6 +1417,8 @@ export const ComponentLibraryPlanner = ({
 					</div>
 				</div>
 			</div>
+
+			<CssImportDialog open={showCssImport} onOpenChange={setShowCssImport} nodes={nodes as Node<ComponentNodeData>[]} onImport={handleCssImport} />
 
 			{/* Canvas placement for a node created from the structured map */}
 			<Dialog

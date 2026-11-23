@@ -1,4 +1,4 @@
-export type ComponentType = "main-component" | "variant" | "sub-component" | "token" | "instance";
+export type ComponentType = "main-component" | "variant" | "sub-component" | "token" | "instance" | "group";
 
 export type TokenType = "color" | "spacing" | "corner-radius" | "size";
 export type TokenSubType =
@@ -44,8 +44,16 @@ export interface ComponentNodeData extends Record<string, unknown> {
 	   */
 	  parentId?: string | null;
 	  /**
-	   * Manual row order within the token map's sibling group. Set when the user
+	   * Manual row order within the token map's sibling order. The user
 	   * re-orders rows; the canvas layout ignores it.
 	   */
 	  order?: number;
+	  /** Raw CSS selector/at-rule context a token was imported from. */
+	  tokenScope?: string;
+	  /** Color mode detected from the scope, e.g. `light` or `dark`. */
+	  tokenTheme?: string;
+	  /** Source stylesheet name or `pasted` for imported tokens. */
+	  tokenSource?: string;
+	  /** Original CSS custom property name, without the leading `--`. */
+	  tokenName?: string;
 	}

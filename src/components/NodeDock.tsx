@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff, Table2, Workflow, Lock, Unlock, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff, Table2, Workflow, Lock, Unlock, ChevronLeft, ChevronRight, X, FileUp } from "lucide-react";
 import { ComponentType } from "@/types/component";
 import type { ViewMode } from "@/types/view";
 import { COMPONENT_TYPES } from "@/lib/componentTypes";
@@ -34,7 +34,7 @@ const DOCK_PADDING_OPEN = "p-3";
 const DOCK_BOTTOM = 24;
 const DOCK_BOTTOM_OPEN = 24;
 
-type DockGroupId = "add" | "layout" | "project" | "account";
+type DockGroupId = "add" | "import" | "layout" | "project" | "account";
 
 interface DockRowProps {
 	icon: ReactNode;
@@ -127,6 +127,8 @@ interface NodeDockProps {
 	onAddNode: (type: ComponentType, position: { x: number; y: number }) => void;
 	/** Start a draft in the properties panel instead of adding directly to the canvas. */
 	onStartDraft?: (type: ComponentType) => void;
+	/** Open the CSS token import dialog. */
+	onImportCss?: () => void;
 	// Layout
 	onSmartLayout?: () => void;
 	onCleanupLayout?: () => void;
@@ -162,7 +164,7 @@ interface NodeDockProps {
  * and expand a panel upward when activated. The dock is the app's primary
  * navigation.
  */
-export const NodeDock = ({ onAddNode, onStartDraft, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, viewMode = "canvas", onViewModeChange, isLocked = false, onToggleLock, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
+export const NodeDock = ({ onAddNode, onStartDraft, onImportCss, onSmartLayout, onCleanupLayout, autoSmartLayout, onToggleAutoSmartLayout, onToggleUI, viewMode = "canvas", onViewModeChange, isLocked = false, onToggleLock, user, isAnonymous, currentProject, onSave, onShowVersions, onShowProjects, autoSaveEnabled, onToggleAutoSave, onSignOut, onNavigateToAuth, onResetOnboarding }: NodeDockProps) => {
 	const [activeGroup, setActiveGroup] = useState<DockGroupId | null>(null);
 	// Keep the last opened group mounted so its content stays visible while the
 	// container animates closed.
@@ -326,6 +328,7 @@ export const NodeDock = ({ onAddNode, onStartDraft, onSmartLayout, onCleanupLayo
 
 	const groups: { id: DockGroupId; label: string; description: string; icon: ReactNode }[] = [
 		{ id: "add", label: "Add", description: "Add a component to the project", icon: <Plus className="size-4" /> },
+		{ id: "import", label: "Import", description: "Import tokens from a CSS file", icon: <FileUp className="size-4" /> },
 		...(viewMode === "tokens" ? [] : [{ id: "layout" as DockGroupId, label: "Layout", description: "Arrange and tidy the canvas", icon: <LayoutGrid className="size-4" /> }]),
 		...(showProject ? [{ id: "project" as DockGroupId, label: "Project", description: "Versions, sharing, and auto-save", icon: <FolderOpen className="size-4" /> }] : []),
 		{ id: "account", label: "Account", description: "Profile, theme, and sign out", icon: <User className="size-4" /> },
@@ -340,6 +343,14 @@ export const NodeDock = ({ onAddNode, onStartDraft, onSmartLayout, onCleanupLayo
 					{COMPONENT_TYPES.map(({ type, label, description, icon: Icon, bgClass }) => (
 						<DockRow key={type} icon={<Icon className="size-4" />} title={label} description={description} tileClassName={`${bgClass} text-white`} onClick={() => handleAdd(type)} disabled={isLocked} />
 					))}
+				</div>
+			);
+		}
+
+		if (group === "import") {
+			return (
+				<div className="space-y-0.5">
+					<DockRow icon={<FileUp className="size-4" />} title="Import CSS" description="Generate tokens from CSS custom properties" onClick={() => { setActiveGroup(null); onImportCss?.(); }} disabled={isLocked} />
 				</div>
 			);
 		}

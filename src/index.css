@@ -46,6 +46,7 @@
     --component-sub: 152 100% 45%;
     --component-token: 45 100% 48%;
     --component-instance: 21 100% 68%;
+    --component-group: 280 55% 55%;
 
     /* Status colors */
     --destructive: 0 84% 60%;
@@ -119,6 +120,7 @@
     --component-sub: 152 100% 68%;
     --component-token: 45 100% 68%;
     --component-instance: 21 100% 68%;
+    --component-group: 280 60% 70%;
 
     /* Status colors for dark mode */
     --destructive: 0 84% 65%;

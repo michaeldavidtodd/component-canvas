@@ -23,7 +23,7 @@ export interface ParentRule {
 	tokenKind?: "literal" | "alias";
 }
 
-const ALL_TYPES: ComponentType[] = ["main-component", "variant", "sub-component", "token", "instance"];
+const ALL_TYPES: ComponentType[] = ["main-component", "variant", "sub-component", "token", "instance", "group"];
 
 /** Node types that drive the structural breadcrumb. */
 const STRUCTURAL_TYPES: ReadonlySet<ComponentType> = new Set(["main-component", "variant", "sub-component"]);
@@ -56,10 +56,15 @@ export const TOKEN_LITERAL_RULE: ParentRule = {
 };
 
 export const TOKEN_ALIAS_RULE: ParentRule = {
-	description: "Token aliases can only have one token literal parent.",
+	description: "Token aliases can only have one token parent.",
 	allowed: { token: 1 },
 	maxTotal: 1,
-	tokenKind: "literal",
+};
+
+export const GROUP_RULE: ParentRule = {
+	description: "Groups can't have parents.",
+	allowed: {},
+	maxTotal: 0,
 };
 
 export const INSTANCE_RULE: ParentRule = {
@@ -80,6 +85,8 @@ export const getParentRule = (child: ComponentNodeData): ParentRule => {
 			return isAliasToken(child.tokenKind) ? TOKEN_ALIAS_RULE : TOKEN_LITERAL_RULE;
 		case "instance":
 			return INSTANCE_RULE;
+		case "group":
+			return GROUP_RULE;
 		default:
 			return MAIN_COMPONENT_RULE;
 	}

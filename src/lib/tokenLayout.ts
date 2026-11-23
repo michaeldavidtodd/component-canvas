@@ -92,6 +92,7 @@ const COLUMN_LABELS: Record<ComponentType, string> = {
 	"sub-component": "Sub Components",
 	token: "Tokens",
 	instance: "Instances",
+	group: "Groups",
 };
 
 /** Column heading derived from the node types that actually occupy it. */
@@ -147,6 +148,7 @@ const compareTreeNodes = (a: TreeNode, b: TreeNode): number => compareNodeOrder(
  * claims its usages before those nodes can start their own block.
  */
 const TYPE_RANK: Record<ComponentType, number> = {
+	group: -1,
 	"main-component": 0,
 	token: 1,
 	variant: 2,

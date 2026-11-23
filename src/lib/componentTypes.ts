@@ -1,4 +1,4 @@
-import { Component, Copy, Layers, Palette, Square, type LucideIcon } from "lucide-react";
+import { Component, Copy, FolderTree, Layers, Palette, Square, type LucideIcon } from "lucide-react";
 
 import type { ComponentType, TokenKind } from "@/types/component";
 import { isAliasToken } from "@/lib/tokenValues";
@@ -67,17 +67,27 @@ export const COMPONENT_TYPE_META: Record<ComponentType, ComponentTypeMeta> = {
     textClass: "text-component-token",
     colorVar: "--component-token",
   },
-  instance: {
-    type: "instance",
-    label: "Instance",
-    description: "A usage of a component in a design",
-    icon: Copy,
-    bgClass: "bg-component-instance",
-    borderClass: "border-component-instance",
-    textClass: "text-component-instance",
-    colorVar: "--component-instance",
-  },
-};
+	  instance: {
+	    type: "instance",
+	    label: "Instance",
+	    description: "A usage of a component in a design",
+	    icon: Copy,
+	    bgClass: "bg-component-instance",
+	    borderClass: "border-component-instance",
+	    textClass: "text-component-instance",
+	    colorVar: "--component-instance",
+	  },
+	  group: {
+	    type: "group",
+	    label: "Group",
+	    description: "A collection of related nodes, such as an imported stylesheet",
+	    icon: FolderTree,
+	    bgClass: "bg-component-group",
+	    borderClass: "border-component-group",
+	    textClass: "text-component-group",
+	    colorVar: "--component-group",
+	  },
+	};
 
 /** Ordered list for palettes, docks, and legends. */
 export const COMPONENT_TYPES: readonly ComponentTypeMeta[] = Object.values(COMPONENT_TYPE_META);
@@ -93,6 +103,7 @@ const CHILD_COMPONENT_TYPE: Record<ComponentType, ComponentType> = {
   "sub-component": "sub-component",
   token: "token",
   instance: "variant",
+  group: "token",
 };
 
 /** Resolve the type for a node created as a child of `parentType`. */
@@ -130,7 +141,7 @@ export const getComponentTextClass = (type: string): string => getComponentTypeM
 /** Resolved CSS color for places that need a value rather than a utility class, such as the minimap. */
 export const getComponentColor = (type: string): string => `hsl(var(${getComponentTypeMeta(type).colorVar}))`;
 
-export type ConnectionKind = "componentVariant" | "tokenUsage" | "default";
+export type ConnectionKind = "componentVariant" | "tokenUsage" | "group" | "default";
 
 export interface ConnectionTypeMeta {
   id: string;
@@ -160,6 +171,12 @@ export const CONNECTION_TYPES: Record<ConnectionKind, ConnectionTypeMeta> = {
     swatchClass: "bg-component-token",
     stroke: "hsl(var(--component-token))",
   },
+  group: {
+    id: "group",
+    label: "Group Membership",
+    swatchClass: "bg-component-group",
+    stroke: "hsl(var(--component-group))",
+  },
   default: {
     id: "default",
     label: "Component Relationships",
@@ -174,6 +191,7 @@ export const CONNECTION_TYPE_LIST: readonly ConnectionTypeMeta[] = Object.values
 export const getConnectionType = (sourceType: string, targetType: string): ConnectionTypeMeta => {
   const isVariantPair = (sourceType === "main-component" && targetType === "variant") || (sourceType === "variant" && targetType === "main-component");
 
+  if (sourceType === "group" || targetType === "group") return CONNECTION_TYPES.group;
   if (isVariantPair) return CONNECTION_TYPES.componentVariant;
   if (sourceType === "token" || targetType === "token") return CONNECTION_TYPES.tokenUsage;
   return CONNECTION_TYPES.default;

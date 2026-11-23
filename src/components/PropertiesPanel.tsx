@@ -42,6 +42,7 @@ const componentTypeOptions: { value: ComponentType; label: string }[] = [
 	{ value: "sub-component", label: "Sub Component" },
 	{ value: "token", label: "Design Token" },
 	{ value: "instance", label: "Instance" },
+	{ value: "group", label: "Group" },
 ];
 
 export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edges, visibleTypes, onUpdateNode, onDeleteNode, onSetParents, draft = false, draftParentIds = [], onSaveDraft, onCancelDraft }: PropertiesPanelProps) => {
@@ -526,6 +527,33 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 									</Label>
 									<Input id="token-alias" value={selectedNode.data.tokenAlias || ""} onChange={(e) => handleTokenAliasChange(e.target.value)} placeholder="color.brand.primary" className="font-mono" />
 									<p className="text-xs text-muted-foreground">Alias tokens are named after the token they reference</p>
+								</Field>
+							</>
+						)}
+
+						{selectedNode.data.tokenSource && (
+							<>
+								<div className="w-0.5 h-6 mx-auto bg-secondary" />
+								<Field>
+									<Label className="text-sm font-medium text-muted-foreground">Source</Label>
+									<div className="mt-1 space-y-1 rounded-md border border-border bg-muted/40 p-2 text-xs">
+										<div className="flex items-center justify-between gap-2">
+											<span className="text-muted-foreground">File</span>
+											<span className="truncate font-mono">{selectedNode.data.tokenSource}</span>
+										</div>
+										{selectedNode.data.tokenScope && (
+											<div className="flex items-center justify-between gap-2">
+												<span className="text-muted-foreground">Scope</span>
+												<span className="truncate font-mono">{selectedNode.data.tokenScope}</span>
+											</div>
+										)}
+										{selectedNode.data.tokenTheme && (
+											<div className="flex items-center justify-between gap-2">
+												<span className="text-muted-foreground">Theme</span>
+												<span className="capitalize">{selectedNode.data.tokenTheme}</span>
+											</div>
+										)}
+									</div>
 								</Field>
 							</>
 						)}
