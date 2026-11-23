@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff, Table2, Workflow, Lock, Unlock } from "lucide-react";
+import { Copy, Plus, LayoutGrid, Sparkles, ToggleLeft, ToggleRight, Save, History, Share, Check, ExternalLink, Edit2, User, LogIn, LogOut, FolderOpen, HelpCircle, EyeOff, Table2, Workflow, Lock, Unlock, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { ComponentType } from "@/types/component";
 import type { ViewMode } from "@/types/view";
 import { COMPONENT_TYPES } from "@/lib/componentTypes";
@@ -92,6 +92,7 @@ interface DockButtonProps {
 	ariaExpanded?: boolean;
 	ariaControls?: string;
 	ariaPressed?: boolean;
+	disabled?: boolean;
 }
 
 /**
@@ -99,9 +100,9 @@ interface DockButtonProps {
  * tooltip that appears immediately on hover or focus; menu buttons instead
  * expand a panel on hover.
  */
-const DockButton = ({ icon, label, description, selected, expanded, showTooltip = true, onClick, onMouseEnter, onFocus, ariaExpanded, ariaControls, ariaPressed }: DockButtonProps) => {
+const DockButton = ({ icon, label, description, selected, expanded, showTooltip = true, onClick, onMouseEnter, onFocus, ariaExpanded, ariaControls, ariaPressed, disabled }: DockButtonProps) => {
 	const button = (
-		<button type="button" aria-label={label} aria-expanded={ariaExpanded} aria-controls={ariaControls} aria-pressed={ariaPressed} onClick={onClick} onMouseEnter={onMouseEnter} onFocus={onFocus} className={cn("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background", selected ? "bg-primary text-primary-foreground hover:bg-primary/90" : expanded ? "border-border bg-secondary text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+		<button type="button" aria-label={label} aria-expanded={ariaExpanded} aria-controls={ariaControls} aria-pressed={ariaPressed} onClick={onClick} onMouseEnter={onMouseEnter} onFocus={onFocus} disabled={disabled} className={cn("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40", selected ? "bg-primary text-primary-foreground hover:bg-primary/90" : expanded ? "border-border bg-secondary text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
 			{icon}
 		</button>
 	);
@@ -557,6 +558,45 @@ export const NodeDock = ({ onAddNode, onSmartLayout, onCleanupLayout, autoSmartL
 							})}
 						</div>
 					</div>
+				</div>
+			</div>
+		</TooltipProvider>
+	);
+};
+
+interface VersionPreviewDockProps {
+	versionName: string;
+	/** Zero-based position in the version list, newest first. -1 when unknown. */
+	index: number;
+	total: number;
+	canGoNewer: boolean;
+	canGoOlder: boolean;
+	onGoNewer: () => void;
+	onGoOlder: () => void;
+	onExit: () => void;
+}
+
+/**
+ * Dock shown while a saved version is previewed. It replaces the editing dock
+ * with history navigation: step to older or newer versions, see where the
+ * preview sits in the list, and leave the preview. Arrow keys mirror the step
+ * buttons.
+ */
+export const VersionPreviewDock = ({ versionName, index, total, canGoNewer, canGoOlder, onGoNewer, onGoOlder, onExit }: VersionPreviewDockProps) => {
+	const positionLabel = index >= 0 ? `${index + 1} of ${total}` : `${total} version${total === 1 ? "" : "s"}`;
+
+	return (
+		<TooltipProvider delayDuration={0} skipDelayDuration={0}>
+			<div className="absolute left-1/2 z-20 -translate-x-1/2" style={{ bottom: DOCK_BOTTOM }} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+				<div className="box-content flex items-center gap-1 rounded-3xl border border-border bg-background/90 p-3 shadow-lg backdrop-blur-md">
+					<DockButton icon={<ChevronLeft className="size-4" />} label="Newer version" description="Move toward the latest (←)" onClick={onGoNewer} disabled={!canGoNewer} />
+					<div className="flex min-w-0 flex-col items-center px-2">
+						<span className="max-w-[18rem] truncate text-sm font-medium text-foreground">{versionName}</span>
+						<span className="text-xs text-muted-foreground">{positionLabel}</span>
+					</div>
+					<DockButton icon={<ChevronRight className="size-4" />} label="Older version" description="Move toward the oldest (→)" onClick={onGoOlder} disabled={!canGoOlder} />
+					<div className="mx-1 h-6 w-px flex-shrink-0 bg-border" />
+					<DockButton icon={<X className="size-4" />} label="Exit preview" description="Return to the live canvas" onClick={onExit} />
 				</div>
 			</div>
 		</TooltipProvider>

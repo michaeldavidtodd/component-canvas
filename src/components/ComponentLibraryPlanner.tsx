@@ -5,7 +5,7 @@ import dagre from "@dagrejs/dagre";
 
 import { ComponentNode } from "./nodes/ComponentNode";
 import SimpleDeleteEdge from "./edges/SimpleDeleteEdge";
-import { NodeDock } from "./NodeDock";
+import { NodeDock, VersionPreviewDock } from "./NodeDock";
 import { GridView } from "./GridView";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
@@ -28,7 +28,7 @@ import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/hooks/project-context";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useKeyboardShortcuts, isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -841,6 +841,47 @@ export const ComponentLibraryPlanner = ({
 		setShowVersionHistory((open) => !open);
 	}, []);
 
+	// Position of the previewed version in the history list (newest first).
+	const previewVersionIndex = previewVersion ? versions.findIndex((version) => version.id === previewVersion.id) : -1;
+
+	// Step through history: -1 moves to a newer version, +1 to an older one.
+	const stepPreviewVersion = useCallback(
+		(direction: -1 | 1) => {
+			setPreviewVersion((current) => {
+				if (!current) return current;
+				const index = versions.findIndex((version) => version.id === current.id);
+				if (index === -1) return current;
+				const nextIndex = index + direction;
+				if (nextIndex < 0 || nextIndex >= versions.length) return current;
+				return versions[nextIndex];
+			});
+		},
+		[versions],
+	);
+
+	// Arrow keys step through versions while previewing, mirroring the dock.
+	useEffect(() => {
+		if (!previewVersion) return;
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+			if (isEditableTarget(event.target) || isModalOpen()) return;
+			if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+			const index = versions.findIndex((version) => version.id === previewVersion.id);
+			if (index === -1) return;
+
+			const nextIndex = event.key === "ArrowLeft" ? index - 1 : index + 1;
+			if (nextIndex < 0 || nextIndex >= versions.length) return;
+
+			event.preventDefault();
+			setPreviewVersion(versions[nextIndex]);
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [previewVersion, versions]);
+
 	// Leaving the history panel should also drop any canvas preview so the live
 	// canvas comes back.
 	useEffect(() => {
@@ -932,7 +973,21 @@ export const ComponentLibraryPlanner = ({
 
 					<div className="flex-1 min-w-0 relative">
 						{previewVersion ? (
-							<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
+							<>
+								<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
+								{!isSharedView && !isMobile && !isUIHidden && (
+									<VersionPreviewDock
+										versionName={formatVersionName(previewVersion)}
+										index={previewVersionIndex}
+										total={versions.length}
+										canGoNewer={previewVersionIndex > 0}
+										canGoOlder={previewVersionIndex >= 0 && previewVersionIndex < versions.length - 1}
+										onGoNewer={() => stepPreviewVersion(-1)}
+										onGoOlder={() => stepPreviewVersion(1)}
+										onExit={() => setPreviewVersion(null)}
+									/>
+								)}
+							</>
 						) : (
 							<>
 								{/* Mobile Sign-out Button */}
