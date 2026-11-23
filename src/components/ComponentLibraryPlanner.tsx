@@ -977,6 +977,7 @@ export const ComponentLibraryPlanner = ({
 						canRedo={canRedo}
 						onUndo={undo}
 						onRedo={redo}
+						onShowHistory={handleToggleVersionHistory}
 						readOnly={isSharedView}
 						previewVersion={previewVersion}
 						previewMode={showVersionHistory}
