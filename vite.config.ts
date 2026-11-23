@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -38,5 +39,13 @@ export default defineConfig(() => ({
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
     minify: isDebug ? false : ("esbuild" as const),
     sourcemap: isDebug,
+  },
+  // Vitest runs the pure-logic tests (parent rules, token validation, document
+  // snapshots) and server-rendered component tests in Node. It shares the alias
+  // above so tests import through `@/`.
+  test: {
+    environment: "node",
+    // Edge-function code lives outside src/ but its pure modules are tested here.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "supabase/**/*.test.ts"],
   },
 }));

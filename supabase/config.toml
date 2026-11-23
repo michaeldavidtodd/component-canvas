@@ -1,1 +1,6 @@
 project_id = "izpffjklhgwulczoirce"
+
+# The AI review proxy. The gateway verifies the caller's JWT, so the function
+# trusts the Authorization header and only needs the OpenRouter key.
+[functions.ai-review]
+verify_jwt = true
