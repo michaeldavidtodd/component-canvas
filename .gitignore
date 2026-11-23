@@ -30,3 +30,5 @@ src-tauri/gen
 *.sln
 *.sw?
 package-lock.json
+supabase/.temp/cli-latest
+supabase/.temp/linked-project.json
