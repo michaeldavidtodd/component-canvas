@@ -826,10 +826,21 @@ export const ComponentLibraryPlanner = ({
 
 	const handleDeleteVersion = useCallback(
 		(versionId: string) => {
-			if (previewVersion?.id === versionId) setPreviewVersion(null);
+			if (previewVersion?.id === versionId) {
+				// Keep preview and history in sync: fall back to the next version,
+				// or leave preview mode entirely when the last one is removed.
+				const index = versions.findIndex((version) => version.id === versionId);
+				const next = versions[index + 1] ?? versions[index - 1] ?? null;
+				if (next) {
+					setPreviewVersion(next);
+				} else {
+					setShowVersionHistory(false);
+					setPreviewVersion(null);
+				}
+			}
 			void deleteVersion(versionId);
 		},
-		[previewVersion?.id, deleteVersion],
+		[previewVersion?.id, versions, deleteVersion],
 	);
 
 	const handleCloseVersionHistory = useCallback(() => {
@@ -838,7 +849,23 @@ export const ComponentLibraryPlanner = ({
 	}, []);
 
 	const handleToggleVersionHistory = useCallback(() => {
-		setShowVersionHistory((open) => !open);
+		if (showVersionHistory) {
+			setShowVersionHistory(false);
+			setPreviewVersion(null);
+			return;
+		}
+		// Nothing to preview yet, so don't enter a state we can't represent.
+		if (versions.length === 0 && !versionsLoading) return;
+		// Entering history always previews the latest version, so the canvas is
+		// never left editable while the history panel is open.
+		setShowVersionHistory(true);
+		setPreviewVersion(versions[0] ?? null);
+	}, [showVersionHistory, versions, versionsLoading]);
+
+	// The history panel is only meaningful while a version is previewed, so
+	// selecting a version never clears the preview.
+	const handlePreviewVersion = useCallback((version: ProjectVersion | null) => {
+		if (version) setPreviewVersion(version);
 	}, []);
 
 	// Position of the previewed version in the history list (newest first).
@@ -887,6 +914,18 @@ export const ComponentLibraryPlanner = ({
 	useEffect(() => {
 		if (!showVersionHistory) setPreviewVersion(null);
 	}, [showVersionHistory]);
+
+	// Keep the two modes exclusive: while history is open, always preview a
+	// version. This covers versions arriving after the panel opens and a project
+	// switch clearing the preview.
+	useEffect(() => {
+		if (!showVersionHistory || previewVersion) return;
+		if (versions.length > 0) {
+			setPreviewVersion(versions[0]);
+		} else if (!versionsLoading) {
+			setShowVersionHistory(false);
+		}
+	}, [showVersionHistory, previewVersion, versions, versionsLoading]);
 
 	// The history lives in the aside, so opening it must reveal the UI even if
 	// the user had hidden it.
@@ -940,9 +979,10 @@ export const ComponentLibraryPlanner = ({
 						onRedo={redo}
 						readOnly={isSharedView}
 						previewVersion={previewVersion}
+						previewMode={showVersionHistory}
 						projectName={currentProject?.name}
 						restoringVersionId={restoringVersionId}
-						onExitPreview={() => setPreviewVersion(null)}
+						onExitPreview={handleCloseVersionHistory}
 						onRestoreVersion={requestRestoreVersion}
 					/>
 				)}
@@ -957,7 +997,7 @@ export const ComponentLibraryPlanner = ({
 									versions={versions}
 									loading={versionsLoading}
 									previewVersionId={previewVersion?.id ?? null}
-									onPreviewVersion={setPreviewVersion}
+									onPreviewVersion={handlePreviewVersion}
 									onRestoreVersion={requestRestoreVersion}
 									restoringVersionId={restoringVersionId}
 									onDeleteVersion={handleDeleteVersion}
@@ -972,22 +1012,26 @@ export const ComponentLibraryPlanner = ({
 					}
 
 					<div className="flex-1 min-w-0 relative">
-						{previewVersion ? (
-							<>
-								<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
-								{!isSharedView && !isMobile && !isUIHidden && (
-									<VersionPreviewDock
-										versionName={formatVersionName(previewVersion)}
-										index={previewVersionIndex}
-										total={versions.length}
-										canGoNewer={previewVersionIndex > 0}
-										canGoOlder={previewVersionIndex >= 0 && previewVersionIndex < versions.length - 1}
-										onGoNewer={() => stepPreviewVersion(-1)}
-										onGoOlder={() => stepPreviewVersion(1)}
-										onExit={() => setPreviewVersion(null)}
-									/>
-								)}
-							</>
+						{showVersionHistory ? (
+							previewVersion ? (
+								<>
+									<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
+									{!isSharedView && !isMobile && !isUIHidden && (
+										<VersionPreviewDock
+											versionName={formatVersionName(previewVersion)}
+											index={previewVersionIndex}
+											total={versions.length}
+											canGoNewer={previewVersionIndex > 0}
+											canGoOlder={previewVersionIndex >= 0 && previewVersionIndex < versions.length - 1}
+											onGoNewer={() => stepPreviewVersion(-1)}
+											onGoOlder={() => stepPreviewVersion(1)}
+											onExit={handleCloseVersionHistory}
+										/>
+									)}
+								</>
+							) : (
+								<div className="absolute inset-0 bg-canvas" aria-busy="true" />
+							)
 						) : (
 							<>
 								{/* Mobile Sign-out Button */}

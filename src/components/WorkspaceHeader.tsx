@@ -31,6 +31,8 @@ interface WorkspaceHeaderProps {
 	readOnly?: boolean;
 	/** When set, the header shows the preview context and actions instead of the editor controls. */
 	previewVersion?: ProjectVersion | null;
+	/** Forces preview mode even before a version resolves (e.g. while history loads). */
+	previewMode?: boolean;
 	projectName?: string;
 	restoringVersionId?: string | null;
 	onExitPreview?: () => void;
@@ -44,13 +46,13 @@ interface WorkspaceHeaderProps {
  * actions while a saved version is being previewed. Staying mounted in every
  * mode keeps its height stable, so the floating aside never shifts position.
  */
-export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, onSwitchToCanvas, isLocked = false, canUndo, canRedo, onUndo, onRedo, readOnly = false, previewVersion = null, projectName, restoringVersionId, onExitPreview, onRestoreVersion }: WorkspaceHeaderProps) => {
-	const isPreviewing = !!previewVersion;
+export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, onSwitchToCanvas, isLocked = false, canUndo, canRedo, onUndo, onRedo, readOnly = false, previewVersion = null, previewMode = false, projectName, restoringVersionId, onExitPreview, onRestoreVersion }: WorkspaceHeaderProps) => {
+	const isPreviewing = previewMode || !!previewVersion;
 	const isMapView = viewMode === "tokens";
 	const isRestoring = !!previewVersion && restoringVersionId === previewVersion.id;
 
 	const title = isPreviewing ? "Version Preview" : VIEW_COPY[viewMode].title;
-	const description = previewVersion ? `${formatVersionName(previewVersion)}${projectName ? ` · ${projectName}` : ""}` : VIEW_COPY[viewMode].description;
+	const description = previewVersion ? `${formatVersionName(previewVersion)}${projectName ? ` · ${projectName}` : ""}` : isPreviewing ? "Loading version…" : VIEW_COPY[viewMode].description;
 
 	// Counts reflect the project, not the current filter, so a hidden type still
 	// shows how many nodes the toggle would reveal.
@@ -77,7 +79,7 @@ export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, o
 							<Button variant="outline" size="sm" onClick={onExitPreview}>
 								Exit preview
 							</Button>
-							<Button size="sm" onClick={() => previewVersion && onRestoreVersion?.(previewVersion.id)} disabled={isRestoring}>
+							<Button size="sm" onClick={() => previewVersion && onRestoreVersion?.(previewVersion.id)} disabled={isRestoring || !previewVersion}>
 								{isRestoring ? "Restoring..." : "Restore this version"}
 							</Button>
 						</>
