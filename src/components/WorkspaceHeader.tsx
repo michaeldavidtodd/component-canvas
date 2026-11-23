@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Node } from "@xyflow/react";
-import { History, Redo2, Undo2 } from "lucide-react";
+import { Activity, History, Redo2, Sparkles, Undo2 } from "lucide-react";
 
 import type { ComponentNodeData, ComponentType } from "@/types/component";
 import type { ProjectVersion } from "@/types/project";
@@ -28,6 +28,11 @@ interface WorkspaceHeaderProps {
 	onUndo: () => void;
 	onRedo: () => void;
 	onShowHistory?: () => void;
+	/** Whether the token health review is open, so its toggle reads as pressed. */
+	showTokenHealth?: boolean;
+	onToggleTokenHealth?: () => void;
+	/** Opens the advisor command bar. Cmd+K is the primary shortcut. */
+	onOpenAiReview?: () => void;
 	/** Shared projects are read-only, so the editing controls are hidden. */
 	readOnly?: boolean;
 	/** When set, the header shows the preview context and actions instead of the editor controls. */
@@ -47,7 +52,7 @@ interface WorkspaceHeaderProps {
  * actions while a saved version is being previewed. Staying mounted in every
  * mode keeps its height stable, so the floating aside never shifts position.
  */
-export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, onSwitchToCanvas, isLocked = false, canUndo, canRedo, onUndo, onRedo, onShowHistory, readOnly = false, previewVersion = null, previewMode = false, projectName, restoringVersionId, onExitPreview, onRestoreVersion }: WorkspaceHeaderProps) => {
+export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, onSwitchToCanvas, isLocked = false, canUndo, canRedo, onUndo, onRedo, onShowHistory, showTokenHealth = false, onToggleTokenHealth, onOpenAiReview, readOnly = false, previewVersion = null, previewMode = false, projectName, restoringVersionId, onExitPreview, onRestoreVersion }: WorkspaceHeaderProps) => {
 	const isPreviewing = previewMode || !!previewVersion;
 	const isMapView = viewMode === "tokens";
 	const isRestoring = !!previewVersion && restoringVersionId === previewVersion.id;
@@ -97,6 +102,12 @@ export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, o
 									</Button>
 									<Button variant="outline" size="icon" className="size-8" onClick={onShowHistory} aria-label="Version history">
 										<History className="size-3.5" />
+									</Button>
+									<Button variant="outline" size="icon" className="size-8" onClick={onToggleTokenHealth} aria-label="Token health" aria-pressed={showTokenHealth} title="Token health">
+										<Activity className="size-3.5" />
+									</Button>
+									<Button variant="outline" size="icon" className="size-8" onClick={onOpenAiReview} aria-label="Ask the advisor" title="Ask the advisor (⌘K)">
+										<Sparkles className="size-3.5" />
 									</Button>
 								</div>
 							)}

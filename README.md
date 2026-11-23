@@ -21,6 +21,9 @@ npm run preview
 
 # Lint
 npm run lint
+
+# Run unit tests (or `npm run test:watch` while developing)
+npm run test
 ```
 
 ## Desktop app (Tauri)

@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, addEdge, Connection, Edge, Background, Controls, MiniMap, Node, SelectionMode, useReactFlow, useStore } from "@xyflow/react";
+import type { ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 
@@ -11,6 +12,8 @@ import { WorkspaceHeader } from "./WorkspaceHeader";
 import { CssImportDialog } from "./CssImportDialog";
 
 import { PropertiesPanel } from "./PropertiesPanel";
+import { TokenHealth } from "./TokenHealth";
+import { AiReviewBar } from "./AiReviewBar";
 import { ConnectionLegend } from "./ConnectionLegend";
 import { VersionHistory } from "@/components/VersionHistory";
 import { VersionPreview } from "@/components/VersionPreview";
@@ -26,6 +29,10 @@ import { normalizeNodes } from "@/lib/nodes";
 import { disposeCssImportWorker, runCssImport } from "@/lib/cssImportWorker";
 import type { NormalizedCssToken } from "@/lib/cssTokenNormalize";
 import { canAssignParent, getChildTypeOptions, getPrimaryParentId } from "@/lib/parentRules";
+import { auditTokenMap, type AuditFix } from "@/lib/tokenAudit";
+import { applyOperations } from "@/lib/documentOperations";
+import { projectDocument } from "@/lib/documentProjection";
+import type { ReviewFix } from "@/lib/aiReviewStream";
 import type { ProjectVersion, SharedProjectData } from "@/types/project";
 import type { ViewMode } from "@/types/view";
 import { useAuth } from "@/hooks/useAuth";
@@ -304,6 +311,12 @@ export const ComponentLibraryPlanner = ({
 	// The draft awaiting a canvas placement decision. Saving opens the dialog.
 	const [pendingPlacement, setPendingPlacement] = useState<DraftNode | null>(null);
 	const [showVersionHistory, setShowVersionHistory] = useState(false);
+	// The token health review takes over the aside the same way version history
+	// does, so the two panels never compete for the same column.
+	const [showTokenHealth, setShowTokenHealth] = useState(false);
+	// The advisor opens as a command bar over the canvas rather than in the aside,
+	// so it can sit alongside whichever panel is open.
+	const [showAiReview, setShowAiReview] = useState(false);
 	// The version currently being previewed in the canvas while the history
 	// list stays open in the aside.
 	const [previewVersion, setPreviewVersion] = useState<ProjectVersion | null>(null);
@@ -351,6 +364,21 @@ export const ComponentLibraryPlanner = ({
 		enabled: !isSharedView && !isMobile && !isCanvasLocked,
 	});
 
+	// Deterministic token checks. They only run while the review panel is open, so
+	// the document isn't re-audited on every drag or edit while the panel is shut.
+	// The advisor reads the same findings, so it counts as open here too.
+	const tokenFindings = useMemo(
+		() => (showTokenHealth || showAiReview ? auditTokenMap(nodes as Node<ComponentNodeData>[], edges) : []),
+		[showTokenHealth, showAiReview, nodes, edges],
+	);
+
+	// The whitelisted projection the advisor reads. Built only while the bar is
+	// open, so the document isn't serialized on every canvas change.
+	const aiDocument = useMemo(
+		() => (showAiReview ? projectDocument(nodes as Node<ComponentNodeData>[], edges) : null),
+		[showAiReview, nodes, edges],
+	);
+
 	// The selection-sync effect below runs on node changes, not view changes, so
 	// it reads the current view mode from a ref. That keeps a grid selection from
 	// being cleared when the user switches back to the canvas.
@@ -358,6 +386,11 @@ export const ComponentLibraryPlanner = ({
 	useEffect(() => {
 		viewModeRef.current = viewMode;
 	}, [viewMode]);
+
+	// The React Flow instance lives below the provider this component renders, so it
+	// is captured through `onInit` rather than `useReactFlow`. The token health
+	// review uses it to pan the canvas to a finding's node.
+	const reactFlowRef = useRef<ReactFlowInstance | null>(null);
 
 	// Tear down the CSS import worker when the planner unmounts so its thread
 	// doesn't outlive the view that uses it.
@@ -569,6 +602,26 @@ export const ComponentLibraryPlanner = ({
 		setSelectedNode(node);
 		setSelectedOccurrenceId(node ? occurrenceId : null);
 	}, []);
+
+	// Point the canvas and the properties panel at a node the token health review
+	// references. Selection follows the canvas convention: the target's `selected`
+	// flag is set and every other node's is cleared.
+	const handleSelectNodeId = useCallback((nodeId: string) => {
+		const target = nodes.find((node) => node.id === nodeId);
+		if (!target) return;
+		setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, selected: true } : node.selected ? { ...node, selected: false } : node)));
+		setSelectedNode(target as Node<ComponentNodeData>);
+		setSelectedOccurrenceId(null);
+		// The structured map scrolls to the row on its own; the canvas needs an
+		// explicit pan so a finding never selects a node that's off-screen.
+		if (viewModeRef.current !== "canvas") return;
+		const instance = reactFlowRef.current;
+		const flowNode = instance?.getNode(nodeId);
+		if (!instance || !flowNode) return;
+		const width = flowNode.measured?.width ?? 0;
+		const height = flowNode.measured?.height ?? 0;
+		void instance.setCenter(flowNode.position.x + width / 2, flowNode.position.y + height / 2, { zoom: instance.getZoom(), duration: 300 });
+	}, [nodes, setNodes]);
 
 	const handleRevealComplete = useCallback(() => setRevealNodeId(null), []);
 
@@ -1122,11 +1175,70 @@ export const ComponentLibraryPlanner = ({
 		}
 		// Nothing to preview yet, so don't enter a state we can't represent.
 		if (versions.length === 0 && !versionsLoading) return;
+		// The aside shows one panel at a time, so entering history leaves the token
+		// review.
+		setShowTokenHealth(false);
 		// Entering history always previews the latest version, so the canvas is
 		// never left editable while the history panel is open.
 		setShowVersionHistory(true);
 		setPreviewVersion(versions[0] ?? null);
 	}, [showVersionHistory, versions, versionsLoading]);
+
+	const handleCloseTokenHealth = useCallback(() => setShowTokenHealth(false), []);
+
+	// Apply a token health fix as one undoable change. The operation engine checks
+	// parent rules and rejects the whole fix if any part of it is illegal, so a
+	// partly-applied fix never lands.
+	const handleApplyFix = useCallback(
+		(fix: AuditFix) => {
+			const result = applyOperations(nodes as Node<ComponentNodeData>[], edges, fix.operations);
+			if (result.errors.length > 0) {
+				toast({ title: "Couldn't apply fix", description: result.errors[0].reason, variant: "destructive" });
+				return;
+			}
+			setNodes(result.nodes);
+			setEdges(result.edges);
+			toast({ title: "Fix applied", description: fix.summary });
+		},
+		[nodes, edges, setNodes, setEdges, toast],
+	);
+
+		// Check an advisor fix against the live document. The edge function never sees
+		// the parent rules, so this is the only place a proposal is verified before it
+		// can be applied.
+		const handleValidateFix = useCallback(
+			(fix: ReviewFix) =>
+				applyOperations(nodes as Node<ComponentNodeData>[], edges, fix.operations).errors.map((error) => error.reason),
+			[nodes, edges],
+		);
+
+		// Advisor fixes go through the same engine and the same one-shot document
+		// update as the token health fixes, so undo treats them as a single step.
+		const handleApplyAiFix = useCallback(
+			(fix: ReviewFix) => {
+				const result = applyOperations(nodes as Node<ComponentNodeData>[], edges, fix.operations);
+				if (result.errors.length > 0) {
+					toast({ title: "Couldn't apply fix", description: result.errors[0].reason, variant: "destructive" });
+					return;
+				}
+				setNodes(result.nodes);
+				setEdges(result.edges);
+				toast({ title: "Fix applied", description: fix.description });
+			},
+			[nodes, edges, setNodes, setEdges, toast],
+		);
+
+		const handleToggleTokenHealth = useCallback(() => {
+		if (showTokenHealth) {
+			setShowTokenHealth(false);
+			return;
+		}
+		// The aside shows one panel at a time, so reviewing token health leaves the
+		// version history.
+		setShowVersionHistory(false);
+		setPreviewVersion(null);
+		setShowTokenHealth(true);
+	}, [showTokenHealth]);
 
 	// The history panel is only meaningful while a version is previewed, so
 	// selecting a version never clears the preview.
@@ -1248,6 +1360,9 @@ export const ComponentLibraryPlanner = ({
 						onUndo={undo}
 						onRedo={redo}
 						onShowHistory={handleToggleVersionHistory}
+						showTokenHealth={showTokenHealth}
+						onToggleTokenHealth={handleToggleTokenHealth}
+						onOpenAiReview={() => setShowAiReview(true)}
 						readOnly={isSharedView}
 						previewVersion={previewVersion}
 						previewMode={showVersionHistory}
@@ -1274,6 +1389,8 @@ export const ComponentLibraryPlanner = ({
 									onDeleteVersion={handleDeleteVersion}
 									onClose={handleCloseVersionHistory}
 								/>
+							) : showTokenHealth ? (
+								<TokenHealth findings={tokenFindings} onSelectNode={handleSelectNodeId} onApplyFix={handleApplyFix} onClose={handleCloseTokenHealth} />
 							) : (
 								<div className="flex-1 flex flex-col gap-4 pb-4">
 									<PropertiesPanel
@@ -1349,6 +1466,9 @@ export const ComponentLibraryPlanner = ({
 									<ReactFlow
 										nodes={nodes}
 										edges={edges}
+										onInit={(instance) => {
+											reactFlowRef.current = instance;
+										}}
 										onNodesChange={isSharedView || isMobile ? undefined : onNodesChange}
 										onEdgesChange={isSharedView || isMobile ? undefined : onEdgesChange}
 										onConnect={isSharedView || isMobile || isCanvasLocked ? undefined : onConnect}
@@ -1425,6 +1545,19 @@ export const ComponentLibraryPlanner = ({
 			</div>
 
 			<CssImportDialog open={showCssImport} onOpenChange={setShowCssImport} nodes={nodes as Node<ComponentNodeData>[]} onImport={handleCssImport} />
+
+			{/* Advisor command bar. Cmd+K opens it; the projection is only built while it is open,
+			    so it is null on the renders where the bar is closed. */}
+			{!isSharedView && (
+				<AiReviewBar
+					open={showAiReview}
+					onOpenChange={setShowAiReview}
+					document={aiDocument}
+					findings={tokenFindings}
+					validateFix={handleValidateFix}
+					onApplyFix={handleApplyAiFix}
+				/>
+			)}
 
 			{/* Canvas placement for a node created from the structured map */}
 			<Dialog

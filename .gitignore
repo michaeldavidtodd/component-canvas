@@ -13,6 +13,9 @@ dist-ssr
 *.local
 *.tsbuildinfo
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Tauri
 src-tauri/target
 src-tauri/gen
