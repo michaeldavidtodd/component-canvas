@@ -13,6 +13,8 @@ export interface NormalizedCssToken {
 	theme?: CssTheme;
 	sourceOrder: number;
 	propertySyntax?: string;
+	/** Where the declaration came from: the uploaded CSS or the Tailwind theme. */
+	origin?: "upload" | "tailwind";
 	status: NormalizedStatus;
 	reasons: string[];
 	tokenKind: "literal" | "alias";
@@ -30,11 +32,15 @@ const DIMENSION_UNIT_SET = new Set<string>(DIMENSION_UNITS);
 const HEX_RE = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const RGB_RE = /^rgba?\(\s*([\s\S]+?)\s*\)$/i;
 const HSL_RE = /^hsla?\(\s*([\s\S]+?)\s*\)$/i;
+const OKLCH_RE = /^oklch\(\s*([\s\S]+?)\s*\)$/i;
 const VAR_RE = /^var\(\s*(--[\w-]+)\s*(?:,\s*([\s\S]+))?\)$/i;
 const DIMENSION_RE = /^(-?(?:\d+|\d*\.\d+))([a-z%]+)$/i;
 const NUMBER_RE = /^-?(?:\d+|\d*\.\d+)$/;
 const BARE_HSL_RE = /^-?(?:\d+|\d*\.\d+)(?:deg|rad|turn)?\s+[\d.]+%\s+[\d.]+%(?:\s*\/\s*[\d.]+%?)?$/i;
 const BARE_RGB_RE = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}(?:\s*\/\s*[\d.]+%?)?$/;
+const RATIO_RE = /^\d+(?:\.\d+)?\s*\/\s*\d+(?:\.\d+)?$/;
+const EASING_RE = /^(?:cubic-bezier|steps|linear)\(/i;
+const CALC_SIMPLE_RE = /^calc\(\s*(-?(?:\d+|\d*\.\d+))\s*([+\-*/])\s*(-?(?:\d+|\d*\.\d+))\s*\)$/i;
 const UNSUPPORTED_FUNCTION_RE = /^(?:calc|clamp|min|max|color-mix|light-dark|linear-gradient|radial-gradient|conic-gradient|url|image-set|paint|anchor|attr)\(/i;
 
 const COLOR_NAME_HINT = /(^|[-_])(color|colour|background|foreground|surface|canvas|workspace|card|popover|primary|secondary|accent|muted|destructive|danger|warning|success|info|ring|border|fill|stroke|brand|sidebar|chart)([-_]|$)/i;
@@ -46,6 +52,13 @@ const FOREGROUND_HINT = /(^|[-_])(foreground|fg|text|content|label|stroke|icon)(
 const PADDING_HINT = /(^|[-_])padding([-_]|$)/i;
 const MARGIN_HINT = /(^|[-_])margin([-_]|$)/i;
 const GAP_HINT = /(^|[-_])(gap|gutter)([-_]|$)/i;
+const SHADOW_NAME_HINT = /(^|[-_])(shadow|elevation|drop-shadow)([-_]|$)/i;
+const FONT_NAME_HINT = /(^|[-_])(font-family|font-sans|font-serif|font-mono|font-display|typeface|family)([-_]|$)/i;
+const FONT_WEIGHT_NAME_HINT = /(^|[-_])(font-weight|weight)([-_]|$)/i;
+const LINE_HEIGHT_NAME_HINT = /(^|[-_])(line-height|leading)([-_]|$)/i;
+// Tailwind's `--text-*` scale is font size. Exclude `--text-shadow-*` and the
+// `--text-*--line-height`-style modifiers, which are handled elsewhere.
+const TEXT_SIZE_NAME_HINT = /(^|[-_])text-(?!shadow)[a-z0-9]+$/i;
 
 const inferColorSubType = (name: string): TokenSubType | undefined => {
 	if (BACKGROUND_HINT.test(name)) return "background";
@@ -65,9 +78,19 @@ const inferType = (name: string, syntax?: string, format?: TokenValueFormat): { 
 	if (normalizedSyntax?.includes("color")) return { tokenType: "color", tokenSubType: inferColorSubType(name) };
 	if (normalizedSyntax?.includes("length") || normalizedSyntax?.includes("percentage")) return { tokenType: "size", tokenSubType: "dimensions" };
 
+	if (format === "shadow") return { tokenType: "shadow", tokenSubType: "elevation" };
+	if (format === "font") return { tokenType: "font", tokenSubType: "font-family" };
+	if (format === "ratio") return { tokenType: "ratio", tokenSubType: "aspect-ratio" };
+	if (format === "number") {
+		if (LINE_HEIGHT_NAME_HINT.test(name)) return { tokenType: "size", tokenSubType: "line-height" };
+		if (FONT_WEIGHT_NAME_HINT.test(name)) return { tokenType: "font", tokenSubType: "font-weight" };
+	}
+
 	if (format && COLOR_FORMAT_SET.has(format)) return { tokenType: "color", tokenSubType: inferColorSubType(name) };
 	if (RADIUS_NAME_HINT.test(name)) return { tokenType: "corner-radius" };
 	if (SPACING_NAME_HINT.test(name)) return { tokenType: "spacing", tokenSubType: inferSpacingSubType(name) };
+	if (LINE_HEIGHT_NAME_HINT.test(name)) return { tokenType: "size", tokenSubType: "line-height" };
+	if (TEXT_SIZE_NAME_HINT.test(name)) return { tokenType: "size", tokenSubType: "font-size" };
 	if (SIZE_NAME_HINT.test(name)) return { tokenType: "size", tokenSubType: "dimensions" };
 	if (COLOR_NAME_HINT.test(name)) return { tokenType: "color", tokenSubType: inferColorSubType(name) };
 	if (format && DIMENSION_UNIT_SET.has(format)) return { tokenType: "size", tokenSubType: "dimensions" };
@@ -99,8 +122,23 @@ const classifyValue = (raw: string): ClassifiedValue => {
 		return { status: "ready", reasons: [], tokenValue: hsl[1].trim(), tokenFormat: format };
 	}
 
+	const oklch = value.match(OKLCH_RE);
+	if (oklch) return { status: "ready", reasons: [], tokenValue: oklch[1].trim(), tokenFormat: "oklch" };
+
 	if (BARE_HSL_RE.test(value)) return { status: "ready", reasons: [], tokenValue: value, tokenFormat: "hsl" };
 	if (BARE_RGB_RE.test(value)) return { status: "ready", reasons: [], tokenValue: value, tokenFormat: "rgb" };
+
+	if (RATIO_RE.test(value)) return { status: "ready", reasons: [], tokenValue: value, tokenFormat: "ratio" };
+	if (EASING_RE.test(value)) return { status: "ready", reasons: [], tokenValue: value, tokenFormat: "easing" };
+
+	const calc = value.match(CALC_SIMPLE_RE);
+	if (calc) {
+		const a = Number(calc[1]);
+		const b = Number(calc[3]);
+		const op = calc[2];
+		const result = op === "+" ? a + b : op === "-" ? a - b : op === "*" ? a * b : b === 0 ? Number.NaN : a / b;
+		if (Number.isFinite(result)) return { status: "ready", reasons: [], tokenValue: String(Number(result.toFixed(6))), tokenFormat: "number" };
+	}
 
 	const dimension = value.match(DIMENSION_RE);
 	if (dimension) {
@@ -141,6 +179,21 @@ export const normalizeCssVariable = (variable: ParsedCssVariable): NormalizedCss
 	}
 
 	const classified = classifyValue(raw);
+
+	// Name-based fallbacks for composite values that `classifyValue` can't parse.
+	if (classified.status === "unsupported" && SHADOW_NAME_HINT.test(variable.name)) {
+		return { ...variable, raw, status: "ready", reasons: [], tokenKind: "literal", tokenValue: raw, tokenFormat: "shadow", tokenType: "shadow", tokenSubType: "elevation" };
+	}
+	if (classified.status === "unsupported" && FONT_NAME_HINT.test(variable.name)) {
+		return { ...variable, raw, status: "ready", reasons: [], tokenKind: "literal", tokenValue: raw, tokenFormat: "font", tokenType: "font", tokenSubType: "font-family" };
+	}
+	if (classified.status === "ambiguous" && FONT_WEIGHT_NAME_HINT.test(variable.name)) {
+		return { ...variable, raw, status: "ready", reasons: [], tokenKind: "literal", tokenValue: raw, tokenFormat: "number", tokenType: "font", tokenSubType: "font-weight" };
+	}
+	if (classified.status === "ambiguous" && LINE_HEIGHT_NAME_HINT.test(variable.name)) {
+		return { ...variable, raw, status: "ready", reasons: [], tokenKind: "literal", tokenValue: raw, tokenFormat: "number", tokenType: "size", tokenSubType: "line-height" };
+	}
+
 	const inferred = inferType(variable.name, variable.propertySyntax, classified.tokenFormat);
 
 	return {

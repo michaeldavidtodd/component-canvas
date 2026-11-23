@@ -274,6 +274,9 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 		{ value: "spacing", label: "Spacing" },
 		{ value: "corner-radius", label: "Corner Radius" },
 		{ value: "size", label: "Size" },
+		{ value: "shadow", label: "Shadow" },
+		{ value: "font", label: "Font" },
+		{ value: "ratio", label: "Ratio" },
 	];
 
 	// Dynamic sub-type options based on selected token type
@@ -293,8 +296,18 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 			case "size":
 				return [
 					{ value: "font-size", label: "Font Size" },
+					{ value: "line-height", label: "Line Height" },
 					{ value: "dimensions", label: "Dimensions" },
 				];
+			case "font":
+				return [
+					{ value: "font-family", label: "Font Family" },
+					{ value: "font-weight", label: "Font Weight" },
+				];
+			case "shadow":
+				return [{ value: "elevation", label: "Elevation" }];
+			case "ratio":
+				return [{ value: "aspect-ratio", label: "Aspect Ratio" }];
 			default:
 				return [];
 		}
@@ -312,6 +325,8 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 	const tokenFormatPlaceholder = tokenFormatOptions.find((option) => option.value === tokenFormat)?.placeholder;
 	const tokenValueIsInvalid = !!selectedNode.data.tokenValue && !isValidTokenValue(selectedNode.data.tokenValue, tokenFormat);
 	const tokenColorPreview = isColorToken(tokenType) ? toCssColor(selectedNode.data.tokenValue, tokenFormat) : null;
+	const tokenFormatLabel = isColorToken(tokenType) ? "Color Format" : tokenType === "shadow" || tokenType === "font" || tokenType === "ratio" ? "Format" : "Unit";
+	const tokenValueInputMode = isColorToken(tokenType) || tokenType === "shadow" || tokenType === "font" || tokenType === "ratio" ? "text" : "decimal";
 
 	const { groups: groupedParentCandidates, ancestorsById } = parentGroups;
 	const displayParentMeta = displayParent ? getComponentTypeMeta(displayParent.data.componentType) : null;
@@ -564,7 +579,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 								<div className="flex flex-row">
 									<Field>
 										<Label htmlFor="token-format" className="text-sm font-medium text-muted-foreground">
-											{isColorToken(tokenType) ? "Color Format" : "Unit"}
+											{tokenFormatLabel}
 										</Label>
 										<Select value={tokenFormat} onValueChange={handleTokenFormatChange}>
 											<SelectTrigger className="mt-1">
@@ -589,7 +604,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 										</Label>
 										<div className="flex items-center gap-2">
 											{isColorToken(tokenType) && <span className="ml-2 size-6 shrink-0 rounded border border-border" style={{ backgroundColor: tokenColorPreview ?? "transparent" }} aria-hidden="true" />}
-											<Input id="token-value" value={selectedNode.data.tokenValue || ""} onChange={(e) => handleTokenValueChange(e.target.value)} placeholder={tokenFormatPlaceholder} className="mt-0 border-x-0 border-b-0 rounded-xl" inputMode={isColorToken(tokenType) ? "text" : "decimal"} aria-invalid={tokenValueIsInvalid} />
+											<Input id="token-value" value={selectedNode.data.tokenValue || ""} onChange={(e) => handleTokenValueChange(e.target.value)} placeholder={tokenFormatPlaceholder} className="mt-0 border-x-0 border-b-0 rounded-xl" inputMode={tokenValueInputMode} aria-invalid={tokenValueIsInvalid} />
 										</div>
 										{tokenValueIsInvalid && <p className="text-xs text-destructive mt-1">Enter a valid {isColorToken(tokenType) ? tokenFormat?.toUpperCase() : tokenFormat} value</p>}
 									</Field>

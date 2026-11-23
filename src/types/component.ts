@@ -1,6 +1,6 @@
 export type ComponentType = "main-component" | "variant" | "sub-component" | "token" | "instance" | "group";
 
-export type TokenType = "color" | "spacing" | "corner-radius" | "size";
+export type TokenType = "color" | "spacing" | "corner-radius" | "size" | "shadow" | "font" | "ratio";
 export type TokenSubType =
 	| "background"
 	| "foreground" // for color
@@ -8,16 +8,27 @@ export type TokenSubType =
 	| "margin"
 	| "gap" // for spacing
 	| "font-size"
-	| "dimensions"; // for size
+	| "line-height"
+	| "dimensions" // for size
+	| "font-family"
+	| "font-weight" // for font
+	| "elevation" // for shadow
+	| "aspect-ratio"; // for ratio
 
 /** Accepted notations for color token values. */
-export type ColorFormat = "hex" | "rgb" | "rgba" | "hsl" | "hsla";
+export type ColorFormat = "hex" | "rgb" | "rgba" | "hsl" | "hsla" | "oklch";
 
 /** Accepted units for spacing, corner radius, and size token values. */
-export type DimensionUnit = "px" | "rem" | "em" | "pt" | "%" | "vw" | "vh";
+export type DimensionUnit = "px" | "rem" | "em" | "pt" | "%" | "vw" | "vh" | "ch" | "ms" | "s";
+
+/**
+ * Formats for values that aren't a single color or dimension: unitless
+ * numbers, composite shadows, font stacks, aspect ratios, and easing curves.
+ */
+export type CompositeFormat = "number" | "shadow" | "font" | "ratio" | "easing";
 
 /** The notation a token value is expressed in. */
-export type TokenValueFormat = ColorFormat | DimensionUnit;
+export type TokenValueFormat = ColorFormat | DimensionUnit | CompositeFormat;
 
 /** Whether a token holds a concrete value or references another token. */
 export type TokenKind = "literal" | "alias";

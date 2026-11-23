@@ -1,4 +1,4 @@
-import type { ColorFormat, DimensionUnit, TokenKind, TokenType, TokenValueFormat } from "@/types/component";
+import type { ColorFormat, CompositeFormat, DimensionUnit, TokenKind, TokenType, TokenValueFormat } from "@/types/component";
 
 /**
  * Single source of truth for token value notations.
@@ -14,9 +14,9 @@ export interface TokenFormatOption {
 	placeholder: string;
 }
 
-export const COLOR_FORMATS: readonly ColorFormat[] = ["hex", "rgb", "rgba", "hsl", "hsla"];
+export const COLOR_FORMATS: readonly ColorFormat[] = ["hex", "rgb", "rgba", "hsl", "hsla", "oklch"];
 
-export const DIMENSION_UNITS: readonly DimensionUnit[] = ["px", "rem", "em", "pt", "%", "vw", "vh"];
+export const DIMENSION_UNITS: readonly DimensionUnit[] = ["px", "rem", "em", "pt", "%", "vw", "vh", "ch", "ms", "s"];
 
 export const COLOR_FORMAT_OPTIONS: readonly TokenFormatOption[] = [
 	{ value: "hex", label: "HEX", placeholder: "#3B82F6" },
@@ -24,6 +24,7 @@ export const COLOR_FORMAT_OPTIONS: readonly TokenFormatOption[] = [
 	{ value: "rgba", label: "RGBA", placeholder: "59 130 246 / 0.5" },
 	{ value: "hsl", label: "HSL", placeholder: "217 91% 60%" },
 	{ value: "hsla", label: "HSLA", placeholder: "217 91% 60% / 0.5" },
+	{ value: "oklch", label: "OKLCH", placeholder: "67.3% 0.21 25.3" },
 ];
 
 export const DIMENSION_UNIT_OPTIONS: readonly TokenFormatOption[] = [
@@ -34,7 +35,19 @@ export const DIMENSION_UNIT_OPTIONS: readonly TokenFormatOption[] = [
 	{ value: "%", label: "%", placeholder: "100" },
 	{ value: "vw", label: "vw", placeholder: "50" },
 	{ value: "vh", label: "vh", placeholder: "50" },
+	{ value: "ch", label: "ch", placeholder: "65" },
+	{ value: "ms", label: "ms", placeholder: "150" },
+	{ value: "s", label: "s", placeholder: "0.3" },
 ];
+
+const NUMBER_FORMAT_OPTION: TokenFormatOption = { value: "number", label: "Number", placeholder: "1.5" };
+const SHADOW_FORMAT_OPTION: TokenFormatOption = { value: "shadow", label: "Shadow", placeholder: "0 1px 3px rgb(0 0 0 / 0.1)" };
+const FONT_FORMAT_OPTION: TokenFormatOption = { value: "font", label: "Font", placeholder: "Inter, system-ui, sans-serif" };
+const RATIO_FORMAT_OPTION: TokenFormatOption = { value: "ratio", label: "Ratio", placeholder: "16 / 9" };
+const EASING_FORMAT_OPTION: TokenFormatOption = { value: "easing", label: "Easing", placeholder: "cubic-bezier(0.4, 0, 0.2, 1)" };
+
+/** Formats for unitless numbers, shadows, font stacks, ratios, and easing. */
+export const COMPOSITE_FORMAT_OPTIONS: readonly TokenFormatOption[] = [NUMBER_FORMAT_OPTION, SHADOW_FORMAT_OPTION, FONT_FORMAT_OPTION, RATIO_FORMAT_OPTION, EASING_FORMAT_OPTION];
 
 export const isColorToken = (tokenType?: TokenType): boolean => tokenType === "color";
 
@@ -55,19 +68,50 @@ export const isAliasToken = (kind?: TokenKind): boolean => kind === "alias";
 
 export const isColorFormat = (format?: TokenValueFormat): format is ColorFormat => !!format && (COLOR_FORMATS as readonly string[]).includes(format);
 
-/** Formats available for a token type: color notations or dimension units. */
-export const getTokenFormatOptions = (tokenType?: TokenType): readonly TokenFormatOption[] => (isColorToken(tokenType) ? COLOR_FORMAT_OPTIONS : DIMENSION_UNIT_OPTIONS);
+export const isCompositeFormat = (format?: TokenValueFormat): format is CompositeFormat => !!format && COMPOSITE_FORMAT_OPTIONS.some((option) => option.value === format);
+
+/** Formats available for a token type. */
+export const getTokenFormatOptions = (tokenType?: TokenType): readonly TokenFormatOption[] => {
+	switch (tokenType) {
+		case "color":
+			return COLOR_FORMAT_OPTIONS;
+		case "shadow":
+			return [SHADOW_FORMAT_OPTION];
+		case "font":
+			return [FONT_FORMAT_OPTION, NUMBER_FORMAT_OPTION];
+		case "ratio":
+			return [RATIO_FORMAT_OPTION];
+		case "size":
+			return [...DIMENSION_UNIT_OPTIONS, NUMBER_FORMAT_OPTION];
+		default:
+			return DIMENSION_UNIT_OPTIONS;
+	}
+};
 
 /** Sensible default notation when a token type is first selected. */
-export const getDefaultTokenFormat = (tokenType?: TokenType): TokenValueFormat => (isColorToken(tokenType) ? "hex" : "px");
+export const getDefaultTokenFormat = (tokenType?: TokenType): TokenValueFormat => {
+	switch (tokenType) {
+		case "color":
+			return "hex";
+		case "shadow":
+			return "shadow";
+		case "font":
+			return "font";
+		case "ratio":
+			return "ratio";
+		default:
+			return "px";
+	}
+};
 
 const HEX_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const NUMBER_PATTERN = /^-?(?:\d+\.?\d*|\.\d+)$/;
+const RATIO_PATTERN = /^\d+(?:\.\d+)?\s*\/\s*\d+(?:\.\d+)?$/;
 
 /** Wrap bare channels in their CSS function, leaving full functions untouched. */
 const toCssColorFunction = (value: string, format: ColorFormat): string => {
 	const trimmed = value.trim();
-	if (/^(?:rgb|rgba|hsl|hsla)\(/i.test(trimmed)) return trimmed;
+	if (/^(?:rgb|rgba|hsl|hsla|oklch)\(/i.test(trimmed)) return trimmed;
 	return `${format}(${trimmed})`;
 };
 
@@ -98,6 +142,9 @@ export const isValidTokenValue = (value: string | undefined, format?: TokenValue
 
 	if (format === "hex") return HEX_PATTERN.test(trimmed);
 	if (isColorFormat(format)) return toCssColor(trimmed, format) !== null;
+	if (format === "number") return NUMBER_PATTERN.test(trimmed);
+	if (format === "ratio") return RATIO_PATTERN.test(trimmed);
+	if (format === "shadow" || format === "font" || format === "easing") return true;
 
 	return NUMBER_PATTERN.test(trimmed);
 };
@@ -108,5 +155,6 @@ export const formatTokenValue = (value?: string, format?: TokenValueFormat): str
 	if (!trimmed) return "";
 
 	if (isColorFormat(format)) return toCssColor(trimmed, format) ?? trimmed;
+	if (isCompositeFormat(format)) return trimmed;
 	return format ? `${trimmed}${format}` : trimmed;
 };

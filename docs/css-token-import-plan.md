@@ -352,4 +352,171 @@ const getTokenScopeKey = (token: Pick<ComponentNodeData, "tokenSource" | "tokenS
 - Should the import group be one per source file, or one per scope/theme? (Current plan: one per source file; scope is stored on tokens and prefixed in labels.)
 - Should unitless numbers default to `px` or stay unformatted? (Current plan: stay unformatted and flagged ambiguous.)
 - Should named colors be converted to hex or imported as unsupported literals? (Current plan: unsupported literals, flagged.)
-- Should `@import` be followed? (Current plan: no. Only the CSS you provide is parsed. Stylesheets referenced by `@import` are not fetched, so their tokens won't be imported. The preview shows a warning that names the skipped `@import` and tells the user to paste the referenced file's contents to include them.)
+- Should `@import` be followed? (Current plan: no for arbitrary stylesheets. Tailwind v4's `@import "tailwindcss"` is the exception: when the user opts in, the theme is fetched from the CDN and merged. Other `@import`s still warn and are skipped.)
+
+## Tailwind v4 backfill
+
+Status: In progress — issues 14 (picker/toggle), 15 (fetch/merge), 16 (normalize v4 values), and 17 (preview integration) implemented.
+Decisions locked 2026-11-23
+
+### Context
+
+Tailwind v4's default theme is expressed entirely as CSS custom properties inside `@theme` blocks. A stylesheet that does `@import "tailwindcss"` references that theme but does not include it. Backfilling fetches the theme from the Tailwind CDN and merges it with the uploaded CSS so the import is complete.
+
+### Decisions
+
+| Area | Decision |
+| --- | --- |
+| Versions | Support Tailwind v4 only. v3's theme is JavaScript, not CSS, so it cannot be backfilled. |
+| Precedence | Uploaded CSS wins on identity collisions. The fetched theme fills gaps. |
+| Opt-in | A toggle in the import dialog. Copy explains the value: fetches Tailwind's default theme from the CDN, merges it with your CSS, your CSS takes precedence, and it requires a network request. |
+| Version picker | Always visible. Defaults to the detected version or "latest v4". |
+| Value support | Add first-class support for `oklch` colors, `calc()` line-heights, shadows, fonts, and ratios. |
+
+### Architecture
+
+1. **Parser** records unresolved `@import` refs instead of warning.
+2. **Detector** identifies Tailwind v4 signals (`@import "tailwindcss"`, `@theme`, `@layer theme`).
+3. **Fetcher** pulls `https://cdn.jsdelivr.net/npm/tailwindcss@<version>/theme.css` and caches per version.
+4. **Merger** combines uploaded and fetched variables; uploaded wins.
+5. **Normalizer** classifies v4 value types.
+6. **UI** shows the version picker, opt-in toggle, and source-tagged preview.
+
+### Issues
+
+#### 12. Extend token value formats for Tailwind v4 values
+
+**Scope**
+
+- Add `oklch` to `ColorFormat`, `COLOR_FORMATS`, `COLOR_FORMAT_OPTIONS`, and `toCssColorFunction`.
+- Add composite formats: `number` (unitless line-heights, font weights, ratios), `shadow`, `font`, `ratio`, and `easing`.
+- Extend `TokenValueFormat` to include the composite formats.
+- Update `getTokenFormatOptions`, `isValidTokenValue`, and `formatTokenValue` to handle composite formats.
+- Add `shadow`, `font`, and `ratio` to `TokenType` if the type picker needs them; otherwise map them to `size` with a subtype.
+
+**Acceptance**
+
+- `oklch` colors render swatches and validate.
+- Composite values display and validate without being flagged unsupported.
+- Existing formats are unaffected.
+
+#### 13. Parser records unresolved `@import` and detects Tailwind v4
+
+**Scope**
+
+- Add `imports: CssImportRef[]` to `CssParseResult`.
+- Record `@import` refs instead of warning.
+- Detect `@import "tailwindcss"` and `@import "tailwindcss/..."` as Tailwind v4.
+- Detect `@theme` and `@layer theme` as v4 signals.
+- Keep warning for v3 `@tailwind` directives and arbitrary `@import`s.
+
+**Acceptance**
+
+- Parsing a file with `@import "tailwindcss"` returns an import ref and no warning.
+- Arbitrary `@import`s still warn.
+
+#### 14. Tailwind v4 version picker and opt-in toggle
+
+Status: Done
+
+**Scope**
+
+- In the import dialog, detect Tailwind v4 signals in the uploaded CSS.
+- Always show a version picker, defaulting to the detected version or "latest v4".
+- Fetch the list of v4 versions from jsDelivr, or hardcode a few plus "latest".
+- Add an opt-in toggle with copy explaining the value.
+
+**Acceptance**
+
+- The picker is always visible.
+- The toggle explains what opting in does and that it requires a network request.
+- Detection works for `@import "tailwindcss"` and `@theme`.
+
+#### 15. Fetch and merge the Tailwind v4 theme
+
+Status: Done
+
+**Scope**
+
+- Fetch `https://cdn.jsdelivr.net/npm/tailwindcss@<version>/theme.css`.
+- Parse it with the existing parser.
+- Merge with uploaded CSS: uploaded wins on identity collisions.
+- Handle network errors with a clear toast and retry.
+- Cache fetched CSS per version in memory.
+
+**Acceptance**
+
+- Backfilled tokens appear in the preview marked as "from Tailwind".
+- Uploaded overrides win.
+- Network errors are clear and recoverable.
+
+#### 16. Normalize Tailwind v4 value types
+
+Status: Done
+
+**Scope**
+
+- Classify `oklch()` colors as `tokenFormat: "oklch"`, `tokenType: "color"`.
+- Classify `calc()` line-heights as `tokenFormat: "number"` (or evaluate simple calc).
+- Classify shadows as `tokenFormat: "shadow"`.
+- Classify fonts as `tokenFormat: "font"`.
+- Classify ratios as `tokenFormat: "ratio"`.
+- Classify font weights as `tokenFormat: "number"`.
+- Classify easing as `tokenFormat: "easing"` or a literal.
+
+**Acceptance**
+
+- v4's theme normalizes without "unsupported" for these categories.
+- Values round-trip through the properties panel.
+
+**Notes**
+
+- Fixed a parser bug found while testing: css-tree parsed `@theme` blocks as rule lists, so a nested `@keyframes` (which Tailwind v4 puts inside `@theme`) caused every declaration to be dropped. `@theme` is now registered as a declaration-block at-rule via `fork`, taking the real theme from 6 to 419 parsed tokens.
+- Added the `ch` unit so `--max-width-prose: 65ch` normalizes.
+- `--text-*` font sizes map to `size`/`font-size`.
+- Remaining unsupported values are Tailwind internals outside the required categories: `--animate-*` shorthands and `--default-*` `--theme(...)` references.
+
+#### 17. Preview integration for backfilled tokens
+
+Status: Done
+
+**Scope**
+
+- Show backfilled tokens in the preview table, marked "Tailwind" vs "Upload".
+- Let the user include or exclude backfilled tokens.
+- Show counts per source.
+
+**Acceptance**
+
+- The preview distinguishes sources.
+- The user can toggle backfilled tokens.
+
+#### 18. Tests for Tailwind v4 backfill
+
+**Scope**
+
+- Fixtures for v4 theme parsing, `oklch`, `calc`, shadows, fonts, and ratios.
+- Merge precedence tests.
+- Network error handling tests.
+
+**Acceptance**
+
+- Tests pass locally.
+
+### Dependencies
+
+| Issue | Depends on |
+| --- | --- |
+| 12 Formats | — |
+| 13 Parser imports | — |
+| 14 Picker/toggle | 13 |
+| 15 Fetch/merge | 13, 14 |
+| 16 Normalizer | 12 |
+| 17 Preview | 14, 15, 16 |
+| 18 Tests | 12, 13, 15, 16 |
+
+### Suggested priorities
+
+- **High:** 12, 13, 15, 16
+- **Medium:** 14, 17
+- **Low:** 18
