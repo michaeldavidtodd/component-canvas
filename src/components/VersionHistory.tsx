@@ -37,8 +37,8 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 	const showLoading = loading && versions.length === 0;
 
 	return (
-		<Card className="flex min-h-0 flex-1 flex-col">
-			<header className="flex items-start justify-between gap-2 p-4">
+		<div className="overflow-hidden w-[25rem] flex flex-col bg-card rounded-2xl mb-4">
+			<header className="flex items-start justify-between gap-2 py-6 px-7 border-b border-secondary">
 				<div className="min-w-0">
 					<h2 className="flex items-center gap-2 text-sm font-semibold leading-tight text-foreground font-display">
 						<History className="size-4 shrink-0" />
@@ -50,14 +50,14 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 					</p>
 				</div>
 				{onClose && (
-					<Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onClose} aria-label="Close version history">
+					<Button variant="secondary" size="icon" className="size-7 shrink-0" onClick={onClose} aria-label="Close version history">
 						<X className="size-4" />
 					</Button>
 				)}
 			</header>
 
-			<ScrollArea className="min-h-0 flex-1 border-t bg-secondary">
-				<div className="flex flex-col gap-4 p-4">
+			<ScrollArea className="min-h-0 flex-1 px-2 bg-card rounded-2xl">
+				<div className="flex flex-col gap-4 px-2">
 					{showLoading ? (
 						<div className="space-y-3 py-2" aria-busy="true" aria-live="polite">
 							<span className="sr-only">Loading versions…</span>
@@ -84,7 +84,7 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 							const canDelete = !!onDeleteVersion && !version.is_auto_save && index !== 0;
 
 							return (
-								<div key={version.id} className={cn("overflow-hidden flex flex-col gap-3 border rounded-xl bg-card hover:shadow-md", isPreviewing && "sticky top-4 bottom-4 bg-primary border-primary text-primary-foreground shadow-lg scale-105 transition-transform")}>
+								<div key={version.id} className={cn("group overflow-hidden flex flex-col gap-3 border rounded-xl bg-card transition-all hover:scale-105 hover:shadow-md", isPreviewing ? "sticky top-2 bottom-2 z-10 bg-primary border-primary outline outline-8 outline-card text-primary-foreground shadow-lg scale-105 transition-transform" : "z-0 hover:bg-accent")}>
 									<button type="button" onClick={() => onPreviewVersion(isPreviewing ? null : version)} aria-pressed={isPreviewing} className={cn("flex w-full items-start gap-3 pt-3 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}>
 										{/*<span className={cn("mt-1.5 size-2 shrink-0 rounded-full", isPreviewing ? "bg-primary" : "bg-muted-foreground/40")} aria-hidden="true" />*/}
 
@@ -107,7 +107,7 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 									</button>
 
 									<div className="flex items-center gap-2 pb-3 px-3">
-										<Button size="sm" variant="secondary" className="flex-1 rounded-lg" onClick={() => onRestoreVersion(version.id)} disabled={isRestoring}>
+										<Button size="sm" variant="ghost" className="flex-1 rounded-lg bg-foreground/15 hover:bg-foreground/25" onClick={() => onRestoreVersion(version.id)} disabled={isRestoring}>
 											<RotateCcw className="!size-3" />
 											{isRestoring ? "Restoring..." : "Restore"}
 										</Button>
@@ -124,6 +124,6 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 					)}
 				</div>
 			</ScrollArea>
-		</Card>
+		</div>
 	);
 };

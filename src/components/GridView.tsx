@@ -1,14 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import { Columns3, GripVertical, Redo2, Undo2, X } from "lucide-react";
+import { Columns3, GripVertical, X } from "lucide-react";
 
 import type { ComponentNodeData, ComponentType } from "@/types/component";
-import { COMPONENT_TYPES, getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
+import { getComponentBorderClass, getComponentTypeMeta, getNodeTypeLabel } from "@/lib/componentTypes";
 import { formatTokenValue, getDefaultTokenFormat, isAliasToken, isColorToken, toCssColor } from "@/lib/tokenValues";
 import { buildTokenLayout, TOKEN_COLUMN_WIDTH, TOKEN_HEADER_HEIGHT, TOKEN_NODE_HEIGHT, TOKEN_NODE_WIDTH, TOKEN_ROW_HEIGHT, type TokenLayoutItem, type TokenLayoutLink } from "@/lib/tokenLayout";
 import { canAssignParent } from "@/lib/parentRules";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface GridViewProps {
@@ -21,13 +20,10 @@ interface GridViewProps {
 	isLocked?: boolean;
 	onUndo: () => void;
 	onRedo: () => void;
-	canUndo: boolean;
-	canRedo: boolean;
 	onReorder: (siblingIds: string[], draggedId: string, targetId: string) => void;
 	onDeleteEdge: (edgeId: string) => void;
 	onReconnectEdge: (edgeId: string, endpoint: LinkEndpoint, nodeId: string) => void;
 	visibleTypes: ReadonlySet<ComponentType>;
-	onToggleType: (type: ComponentType) => void;
 }
 
 type LinkEndpoint = "source" | "target";
@@ -186,7 +182,7 @@ TokenChip.displayName = "TokenChip";
  * compact orthogonal lines over a rigid grid, so the map stays readable as the
  * number of tokens and usages grows.
  */
-export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchToCanvas, isLocked = false, onUndo, onRedo, canUndo, canRedo, onReorder, onDeleteEdge, onReconnectEdge, visibleTypes, onToggleType }: GridViewProps) => {
+export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchToCanvas, isLocked = false, onUndo, onRedo, onReorder, onDeleteEdge, onReconnectEdge, visibleTypes }: GridViewProps) => {
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 	const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
@@ -426,17 +422,6 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 		return layout.items.find((item) => item.id === reconnectDrag.hoverItemId) ?? null;
 	}, [reconnectDrag?.hoverItemId, layout.items]);
 
-	// Counts reflect the project, not the current filter, so a hidden type still
-	// shows how many nodes the toggle would reveal.
-	const typeCounts = useMemo(() => {
-		const counts = new Map<ComponentType, number>();
-		for (const node of nodes) {
-			if (node.hidden) continue;
-			const type = node.data.componentType;
-			counts.set(type, (counts.get(type) ?? 0) + 1);
-		}
-		return counts;
-	}, [nodes]);
 
 	// Locking the canvas clears the selection; drop any lingering drag state too.
 	useEffect(() => {
@@ -646,68 +631,17 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 				onNodeSelect(null);
 			}}
 		>
-			<header className="flex flex-col divide-y border-b">
-				<div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-					<div className="flex flex-wrap items-center gap-1.5">
-						{COMPONENT_TYPES.map(({ type, label, icon: Icon, bgClass, borderClass }) => {
-							const isVisible = visibleTypes.has(type);
-							const count = typeCounts.get(type) ?? 0;
-
-							return (
-								<button key={type} type="button" aria-pressed={isVisible} title={`${isVisible ? "Hide" : "Show"} ${label}`} onClick={() => onToggleType(type)} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"}`}>
-									<Icon className="size-3.5" />
-									<span>{label}</span>
-									<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white dark:text-black" : "bg-background text-muted-foreground"}`}>{count}</span>
-								</button>
-							);
-						})}
+			{/* Column labels mirror the grid columns; the shared header lives outside. */}
+			<div className="flex shrink-0 border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
+				{layout.columns.map((column) => (
+					<div key={column.depth} className="flex items-center justify-between gap-2 border-r px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
+						<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
+						<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
 					</div>
-					<div className="flex flex-wrap items-center gap-2">
-						{isLocked && <Badge variant="outline">Editing locked</Badge>}
-						<div className="flex items-center gap-1">
-							<Button
-								variant="outline"
-								size="icon"
-								className="size-8"
-								onClick={(event) => {
-									event.stopPropagation();
-									onUndo();
-								}}
-								disabled={isLocked || !canUndo}
-								aria-label="Undo"
-							>
-								<Undo2 className="size-3.5" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								className="size-8"
-								onClick={(event) => {
-									event.stopPropagation();
-									onRedo();
-								}}
-								disabled={isLocked || !canRedo}
-								aria-label="Redo"
-							>
-								<Redo2 className="size-3.5" />
-							</Button>
-						</div>
-						<Button variant="outline" size="sm" onClick={onSwitchToCanvas}>
-							Open canvas
-						</Button>
-					</div>
-				</div>
-				<div className="flex border-b border-border bg-canvas/95 backdrop-blur" style={{ height: TOKEN_HEADER_HEIGHT }}>
-					{layout.columns.map((column) => (
-						<div key={column.depth} className="flex items-center justify-between gap-2 border-r px-6 last:border-r-0" style={{ width: TOKEN_COLUMN_WIDTH }}>
-							<span className="truncate text-xs font-medium text-foreground">{column.label}</span>
-							<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{column.count}</span>
-						</div>
-					))}
-				</div>
-			</header>
+				))}
+			</div>
 
-			<div ref={scrollRef} className="flex-1 overflow-auto pt-0.5 pb-24">
+			<div ref={scrollRef} className="flex-1 overflow-auto px-3 pt-0.5 pb-24">
 				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
 					<div
 						ref={gridRef}

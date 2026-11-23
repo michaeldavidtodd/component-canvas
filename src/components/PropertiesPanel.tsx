@@ -108,12 +108,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 			const span = parentItem.rowEnd - parentItem.rowStart;
 			const rowStart = parentItem.rowStart;
 
-			if (
-				!best ||
-				distance < best.distance ||
-				(distance === best.distance && span < best.span) ||
-				(distance === best.distance && span === best.span && rowStart < best.rowStart)
-			) {
+			if (!best || distance < best.distance || (distance === best.distance && span < best.span) || (distance === best.distance && span === best.span && rowStart < best.rowStart)) {
 				best = { parent, distance, span, rowStart };
 			}
 		}
@@ -141,9 +136,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 			stack.push(...(childrenOf.get(id) ?? []));
 		}
 
-		const candidates = nodes.filter(
-			(node) => node.id !== selectedNode.id && !descendants.has(node.id) && isParentTypeAllowed(selectedNode, node),
-		);
+		const candidates = nodes.filter((node) => node.id !== selectedNode.id && !descendants.has(node.id) && isParentTypeAllowed(selectedNode, node));
 		const nodeLookup = new Map(nodes.map((node) => [node.id, node]));
 		const ancestorsById = new Map<string, TitleLayer[]>();
 		const prefixById = new Map<string, string>();
@@ -174,7 +167,8 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 
 	if (!selectedNode) {
 		return (
-			<Card className="flex-1 p-6 overflow-y-auto rounded-xl">
+			<>
+				{/*<Card className="flex-1 p-6 overflow-y-auto rounded-xl">
 				<div className="flex items-center justify-center h-full">
 					<div className="text-center">
 						<FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -182,7 +176,8 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 						<p className="text-xs text-muted-foreground text-balance">Select a component to view and edit its properties</p>
 					</div>
 				</div>
-			</Card>
+			</Card>*/}
+			</>
 		);
 	}
 
@@ -357,13 +352,9 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 									<Button id="parent-chip" variant="outline" role="combobox" className="w-full justify-between font-normal">
 										{displayParent ? (
 											<span className="flex min-w-0 items-center gap-2">
-												<span className={`flex size-5 shrink-0 items-center justify-center rounded ${displayParentMeta?.bgClass ?? "bg-muted"} text-background`}>
-													{DisplayParentIcon && <DisplayParentIcon className="size-3" />}
-												</span>
+												<span className={`flex size-5 shrink-0 items-center justify-center rounded ${displayParentMeta?.bgClass ?? "bg-muted"} text-background`}>{DisplayParentIcon && <DisplayParentIcon className="size-3" />}</span>
 												<span className="min-w-0 truncate">{displayParent.data.label}</span>
-												{currentParents.length > 1 && (
-													<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">+{currentParents.length - 1}</span>
-												)}
+												{currentParents.length > 1 && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">+{currentParents.length - 1}</span>}
 											</span>
 										) : (
 											<span className="text-muted-foreground">No parent assigned</span>
