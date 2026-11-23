@@ -20,7 +20,7 @@ interface CssImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	nodes: Node<ComponentNodeData>[];
-	onImport: (source: string, tokens: NormalizedCssToken[]) => void;
+	onImport: (source: string, tokens: NormalizedCssToken[]) => void | Promise<void>;
 }
 
 type ImportPhase = "idle" | "reading" | "parsing" | "normalizing" | "done";
@@ -54,6 +54,7 @@ export const CssImportDialog = ({ open, onOpenChange, nodes, onImport }: CssImpo
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [typeOverrides, setTypeOverrides] = useState<Map<string, TokenType | "auto">>(new Map());
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [isImporting, setIsImporting] = useState(false);
 
 	// Tokens already imported from this source, so the preview can flag updates.
 	const existingIdentities = useMemo(() => {
@@ -154,7 +155,7 @@ export const CssImportDialog = ({ open, onOpenChange, nodes, onImport }: CssImpo
 		});
 	}, []);
 
-	const handleImport = useCallback(() => {
+	const handleImport = useCallback(async () => {
 		const chosen = tokens
 			.filter((token) => selected.has(getTokenIdentityKey(source, token.scope, token.name)))
 			.map((token) => {
@@ -168,9 +169,17 @@ export const CssImportDialog = ({ open, onOpenChange, nodes, onImport }: CssImpo
 			return;
 		}
 
-		onImport(source, chosen);
-		onOpenChange(false);
-		resetPreview();
+		setError(null);
+		setIsImporting(true);
+		try {
+			await onImport(source, chosen);
+			onOpenChange(false);
+			resetPreview();
+		} catch (caught) {
+			setError(caught instanceof Error ? caught.message : "Could not import those tokens.");
+		} finally {
+			setIsImporting(false);
+		}
 	}, [onImport, onOpenChange, resetPreview, selected, source, tokens, typeOverrides]);
 
 	const filteredTokens = useMemo(
@@ -182,7 +191,14 @@ export const CssImportDialog = ({ open, onOpenChange, nodes, onImport }: CssImpo
 	const isBusy = phase === "reading" || phase === "parsing" || phase === "normalizing";
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={(next) => {
+				// Keep the dialog open while the import runs so the pending state stays
+				// visible and the canvas can't be edited mid-import.
+				if (!isImporting) onOpenChange(next);
+			}}
+		>
 			<DialogContent className="max-w-4xl">
 				<DialogHeader>
 					<DialogTitle>Import CSS tokens</DialogTitle>
@@ -361,14 +377,22 @@ export const CssImportDialog = ({ open, onOpenChange, nodes, onImport }: CssImpo
 							</div>
 						</div>
 					)}
+
+					{isImporting && (
+						<div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+							<Loader2 className="size-4 animate-spin" aria-hidden="true" />
+							Importing tokens…
+						</div>
+					)}
 				</div>
 
 				<DialogFooter>
-					<Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+					<Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isImporting}>
 						Cancel
 					</Button>
-					<Button type="button" onClick={handleImport} disabled={selected.size === 0 || isBusy}>
-						Import {selected.size > 0 ? `${selected.size} tokens` : "tokens"}
+					<Button type="button" onClick={handleImport} disabled={selected.size === 0 || isBusy || isImporting}>
+						{isImporting && <Loader2 className="size-4 animate-spin" />}
+						{isImporting ? "Importing…" : `Import ${selected.size > 0 ? `${selected.size} tokens` : "tokens"}`}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

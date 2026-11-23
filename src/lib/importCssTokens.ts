@@ -3,7 +3,7 @@ import type { Edge, Node } from "@xyflow/react";
 
 import type { ComponentNodeData } from "@/types/component";
 import type { NormalizedCssToken } from "@/lib/cssTokenNormalize";
-import { getEdgeColor } from "@/lib/componentTypes";
+import { getEdgeColor } from "@/lib/connectionTypes";
 import { getScopePrefix, getTokenIdentityKey } from "@/lib/tokenScope";
 
 const TOKEN_NODE_WIDTH = 200;

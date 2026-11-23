@@ -141,61 +141,13 @@ export const getComponentTextClass = (type: string): string => getComponentTypeM
 /** Resolved CSS color for places that need a value rather than a utility class, such as the minimap. */
 export const getComponentColor = (type: string): string => `hsl(var(${getComponentTypeMeta(type).colorVar}))`;
 
-export type ConnectionKind = "componentVariant" | "tokenUsage" | "group" | "default";
-
-export interface ConnectionTypeMeta {
-  id: string;
-  /** Human-readable name shown in the legend. */
-  label: string;
-  /** Tailwind background utility for the legend swatch. */
-  swatchClass: string;
-  /** Stroke color applied to the edge. */
-  stroke: string;
-}
-
-/**
- * Connection kinds shown in the legend. `getConnectionType` decides which one
- * applies to a given pair of node types, so the legend can't drift from the
- * colors actually drawn on the canvas.
- */
-export const CONNECTION_TYPES: Record<ConnectionKind, ConnectionTypeMeta> = {
-  componentVariant: {
-    id: "component-variant",
-    label: "Component to Variant",
-    swatchClass: "bg-component-main",
-    stroke: "hsl(var(--component-main))",
-  },
-  tokenUsage: {
-    id: "token-usage",
-    label: "Token Usage",
-    swatchClass: "bg-component-token",
-    stroke: "hsl(var(--component-token))",
-  },
-  group: {
-    id: "group",
-    label: "Group Membership",
-    swatchClass: "bg-component-group",
-    stroke: "hsl(var(--component-group))",
-  },
-  default: {
-    id: "default",
-    label: "Component Relationships",
-    swatchClass: "bg-muted-foreground",
-    stroke: "hsl(var(--muted-foreground))",
-  },
-};
-
-export const CONNECTION_TYPE_LIST: readonly ConnectionTypeMeta[] = Object.values(CONNECTION_TYPES);
-
-/** Resolve which connection style an edge between two node types should use. */
-export const getConnectionType = (sourceType: string, targetType: string): ConnectionTypeMeta => {
-  const isVariantPair = (sourceType === "main-component" && targetType === "variant") || (sourceType === "variant" && targetType === "main-component");
-
-  if (sourceType === "group" || targetType === "group") return CONNECTION_TYPES.group;
-  if (isVariantPair) return CONNECTION_TYPES.componentVariant;
-  if (sourceType === "token" || targetType === "token") return CONNECTION_TYPES.tokenUsage;
-  return CONNECTION_TYPES.default;
-};
-
-/** Stroke color for an edge between two node types. */
-export const getEdgeColor = (sourceType: string, targetType: string): string => getConnectionType(sourceType, targetType).stroke;
+// Connection/edge metadata lives in a worker-safe module so the CSS import
+// worker can resolve edge colors without pulling in React or icon imports.
+export {
+  CONNECTION_TYPES,
+  CONNECTION_TYPE_LIST,
+  getConnectionType,
+  getEdgeColor,
+  type ConnectionKind,
+  type ConnectionTypeMeta,
+} from "@/lib/connectionTypes";

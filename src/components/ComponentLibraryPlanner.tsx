@@ -23,7 +23,7 @@ import { COMPONENT_TYPES, CONNECTION_TYPES, getComponentColor, getEdgeColor } fr
 import { FIT_VIEW_OPTIONS, MIN_ZOOM, getBelowTreePlacement } from "@/lib/canvas";
 import { normalizeEdges } from "@/lib/edges";
 import { normalizeNodes } from "@/lib/nodes";
-import { buildCssImport } from "@/lib/importCssTokens";
+import { disposeCssImportWorker, runCssImport } from "@/lib/cssImportWorker";
 import type { NormalizedCssToken } from "@/lib/cssTokenNormalize";
 import { canAssignParent, getChildTypeOptions, getPrimaryParentId } from "@/lib/parentRules";
 import type { ProjectVersion, SharedProjectData } from "@/types/project";
@@ -358,6 +358,10 @@ export const ComponentLibraryPlanner = ({
 	useEffect(() => {
 		viewModeRef.current = viewMode;
 	}, [viewMode]);
+
+	// Tear down the CSS import worker when the planner unmounts so its thread
+	// doesn't outlive the view that uses it.
+	useEffect(() => () => disposeCssImportWorker(), []);
 
 	// Callbacks and effects read the draft through a ref so they don't need to
 	// re-subscribe every time a property changes.
@@ -764,8 +768,10 @@ export const ComponentLibraryPlanner = ({
 	);
 
 	const handleCssImport = useCallback(
-		(source: string, tokens: NormalizedCssToken[]) => {
-			const result = buildCssImport({ source, tokens, nodes: nodes as Node<ComponentNodeData>[], edges });
+		async (source: string, tokens: NormalizedCssToken[]) => {
+			// The worker parses, normalizes, and builds the graph off the main thread,
+			// so the dialog stays responsive and can show its own pending state.
+			const result = await runCssImport({ source, tokens, nodes: nodes as Node<ComponentNodeData>[], edges });
 			setNodes(result.nodes);
 			setEdges(result.edges);
 
