@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, addEdge, Connection, Edge, Background, Controls, MiniMap, Node, SelectionMode, useReactFlow, useStore } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -37,6 +37,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { LogOut } from "lucide-react";
 import { formatVersionName } from "@/lib/versions";
 import { cn } from "@/lib/utils";
+
+// The version preview shows the whole saved version, so it ignores the live
+// type filters used by the editable grid.
+const ALL_COMPONENT_TYPES: ReadonlySet<ComponentType> = new Set(COMPONENT_TYPES.map((meta) => meta.type));
 
 const nodeWidth = 172;
 const nodeHeight = 36;
@@ -877,6 +881,10 @@ export const ComponentLibraryPlanner = ({
 	// Position of the previewed version in the history list (newest first).
 	const previewVersionIndex = previewVersion ? versions.findIndex((version) => version.id === previewVersion.id) : -1;
 
+	// Normalize once per previewed version so the read-only grid doesn't rebuild
+	// its layout on every parent render.
+	const previewEdges = useMemo(() => (previewVersion ? normalizeEdges(previewVersion.edges) : []), [previewVersion]);
+
 	// Step through history: -1 moves to a newer version, +1 to an older one.
 	const stepPreviewVersion = useCallback(
 		(direction: -1 | 1) => {
@@ -1022,7 +1030,24 @@ export const ComponentLibraryPlanner = ({
 						{showVersionHistory ? (
 							previewVersion ? (
 								<>
-									<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
+									{viewMode === "tokens" ? (
+										<GridView
+											nodes={previewVersion.nodes as Node<ComponentNodeData>[]}
+											edges={previewEdges}
+											selectedNodeId={null}
+											onNodeSelect={() => {}}
+											onSwitchToCanvas={() => setViewMode("canvas")}
+											isLocked
+											onUndo={() => {}}
+											onRedo={() => {}}
+											onReorder={() => {}}
+											onDeleteEdge={() => {}}
+											onReconnectEdge={() => {}}
+											visibleTypes={ALL_COMPONENT_TYPES}
+										/>
+									) : (
+										<VersionPreview version={previewVersion} nodeTypes={nodeTypes} />
+									)}
 									{!isSharedView && !isMobile && !isUIHidden && (
 										<VersionPreviewDock
 											versionName={formatVersionName(previewVersion)}
