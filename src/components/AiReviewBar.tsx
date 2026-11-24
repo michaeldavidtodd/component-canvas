@@ -13,12 +13,12 @@
  * can be applied. Stopping the response cancels the upstream generation.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronDown, Loader2, ShieldCheck, Sparkles, Square } from "lucide-react";
+import { ArrowUp, ChevronDown, Loader2, ShieldCheck, Sparkles, Square, X } from "lucide-react";
 
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
 import {
 	MessageScroller,
@@ -358,21 +358,29 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="top-[6vh] flex h-[min(88vh,44rem)] max-w-2xl translate-y-0 flex-col gap-0 overflow-hidden p-0">
-				<DialogHeader className="shrink-0 gap-1 border-b border-border px-4 py-3 pr-12">
-					<DialogTitle className="flex items-center gap-2 text-sm font-medium">
-						<Sparkles className="size-4 text-primary" />
-						Design-system advisor
-					</DialogTitle>
-					<DialogDescription className="text-xs">
-						Ask whether your token structure holds up. It reads the current map and the token health findings.
-					</DialogDescription>
+			<DialogContent variant="fullscreen" showCloseButton={false}>
+				<DialogHeader className="flex shrink-0 flex-row items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
+					<Sparkles className="size-4 shrink-0 text-primary" />
+					<div className="min-w-0 flex-1">
+						<DialogTitle className="text-sm font-medium">Design-system advisor</DialogTitle>
+						<DialogDescription className="truncate text-xs">
+							Ask whether your token structure holds up. It reads the current map and the token health findings.
+						</DialogDescription>
+					</div>
+					<kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 font-display text-xs text-muted-foreground sm:block">
+						⌘K
+					</kbd>
+					<DialogClose asChild>
+						<Button variant="ghost" size="icon-sm" aria-label="Close advisor">
+							<X className="size-4" />
+						</Button>
+					</DialogClose>
 				</DialogHeader>
 
 				<div className="min-h-0 flex-1">
 					{turns.length === 0 && !streaming ? (
-						<div className="scroll-fade-b h-full overflow-y-auto overscroll-contain px-4 py-4">
-							<div className="flex min-h-full flex-col">
+						<div className="scroll-fade-b h-full overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
+							<div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
 								<div className="my-auto flex flex-col gap-4">
 									<Intake onAsk={(question) => void send(question)} />
 									{showDisclosure && <Disclosure onDismiss={dismissDisclosure} />}
@@ -383,7 +391,7 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 						<MessageScrollerProvider autoScroll>
 							<MessageScroller>
 								<MessageScrollerViewport aria-label="Advisor conversation">
-									<MessageScrollerContent className="gap-5 px-4 py-4">
+									<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-5 px-4 py-6 sm:px-6">
 										{turns.map((turn, index) => {
 											const isUser = turn.role === "user";
 											const isLatestAnswer = !isUser && index === turns.length - 1;
@@ -453,13 +461,14 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 				</div>
 
 				<form
-					className="shrink-0 border-t border-border p-3"
+					className="shrink-0 border-t border-border px-4 py-3 sm:px-6"
 					onSubmit={(event) => {
 						event.preventDefault();
 						void send(input);
 					}}
 				>
-					<div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2 transition-[border-color,box-shadow] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/15">
+					<div className="mx-auto w-full max-w-3xl">
+						<div className="flex items-end gap-2 rounded-xl border border-border bg-card p-2 transition-[border-color,box-shadow] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/15">
 						<Textarea
 							ref={composerRef}
 							autoFocus
@@ -487,7 +496,8 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 							</Button>
 						)}
 					</div>
-					<p className="mt-1.5 px-1 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
+						<p className="mt-1.5 px-1 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
+					</div>
 				</form>
 			</DialogContent>
 		</Dialog>
