@@ -12,271 +12,274 @@
  * working) instead of baking in the light-mode values.
  */
 @theme inline {
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+	--color-border: hsl(var(--border));
+	--color-input: hsl(var(--input));
+	--color-input-border: hsl(var(--input-border));
+	--color-ring: hsl(var(--ring));
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-primary-hover: hsl(var(--primary-hover));
-  --color-primary-muted: hsl(var(--primary-muted));
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+	--color-primary-hover: hsl(var(--primary-hover));
+	--color-primary-muted: hsl(var(--primary-muted));
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-secondary-hover: hsl(var(--secondary-hover));
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	--color-secondary-hover: hsl(var(--secondary-hover));
 
-  --color-brand-pink: hsl(var(--brand-pink));
-  --color-brand-blue: hsl(var(--brand-blue));
-  --color-brand-green: hsl(var(--brand-green));
-  --color-brand-orange: hsl(var(--brand-orange));
-  --color-brand-yellow: hsl(var(--brand-yellow));
+	--color-brand-pink: hsl(var(--brand-pink));
+	--color-brand-blue: hsl(var(--brand-blue));
+	--color-brand-green: hsl(var(--brand-green));
+	--color-brand-orange: hsl(var(--brand-orange));
+	--color-brand-yellow: hsl(var(--brand-yellow));
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
 
-  --color-component-main: hsl(var(--component-main));
-  --color-component-variant: hsl(var(--component-variant));
-  --color-component-sub: hsl(var(--component-sub));
-  --color-component-token: hsl(var(--component-token));
-  --color-component-instance: hsl(var(--component-instance));
-  --color-component-group: hsl(var(--component-group));
+	--color-component-main: hsl(var(--component-main));
+	--color-component-variant: hsl(var(--component-variant));
+	--color-component-sub: hsl(var(--component-sub));
+	--color-component-token: hsl(var(--component-token));
+	--color-component-instance: hsl(var(--component-instance));
+	--color-component-group: hsl(var(--component-group));
 
-  --color-success: hsl(var(--success));
-  --color-warning: hsl(var(--warning));
-  --color-info: hsl(var(--info));
-  --color-canvas: hsl(var(--canvas));
-  --color-workspace: hsl(var(--workspace));
+	--color-success: hsl(var(--success));
+	--color-warning: hsl(var(--warning));
+	--color-info: hsl(var(--info));
+	--color-canvas: hsl(var(--canvas));
+	--color-workspace: hsl(var(--workspace));
 
-  --color-sidebar: hsl(var(--sidebar-background));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
+	--color-sidebar: hsl(var(--sidebar-background));
+	--color-sidebar-foreground: hsl(var(--sidebar-foreground));
+	--color-sidebar-primary: hsl(var(--sidebar-primary));
+	--color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+	--color-sidebar-accent: hsl(var(--sidebar-accent));
+	--color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+	--color-sidebar-border: hsl(var(--sidebar-border));
+	--color-sidebar-ring: hsl(var(--sidebar-ring));
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+	--radius-lg: var(--radius);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 4px);
 
-  /* Subtle spring: a slight overshoot as the dock grows and settles. */
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+	/* Subtle spring: a slight overshoot as the dock grows and settles. */
+	--ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
-  /* Display face is overridable per surface via --app-font-display.
+	/* Display face is overridable per surface via --app-font-display.
      Marketing pages fall back to Boldonse; the app shell sets Unbounded. */
-  --font-display: var(--app-font-display, Boldonse), Inter, system-ui, sans-serif;
-  --font-sans: Inter, system-ui, sans-serif;
-  /* Mono face is overridable per surface via --app-font-mono. */
-  --font-mono: var(--app-font-mono, "JetBrains Mono"), monospace;
+	--font-display: var(--app-font-display, Boldonse), Inter, system-ui, sans-serif;
+	--font-sans: Inter, system-ui, sans-serif;
+	/* Mono face is overridable per surface via --app-font-mono. */
+	--font-mono: var(--app-font-mono, "JetBrains Mono"), monospace;
 
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
 
-  @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
-  }
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
+		to {
+			height: var(--radix-accordion-content-height);
+		}
+	}
 
-  @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
-  }
+	@keyframes accordion-up {
+		from {
+			height: var(--radix-accordion-content-height);
+		}
+		to {
+			height: 0;
+		}
+	}
 }
 
 @layer base {
-  :root {
-    /* Core colors - clean, vibrant base */
-    --background: 0 0% 99%;
-    --foreground: 220 15% 8%;
+	:root {
+		/* Core colors - clean, vibrant base */
+		--background: 0 0% 99%;
+		--foreground: 220 15% 8%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 8%;
+		--card: 0 0% 100%;
+		--card-foreground: 220 15% 8%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 8%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 220 15% 8%;
 
-    /* Vibrant primary palette - bold purple */
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --primary-hover: 0 0% 10%;
-    --primary-muted: 0 0% 90%;
+		/* Vibrant primary palette - bold purple */
+		--primary: 0 0% 9%;
+		--primary-foreground: 0 0% 98%;
+		--primary-hover: 0 0% 10%;
+		--primary-muted: 0 0% 90%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 2%;
-    --secondary-hover: 0 0% 90%;
-    --secondary-muted: 0 0% 96.1%;
+		--secondary: 0 0% 96%;
+		--secondary-foreground: 0 0% 2%;
+		--secondary-hover: 0 0% 90%;
+		--secondary-muted: 0 0% 96.1%;
 
-    --muted: 215 15% 96%;
-    --muted-foreground: 220 10% 40%;
+		--muted: 215 15% 96%;
+		--muted-foreground: 220 10% 40%;
 
-    --accent: 180 100% 70%;
-    --accent-foreground: 220 15% 8%;
+		--accent: 180 100% 70%;
+		--accent-foreground: 220 15% 8%;
 
-    /* Vibrant brand colors */
-    --brand-pink: 315 100% 72%;
-    --brand-blue: 210 100% 65%;
-    --brand-green: 150 100% 60%;
-    --brand-orange: 25 100% 65%;
-    --brand-yellow: 55 100% 70%;
+		/* Vibrant brand colors */
+		--brand-pink: 315 100% 72%;
+		--brand-blue: 210 100% 65%;
+		--brand-green: 150 100% 60%;
+		--brand-orange: 25 100% 65%;
+		--brand-yellow: 55 100% 70%;
 
-    /* Component type colors */
-    --component-main: 258 100% 68%;
-    --component-variant: 197 100% 58%;
-    --component-sub: 152 100% 45%;
-    --component-token: 45 100% 48%;
-    --component-instance: 21 100% 68%;
-    --component-group: 280 55% 55%;
+		/* Component type colors */
+		--component-main: 258 100% 68%;
+		--component-variant: 197 100% 58%;
+		--component-sub: 152 100% 45%;
+		--component-token: 45 100% 48%;
+		--component-instance: 21 100% 68%;
+		--component-group: 280 55% 55%;
 
-    /* Status colors */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 152 60% 53%;
-    --warning: 45 95% 58%;
-    /* Tailwind blue-600. Must be a bare HSL triple (not a var(--color-*) reference,
+		/* Status colors */
+		--destructive: 0 84% 60%;
+		--destructive-foreground: 0 0% 100%;
+		--success: 152 60% 53%;
+		--warning: 45 95% 58%;
+		/* Tailwind blue-600. Must be a bare HSL triple (not a var(--color-*) reference,
        which resolves to oklch and is invalid inside hsl()). */
-    --info: 221.3 97.5% 53.5%;
+		--info: 221.3 97.5% 53.5%;
 
-    /* Borders and inputs */
-    --border: 216 13% 88%;
-    --input: 0 0% 100%;
-    --ring: 258 100% 68%;
+		/* Borders and inputs */
+		--border: 216 13% 88%;
+		--input: 0 0% 100%;
+		--input-border: 216 13% 88%;
+		--ring: 258 100% 68%;
 
-    /* Canvas and workspace */
-    --canvas: 216 12% 97%;
-    --workspace: 0 0% 100%;
+		/* Canvas and workspace */
+		--canvas: 216 12% 97%;
+		--workspace: 0 0% 100%;
 
-    /* Shadows and elevations */
-    --shadow-sm: 0 1px 2px 0 hsl(216 13% 15% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(216 13% 15% / 0.1), 0 2px 4px -1px hsl(216 13% 15% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(216 13% 15% / 0.1), 0 4px 6px -2px hsl(216 13% 15% / 0.05);
+		/* Shadows and elevations */
+		--shadow-sm: 0 1px 2px 0 hsl(216 13% 15% / 0.05);
+		--shadow-md: 0 4px 6px -1px hsl(216 13% 15% / 0.1), 0 2px 4px -1px hsl(216 13% 15% / 0.06);
+		--shadow-lg: 0 10px 15px -3px hsl(216 13% 15% / 0.1), 0 4px 6px -2px hsl(216 13% 15% / 0.05);
 
-    --radius: 0.375rem;
+		--radius: 0.375rem;
 
-    --sidebar-background: 0 0% 98%;
+		--sidebar-background: 0 0% 98%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+		--sidebar-foreground: 240 5.3% 26.1%;
 
-    --sidebar-primary: 240 5.9% 10%;
+		--sidebar-primary: 240 5.9% 10%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+		--sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+		--sidebar-accent: 240 4.8% 95.9%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+		--sidebar-accent-foreground: 240 5.9% 10%;
 
-    --sidebar-border: 220 13% 91%;
+		--sidebar-border: 220 13% 91%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+		--sidebar-ring: 217.2 91.2% 59.8%;
+	}
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
 
-    --card: 222.2 54% 10%;
-    --card-foreground: 210 40% 98%;
+		--card: 222.2 54% 10%;
+		--card-foreground: 210 40% 98%;
 
-    /*--popover: 222.2 84% 4.9%;*/
-    --popover: var(--card);
-    --popover-foreground: 210 40% 98%;
+		/*--popover: 222.2 84% 4.9%;*/
+		--popover: var(--card);
+		--popover-foreground: 210 40% 98%;
 
-    /* Figma purple/violet primary palette for dark mode */
-    --primary: 258 100% 68%;
-    --primary-foreground: var(--foreground);
-    --primary-hover: 258 100% 72%;
-    --primary-muted: 258 30% 15%;
+		/* Figma purple/violet primary palette for dark mode */
+		--primary: 258 100% 68%;
+		--primary-foreground: var(--foreground);
+		--primary-hover: 258 100% 72%;
+		--primary-muted: 258 30% 15%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --secondary-hover: 217.2 32.6% 22%;
+		--secondary: 217.2 32.6% 17.5%;
+		--secondary-foreground: 210 40% 98%;
+		--secondary-hover: 217.2 32.6% 22%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+		--muted: 217.2 32.6% 17.5%;
+		--muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+		--accent: 217.2 32.6% 17.5%;
+		--accent-foreground: 210 40% 98%;
 
-    /* Component type colors for dark mode */
-    --component-main: 258 100% 68%;
-    --component-variant: 197 100% 68%;
-    --component-sub: 152 100% 68%;
-    --component-token: 45 100% 68%;
-    --component-instance: 21 100% 68%;
-    --component-group: 280 60% 70%;
+		/* Component type colors for dark mode */
+		--component-main: 258 100% 68%;
+		--component-variant: 197 100% 68%;
+		--component-sub: 152 100% 68%;
+		--component-token: 45 100% 68%;
+		--component-instance: 21 100% 68%;
+		--component-group: 280 60% 70%;
 
-    /* Status colors for dark mode */
-    --destructive: 0 84% 65%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 152 60% 45%;
-    --warning: 45 95% 50%;
-    --info: 212.1 100% 65.9%;
+		/* Status colors for dark mode */
+		--destructive: 0 84% 65%;
+		--destructive-foreground: 210 40% 98%;
+		--success: 152 60% 45%;
+		--warning: 45 95% 50%;
+		--info: 212.1 100% 65.9%;
 
-    --border: 217.2 32.6% 10.5%;
-    --input: 222.2 54% 10%;
-    --ring: 258 100% 68%;
+		--border: 217.2 32.6% 10.5%;
+		--input: 222.2 54% 10%;
+		--input-border: 217.2 32.6% 10.5%;
+		--ring: 258 100% 68%;
 
-    /* Canvas and workspace for dark mode */
-    --canvas: 222.2 84% 6%;
-    --workspace: 217.2 32.6% 17.5%;
+		/* Canvas and workspace for dark mode */
+		--canvas: 222.2 84% 6%;
+		--workspace: 217.2 32.6% 17.5%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+		--sidebar-background: 240 5.9% 10%;
+		--sidebar-foreground: 240 4.8% 95.9%;
+		--sidebar-primary: 224.3 76.3% 48%;
+		--sidebar-primary-foreground: 0 0% 100%;
+		--sidebar-accent: 240 3.7% 15.9%;
+		--sidebar-accent-foreground: 240 4.8% 95.9%;
+		--sidebar-border: 240 3.7% 15.9%;
+		--sidebar-ring: 217.2 91.2% 59.8%;
+	}
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+	* {
+		@apply border-border;
+	}
 
-  body {
-    @apply bg-background text-foreground;
-  }
+	body {
+		@apply bg-background text-foreground;
+	}
 }
 
 /* In-app display typeface. Applied on <body> so portaled surfaces (dialogs,
    popovers, tooltips) inherit it along with the rest of the app. */
 .app-shell {
-  --app-font-display: 'Unbounded';
-  --app-font-mono: 'DM Mono';
+	--app-font-display: "Unbounded";
+	--app-font-mono: "DM Mono";
 }
 
 /* React Flow custom styles */
 .react-flow {
-  font-family: inherit;
+	font-family: inherit;
 }
 
 .react-flow__node {
-  font-family: inherit;
+	font-family: inherit;
 }
 
 /* Figma-style cursors: the canvas shows the default arrow, while selectable
@@ -284,25 +287,25 @@
    win and show the grab cursor. The `.dragging` rule still wins while a node
    is actively being moved. */
 .react-flow__pane.selection {
-  cursor: default;
+	cursor: default;
 }
 
 .react-flow__node.draggable {
-  cursor: default;
+	cursor: default;
 }
 
 .react-flow__node.selectable {
-  cursor: pointer;
+	cursor: pointer;
 }
 
 .react-flow__handle {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
+	border: 1px solid hsl(var(--border));
+	background: hsl(var(--background));
 }
 
 .react-flow__handle:hover {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary));
+	border-color: hsl(var(--primary));
+	background: hsl(var(--primary));
 }
 
 .react-flow__controls {
@@ -323,29 +326,31 @@
 }
 
 .react-flow__minimap-mask {
-  fill: hsl(var(--primary) / 0.1);
+	fill: hsl(var(--primary) / 0.1);
 }
 
 .react-flow__minimap-node {
-  fill: hsl(var(--muted));
-  stroke: hsl(var(--border));
+	fill: hsl(var(--muted));
+	stroke: hsl(var(--border));
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: hsl(var(--primary));
+	stroke: hsl(var(--primary));
 }
 
 .react-flow__connectionline {
-  stroke: hsl(var(--primary));
+	stroke: hsl(var(--primary));
 }
 
 /* Remove outer-stroke from React Flow background pattern - Using a border with rounded corners on the container instead*/
 .react-flow__background rect {
-  stroke: none !important;
+	stroke: none !important;
 }
 
 /* Headings */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
 	@apply font-display leading-tight tracking-wide;
 }
 
@@ -362,29 +367,25 @@ button {
 /* Utilities used by the shadcn message-scroller. These are not part of
    Tailwind core, and the registry item does not ship them. */
 @utility scroll-fade-b {
-  mask-image: linear-gradient(
-    to bottom,
-    #000 calc(100% - var(--scroll-fade-size, 2rem)),
-    transparent
-  );
+	mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-fade-size, 2rem)), transparent);
 }
 
 @utility scrollbar-thin {
-  scrollbar-width: thin;
+	scrollbar-width: thin;
 }
 
 @utility scrollbar-gutter-stable {
-  scrollbar-gutter: stable;
+	scrollbar-gutter: stable;
 }
 
 @utility scrollbar-thumb-transparent {
-  &::-webkit-scrollbar-thumb {
-    background-color: transparent;
-  }
+	&::-webkit-scrollbar-thumb {
+		background-color: transparent;
+	}
 }
 
 @utility scrollbar-track-transparent {
-  &::-webkit-scrollbar-track {
-    background-color: transparent;
-  }
+	&::-webkit-scrollbar-track {
+		background-color: transparent;
+	}
 }
