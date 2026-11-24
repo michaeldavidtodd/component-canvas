@@ -57,6 +57,7 @@
 
   --color-success: hsl(var(--success));
   --color-warning: hsl(var(--warning));
+  --color-info: hsl(var(--info));
   --color-canvas: hsl(var(--canvas));
   --color-workspace: hsl(var(--workspace));
 
@@ -154,6 +155,9 @@
     --destructive-foreground: 0 0% 100%;
     --success: 152 60% 53%;
     --warning: 45 95% 58%;
+    /* Tailwind blue-600. Must be a bare HSL triple (not a var(--color-*) reference,
+       which resolves to oklch and is invalid inside hsl()). */
+    --info: 221.3 97.5% 53.5%;
 
     /* Borders and inputs */
     --border: 216 13% 88%;
@@ -228,6 +232,7 @@
     --destructive-foreground: 210 40% 98%;
     --success: 152 60% 45%;
     --warning: 45 95% 50%;
+    --info: 212.1 100% 65.9%;
 
     --border: 217.2 32.6% 10.5%;
     --input: 217.2 32.6% 17.5%;
@@ -312,9 +317,9 @@
 .react-flow__controls.is-locked .react-flow__controls-interactive {
 	@apply bg-primary text-primary-foreground hover:bg-primary/90;
 }
-
 .react-flow__minimap {
-	@apply bg-card border shadow-md;
+	@apply bg-card border shadow-md m-0;
+	position: unset;
 }
 
 .react-flow__minimap-mask {
@@ -347,6 +352,11 @@ h1, h2, h3 {
 /* Forms */
 label {
 	@apply text-muted-foreground;
+}
+
+/* Buttons */
+button {
+	cursor: pointer;
 }
 
 /* Utilities used by the shadcn message-scroller. These are not part of

@@ -1408,7 +1408,7 @@ export const ComponentLibraryPlanner = ({
 				<div className="relative flex flex-1 min-h-0">
 					{/* Aside */}
 					{!isSharedView && !isMobile && !isUIHidden &&
-						<aside className={cn("absolute z-10 top-0 right-4 h-full w-100 flex shrink-0 flex-col gap-4 my-4 pb-4 min-h-0", showVersionHistory ? '' : '')}>
+						<aside className={cn("absolute z-10 top-0 right-4 h-[calc(100%-2rem)] w-100 flex shrink-0 flex-col gap-4 my-4 pb-4 min-h-0", showVersionHistory ? '' : '')}>
 							{showVersionHistory ? (
 								<VersionHistory
 									projectName={currentProject?.name}
@@ -1533,7 +1533,7 @@ export const ComponentLibraryPlanner = ({
 										{!isUIHidden && (
 											<div id="floating-ui" className="z-10 absolute left-4 top-4 flex flex-col gap-4">
 												<ConnectionLegend />
-												<MiniMap className="minimap max-lg:hidden relative m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden" nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)} />
+												<MiniMap className="minimap max-lg:hidden m-0 border border-border rounded-xl [&>svg]:bg-card overflow-hidden" nodeColor={(node) => getComponentColor((node.data as ComponentNodeData).componentType)} />
 												<DockAwareControls dockVisible={!isSharedView && !isMobile} onLockChange={handleCanvasLockChange} />
 											</div>
 										)}

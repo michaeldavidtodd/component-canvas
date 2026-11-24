@@ -134,3 +134,28 @@ describe("auditTokenMap fixes", () => {
 		expect(finding?.fix).toBeUndefined();
 	});
 });
+
+describe("finding token names", () => {
+	const tokenNamesOf = (nodes: Node<ComponentNodeData>[], edges: Edge[], check: string) => auditTokenMap(nodes, edges).find((finding) => finding.check === check)?.tokenNames;
+
+	it("names the token its message mentions", () => {
+		const unused = token("color.unused", { tokenKind: "literal", tokenType: "color", tokenValue: "#3B82F6" });
+
+		expect(tokenNamesOf([unused], [], "unused-token")).toEqual(["color.unused"]);
+	});
+
+	it("names both tokens in an alias chain", () => {
+		const literal = token("color.brand", { tokenKind: "literal", tokenType: "color", tokenValue: "#3B82F6" });
+		const first = token("color.a", { tokenKind: "alias", tokenAlias: "color.brand" });
+		const second = token("color.b", { tokenKind: "alias", tokenAlias: "color.a" });
+
+		expect(tokenNamesOf([literal, first, second], [edge("color.brand", "color.a"), edge("color.a", "color.b")], "alias-chain")).toEqual(["color.b", "color.a"]);
+	});
+
+	it("names no token when the message only reports a value or a type", () => {
+		const first = token("spacing.a", { tokenKind: "literal", tokenType: "spacing", tokenValue: "16", tokenFormat: "px" });
+		const second = token("spacing.b", { tokenKind: "literal", tokenType: "spacing", tokenValue: "16", tokenFormat: "px" });
+
+		expect(tokenNamesOf([first, second], [], "duplicate-value")).toEqual([]);
+	});
+});

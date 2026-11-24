@@ -33,6 +33,11 @@ export interface AuditFinding {
 	severity: AuditSeverity;
 	/** Human-readable summary shown in the token health panel. */
 	message: string;
+	/**
+	 * Token names the message mentions, so wherever the message is shown they can be
+	 * set as inline code.
+	 */
+	tokenNames: string[];
 	/** Every node the finding applies to. */
 	nodeIds: string[];
 	/** Set when the finding can be resolved without a judgement call. */
@@ -110,6 +115,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 				check: "invalid-value",
 				severity: "error",
 				message: `${data.label}: ${issue.message}`,
+				tokenNames: [data.label],
 				nodeIds: [node.id],
 			});
 		}
@@ -122,6 +128,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 					check: "unresolved-alias",
 					severity: "warning",
 					message: `${data.label} is an alias with no token to resolve to.`,
+					tokenNames: [data.label],
 					nodeIds: [node.id],
 				});
 			} else if (isAliasToken(parent.data.tokenKind)) {
@@ -130,6 +137,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 					check: "alias-chain",
 					severity: "warning",
 					message: `${data.label} points to another alias (${parent.data.label}). Point aliases at a literal token.`,
+					tokenNames: [data.label, parent.data.label],
 					nodeIds: [node.id, parent.id],
 					fix: literal
 						? {
@@ -146,6 +154,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 				check: "unused-token",
 				severity: "warning",
 				message: `${data.label} isn't used by any component or token.`,
+				tokenNames: [data.label],
 				nodeIds: [node.id],
 				fix: { summary: `Remove ${data.label}`, operations: [{ op: "deleteNode", nodeId: node.id }] },
 			});
@@ -167,6 +176,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 			check: "duplicate-value",
 			severity: "info",
 			message: `${group.length} tokens share the value ${group[0].data.tokenValue}.`,
+			tokenNames: [],
 			nodeIds: group.map((node) => node.id),
 		});
 	}
@@ -187,6 +197,7 @@ export const auditTokenMap = (nodes: TokenNode[], edges: Edge[] = []): AuditFind
 			check: "mixed-formats",
 			severity: "info",
 			message: `${tokenType} tokens use more than one format (${[...formats].join(", ")}).`,
+			tokenNames: [],
 			nodeIds: tokens.filter((node) => node.data.tokenType === tokenType).map((node) => node.id),
 		});
 	}

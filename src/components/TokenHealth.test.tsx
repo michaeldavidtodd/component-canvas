@@ -14,9 +14,9 @@ describe("TokenHealth", () => {
 
 	it("groups findings by severity and counts them", () => {
 		const findings: AuditFinding[] = [
-			{ check: "invalid-value", severity: "error", message: "Brand color is invalid.", nodeIds: ["brand"] },
-			{ check: "unused-token", severity: "warning", message: "Unused spacing token.", nodeIds: ["space"] },
-			{ check: "duplicate-value", severity: "info", message: "2 tokens share a value.", nodeIds: ["a", "b"] },
+			{ check: "invalid-value", severity: "error", message: "Brand color is invalid.", tokenNames: [], nodeIds: ["brand"] },
+			{ check: "unused-token", severity: "warning", message: "Unused spacing token.", tokenNames: [], nodeIds: ["space"] },
+			{ check: "duplicate-value", severity: "info", message: "2 tokens share a value.", tokenNames: [], nodeIds: ["a", "b"] },
 		];
 
 		const html = renderToStaticMarkup(<TokenHealth findings={findings} onClose={noop} />);
@@ -29,7 +29,7 @@ describe("TokenHealth", () => {
 	});
 
 	it("uses the singular when a finding touches one node", () => {
-		const findings: AuditFinding[] = [{ check: "unused-token", severity: "warning", message: "Unused token.", nodeIds: ["solo"] }];
+		const findings: AuditFinding[] = [{ check: "unused-token", severity: "warning", message: "Unused token.", tokenNames: [], nodeIds: ["solo"] }];
 		const html = renderToStaticMarkup(<TokenHealth findings={findings} onClose={noop} />);
 		expect(html).toContain("1 node");
 	});
@@ -40,6 +40,7 @@ describe("TokenHealth", () => {
 				check: "unused-token",
 				severity: "warning",
 				message: "Unused token.",
+				tokenNames: [],
 				nodeIds: ["solo"],
 				fix: { summary: "Remove color.unused", operations: [{ op: "deleteNode", nodeId: "solo" }] },
 			},
@@ -55,6 +56,7 @@ describe("TokenHealth", () => {
 				check: "unused-token",
 				severity: "warning",
 				message: "Unused token.",
+				tokenNames: [],
 				nodeIds: ["solo"],
 				fix: { summary: "Remove color.unused", operations: [{ op: "deleteNode", nodeId: "solo" }] },
 			},
