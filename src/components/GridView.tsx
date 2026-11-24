@@ -177,10 +177,10 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, swatchCo
 				if (event.currentTarget.contains(event.relatedTarget as globalThis.Node)) return;
 				onHover(null);
 			}}
-			className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
+			className={`group absolute flex items-center gap-1.5 rounded-lg border bg-workspace px-2 text-left shadow-xs transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "border-primary ring-2 ring-primary" : selected ? `${getComponentBorderClass(data.componentType)} ring-2 ring-primary/20` : "border-border hover:border-muted-foreground/40"} ${dimmed ? "opacity-40" : "opacity-100"} ${isLocked ? "cursor-default" : "cursor-pointer"}`}
 			style={{ left: item.x, top: item.y, width: item.width, height: TOKEN_NODE_HEIGHT }}
 		>
-			<span className={`flex size-5 shrink-0 items-center justify-center rounded ${meta.bgClass} text-background`}>
+			<span className={`flex size-5 shrink-0 items-center justify-center rounded-md ${meta.bgClass} text-background`}>
 				<Icon className="size-3" />
 			</span>
 			<span className={`min-w-0 flex-1 truncate text-xs ${isAlias ? "font-mono" : ""}`}>
@@ -228,7 +228,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, swatchCo
 						event.stopPropagation();
 						moveByKeyboard(event.key === "ArrowUp" ? "up" : "down");
 					}}
-					className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
+					className="flex size-4 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground active:cursor-grabbing focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [-webkit-user-drag:element]"
 				>
 					<GripVertical className="size-3.5" />
 				</span>
@@ -244,7 +244,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, swatchCo
 							event.stopPropagation();
 							setMenuOpen((open) => !open);
 						}}
-						className={`flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-workspace text-muted-foreground shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${allowedChildren.length > 0 ? (menuOpen ? "opacity-100" : "opacity-0 hover:border-muted-foreground hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100") : "cursor-not-allowed opacity-0 group-hover:opacity-40"}`}
+						className={`flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-workspace text-muted-foreground shadow-xs transition-opacity focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${allowedChildren.length > 0 ? (menuOpen ? "opacity-100" : "opacity-0 hover:border-muted-foreground hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100") : "cursor-not-allowed opacity-0 group-hover:opacity-40"}`}
 					>
 						<Plus className="size-4" />
 					</button>
@@ -262,7 +262,7 @@ const TokenChip = memo(({ item, selected, dimmed, isLocked, isDragging, swatchCo
 										onAddChild(item.node, option.type);
 										setMenuOpen(false);
 									}}
-									className={`flex size-7 shrink-0 items-center justify-center rounded-full ${optionMeta.bgClass} text-background shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+									className={`flex size-7 shrink-0 items-center justify-center rounded-full ${optionMeta.bgClass} text-background shadow-md transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring`}
 								>
 									<OptionIcon className="size-4" />
 								</button>
@@ -879,7 +879,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 										return next === current ? widths : { ...widths, [column.depth]: next };
 									});
 								}}
-								className={`absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize touch-none select-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:outline-none ${resizingDepth === column.depth ? "bg-primary/60" : "bg-transparent"}`}
+								className={`absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize touch-none select-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:outline-hidden ${resizingDepth === column.depth ? "bg-primary/60" : "bg-transparent"}`}
 							/>
 						</div>
 					))}
@@ -992,15 +992,15 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 											}}
 											onMouseEnter={() => showLinkControls(linkKey)}
 											onMouseLeave={() => scheduleHideLinkControls(linkKey)}
-											className="pointer-events-auto absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-destructive text-destructive-foreground shadow-lg transition-colors hover:bg-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="pointer-events-auto absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-destructive text-destructive-foreground shadow-lg transition-colors hover:bg-destructive/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 											style={{ left: midX, top: midY }}
 										>
 											<X className="size-3.5" />
 										</button>
 
-										<button type="button" tabIndex={-1} aria-label="Reconnect source" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "source")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.startX, top: link.startY }} />
+										<button type="button" tabIndex={-1} aria-label="Reconnect source" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "source")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.startX, top: link.startY }} />
 
-										<button type="button" tabIndex={-1} aria-label="Reconnect target" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "target")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.endX, top: link.endY }} />
+										<button type="button" tabIndex={-1} aria-label="Reconnect target" title="Drag to reconnect" onPointerDown={(event) => startReconnect(event, link, "target")} onClick={(event) => event.stopPropagation()} onMouseEnter={() => showLinkControls(linkKey)} onMouseLeave={() => scheduleHideLinkControls(linkKey)} className="pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-full border-2 border-background bg-primary shadow transition-transform hover:scale-125 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing" style={{ left: link.endX, top: link.endY }} />
 									</div>
 								);
 							})}

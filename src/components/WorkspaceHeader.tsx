@@ -127,7 +127,7 @@ export const WorkspaceHeader = ({ viewMode, nodes, visibleTypes, onToggleType, o
 						const count = typeCounts.get(type) ?? 0;
 
 						return (
-							<button key={type} type="button" aria-pressed={isVisible} title={`${isVisible ? "Hide" : "Show"} ${label}`} onClick={() => onToggleType(type)} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"}`}>
+							<button key={type} type="button" aria-pressed={isVisible} title={`${isVisible ? "Hide" : "Show"} ${label}`} onClick={() => onToggleType(type)} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${isVisible ? `${bgClass} ${borderClass} text-white dark:text-black` : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"}`}>
 								<Icon className="size-3.5" />
 								<span>{label}</span>
 								<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isVisible ? "bg-black/15 text-white dark:text-black" : "bg-background text-muted-foreground"}`}>{count}</span>

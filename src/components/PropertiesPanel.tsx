@@ -379,7 +379,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 									<Button id="parent-chip" variant="outline" role="combobox" className="w-full justify-between font-normal">
 										{displayParent ? (
 											<span className="flex min-w-0 items-center gap-2">
-												<span className={`flex size-5 shrink-0 items-center justify-center rounded ${displayParentMeta?.bgClass ?? "bg-muted"} text-background`}>{DisplayParentIcon && <DisplayParentIcon className="size-3" />}</span>
+												<span className={`flex size-5 shrink-0 items-center justify-center rounded-md ${displayParentMeta?.bgClass ?? "bg-muted"} text-background`}>{DisplayParentIcon && <DisplayParentIcon className="size-3" />}</span>
 												<span className="min-w-0 truncate">{displayParent.data.label}</span>
 												{currentParents.length > 1 && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">+{currentParents.length - 1}</span>}
 											</span>
@@ -389,7 +389,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 										<ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
 									</Button>
 								</PopoverTrigger>
-								<PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+								<PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
 									<Command>
 										<CommandInput placeholder="Search chips..." />
 										<CommandList>
@@ -603,7 +603,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 											Value
 										</Label>
 										<div className="flex items-center gap-2">
-											{isColorToken(tokenType) && <span className="ml-2 size-6 shrink-0 rounded border border-border" style={{ backgroundColor: tokenColorPreview ?? "transparent" }} aria-hidden="true" />}
+											{isColorToken(tokenType) && <span className="ml-2 size-6 shrink-0 rounded-md border border-border" style={{ backgroundColor: tokenColorPreview ?? "transparent" }} aria-hidden="true" />}
 											<Input id="token-value" value={selectedNode.data.tokenValue || ""} onChange={(e) => handleTokenValueChange(e.target.value)} placeholder={tokenFormatPlaceholder} className="mt-0 border-x-0 border-b-0 rounded-xl" inputMode={tokenValueInputMode} aria-invalid={tokenValueIsInvalid} />
 										</div>
 										{tokenValueIsInvalid && <p className="text-xs text-destructive mt-1">Enter a valid {isColorToken(tokenType) ? tokenFormat?.toUpperCase() : tokenFormat} value</p>}

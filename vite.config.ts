@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 // Tauri sets this when developing against a physical device; unused on desktop.
@@ -13,7 +14,7 @@ const hasFixedDevPort = Boolean(process.env.TAURI_DEV_PORT);
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -36,7 +37,9 @@ export default defineConfig(() => ({
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
     // Match the webviews Tauri targets: WKWebView (Safari) on macOS, WebView2 (Chromium) on Windows.
-    target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
+    // Tailwind v4 emits modern CSS (cascade layers, @property, color-mix), so the
+    // macOS target is Safari 16.4 — the first version that supports all of it.
+    target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari16.4",
     minify: isDebug ? false : ("esbuild" as const),
     sourcemap: isDebug,
   },

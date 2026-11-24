@@ -85,7 +85,7 @@ export const VersionHistory = ({ projectName, versions, loading = false, preview
 
 							return (
 								<div key={version.id} className={cn("group overflow-hidden flex flex-col gap-3 border rounded-xl bg-card transition-all hover:scale-105 hover:shadow-md", isPreviewing ? "sticky top-2 bottom-2 z-10 bg-primary border-primary outline outline-8 outline-card text-primary-foreground shadow-lg scale-105 transition-transform" : "z-0 hover:bg-accent")}>
-									<button type="button" onClick={() => onPreviewVersion(isPreviewing ? null : version)} aria-pressed={isPreviewing} className={cn("flex w-full items-start gap-3 pt-3 px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}>
+									<button type="button" onClick={() => onPreviewVersion(isPreviewing ? null : version)} aria-pressed={isPreviewing} className={cn("flex w-full items-start gap-3 pt-3 px-3 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring")}>
 										{/*<span className={cn("mt-1.5 size-2 shrink-0 rounded-full", isPreviewing ? "bg-primary" : "bg-muted-foreground/40")} aria-hidden="true" />*/}
 
 										<span className="min-w-0 flex-1">

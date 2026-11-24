@@ -51,14 +51,14 @@ const DockRow = ({ icon, title, description, badge, badgeVariant = "outline", ti
 	const content = (
 		<div className="w-full flex flex-row items-center justify-between gap-8">
 			<div className="flex flex-row items-center gap-3">
-				<span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${tileClassName ?? "bg-muted text-foreground"}`}>{icon}</span>
+				<span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tileClassName ?? "bg-muted text-foreground"}`}>{icon}</span>
 				<span className="flex min-w-0 flex-col">
 					<span className="text-sm font-medium text-foreground">{title}</span>
 					{description ? <span className="truncate text-xs text-muted-foreground">{description}</span> : null}
 				</span>
 			</div>
 			{badge ? (
-				<Badge variant={badgeVariant} className="ml-auto flex-shrink-0 text-xs">
+				<Badge variant={badgeVariant} className="ml-auto shrink-0 text-xs">
 					{badge}
 				</Badge>
 			) : null}
@@ -70,7 +70,7 @@ const DockRow = ({ icon, title, description, badge, badgeVariant = "outline", ti
 	}
 
 	return (
-		<button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:opacity-60">
+		<button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-hidden disabled:opacity-60">
 			{content}
 		</button>
 	);
@@ -102,7 +102,7 @@ interface DockButtonProps {
  */
 const DockButton = ({ icon, label, description, selected, expanded, showTooltip = true, onClick, onMouseEnter, onFocus, ariaExpanded, ariaControls, ariaPressed, disabled }: DockButtonProps) => {
 	const button = (
-		<button type="button" aria-label={label} aria-expanded={ariaExpanded} aria-controls={ariaControls} aria-pressed={ariaPressed} onClick={onClick} onMouseEnter={onMouseEnter} onFocus={onFocus} disabled={disabled} className={cn("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40", selected ? "bg-primary text-primary-foreground hover:bg-primary/90" : expanded ? "border-border bg-secondary text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+		<button type="button" aria-label={label} aria-expanded={ariaExpanded} aria-controls={ariaControls} aria-pressed={ariaPressed} onClick={onClick} onMouseEnter={onMouseEnter} onFocus={onFocus} disabled={disabled} className={cn("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-transparent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40", selected ? "bg-primary text-primary-foreground hover:bg-primary/90" : expanded ? "border-border bg-secondary text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
 			{icon}
 		</button>
 	);
@@ -390,14 +390,14 @@ export const NodeDock = ({ onAddNode, onStartDraft, onImportCss, onSmartLayout, 
 						</div>
 					) : (
 						<div className="flex items-center gap-3 rounded-xl p-2">
-							<span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+							<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
 								<FolderOpen className="size-4" />
 							</span>
 							<span className="flex min-w-0 flex-col">
 								<span className="truncate text-sm font-medium text-foreground">{currentProject.name}</span>
 								<span className="text-xs text-muted-foreground">Project</span>
 							</span>
-							<Button variant="ghost" size="sm" onClick={handleEditName} className="ml-auto h-7 w-7 flex-shrink-0 p-0" aria-label="Rename project">
+							<Button variant="ghost" size="sm" onClick={handleEditName} className="ml-auto h-7 w-7 shrink-0 p-0" aria-label="Rename project">
 								<Edit2 className="h-3.5 w-3.5" />
 							</Button>
 						</div>
@@ -470,7 +470,7 @@ export const NodeDock = ({ onAddNode, onStartDraft, onImportCss, onSmartLayout, 
 			return (
 				<div className="space-y-0.5">
 					<div className="flex items-center gap-3 rounded-xl p-2">
-						<span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
 							<User className="size-4" />
 						</span>
 						<span className="flex min-w-0 flex-col">
@@ -564,7 +564,7 @@ export const NodeDock = ({ onAddNode, onStartDraft, onImportCss, onSmartLayout, 
 							/>
 						</div>
 
-						<div className="mx-1 h-6 w-px flex-shrink-0 bg-border" />
+						<div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
 						{/* Menu groups: expand a panel upward on hover or focus. */}
 						<div className="flex items-center gap-2">
@@ -611,7 +611,7 @@ export const VersionPreviewDock = ({ versionName, index, total, canGoNewer, canG
 						<span className="text-xs text-muted-foreground">{positionLabel}</span>
 					</div>
 					<DockButton icon={<ChevronRight className="size-4" />} label="Older version" description="Move toward the oldest (→)" onClick={onGoOlder} disabled={!canGoOlder} />
-					<div className="mx-1 h-6 w-px flex-shrink-0 bg-border" />
+					<div className="mx-1 h-6 w-px shrink-0 bg-border" />
 					<DockButton icon={<X className="size-4" />} label="Exit preview" description="Return to the live canvas" onClick={onExit} />
 				</div>
 			</div>

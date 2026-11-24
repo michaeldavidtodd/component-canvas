@@ -37,6 +37,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "minimumSystemVersion": "13.3"
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

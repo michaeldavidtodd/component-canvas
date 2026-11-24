@@ -69,7 +69,7 @@ export const TokenHealth = ({ findings, onSelectNode, onApplyFix, onClose }: Tok
 												<button
 													type="button"
 													onClick={() => onSelectNode?.(finding.nodeIds[0])}
-													className="block w-full text-left text-sm transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													className="block w-full text-left text-sm transition-colors hover:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 												>
 													<span className="block text-foreground">{finding.message}</span>
 													<span className="mt-0.5 block text-xs text-muted-foreground">{finding.nodeIds.length === 1 ? "1 node" : `${finding.nodeIds.length} nodes`}</span>

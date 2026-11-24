@@ -344,7 +344,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                   >
                     <div className="flex items-start gap-3">
                       <div
-                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
                           isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
                         }`}
                       >
@@ -414,7 +414,7 @@ export const ProjectBrowser = ({ open, onOpenChange }: ProjectBrowserProps) => {
                         </div>
                       </div>
 
-                      <div className="flex flex-shrink-0 items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"

@@ -154,7 +154,7 @@ const onboardingSteps = [
     content: (
       <div className="space-y-4">
         {/* <div className="flex items-center justify-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-linear-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
             <Zap className="w-8 h-8 text-white" />
           </div>
         </div> */}
@@ -184,7 +184,7 @@ const onboardingSteps = [
     content: (
       <div className="space-y-4">
         {/* <div className="flex items-center justify-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
             <History className="w-8 h-8 text-white" />
           </div>
         </div> */}
@@ -214,7 +214,7 @@ const onboardingSteps = [
     content: (
       <div className="space-y-4">
         {/* <div className="flex items-center justify-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-linear-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
             <SquareArrowOutUpRight className="w-8 h-8 text-white" />
           </div>
         </div> */}
@@ -244,7 +244,7 @@ const onboardingSteps = [
     content: (
       <div className="space-y-4">
         {/* <div className="flex items-center justify-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-linear-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
             <MessageCircleCode className="w-8 h-8 text-white" />
           </div>
         </div> */}

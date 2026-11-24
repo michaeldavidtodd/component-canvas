@@ -1455,7 +1455,7 @@ export const ComponentLibraryPlanner = ({
 								{/* Mobile Sign-out Button */}
 								{isMobile && !isSharedView && (
 									<div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
-										<Button size="sm" variant="outline" onClick={isAnonymous ? () => navigate("/auth") : handleSignOut} className="bg-background/80 backdrop-blur-sm border shadow-lg">
+										<Button size="sm" variant="outline" onClick={isAnonymous ? () => navigate("/auth") : handleSignOut} className="bg-background/80 backdrop-blur-xs border shadow-lg">
 											<LogOut className="size-4 mr-2" />
 											{isAnonymous ? "Sign In" : "Sign Out"}
 										</Button>
@@ -1525,10 +1525,10 @@ export const ComponentLibraryPlanner = ({
 												event.stopPropagation();
 												setIsUIHidden(false);
 											}}
-											className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-1.5 text-sm text-muted-foreground shadow-xs backdrop-blur-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 										>
 											<span>Press</span>
-											<kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">
+											<kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-display text-foreground">
 												⌘<span className="px-1 text-muted-foreground">+</span>\
 											</kbd>
 											<span>to show UI</span>
@@ -1575,7 +1575,7 @@ export const ComponentLibraryPlanner = ({
 						<button
 							type="button"
 							onClick={() => commitDraft(true)}
-							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
 							<span className="space-y-0.5">
@@ -1586,7 +1586,7 @@ export const ComponentLibraryPlanner = ({
 						<button
 							type="button"
 							onClick={() => commitDraft(false)}
-							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<Rows3 className="mt-0.5 size-4 shrink-0 text-primary" />
 							<span className="space-y-0.5">

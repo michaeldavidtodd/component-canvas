@@ -242,7 +242,7 @@ const InteractiveDemo = () => {
 			</ReactFlow>
 
 			{/* Demo Instructions */}
-			{/* <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border max-w-xs">
+			{/* <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-xs rounded-lg p-3 shadow-lg border border-border max-w-xs">
         <h4 className="font-bold text-sm text-foreground mb-2">Interactive Demo</h4>
         <p className="text-xs text-muted-foreground">
           • Drag nodes to reorganize<br/>

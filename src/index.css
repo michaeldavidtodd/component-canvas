@@ -1,8 +1,109 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
 
 /* Figma-inspired design system for component library planning tool */
+
+/* Dark mode is driven by a `.dark` class on <html> (next-themes). */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Map the design tokens below onto Tailwind's theme. `inline` keeps generated
+ * utilities pointing at the runtime CSS variables (so `.dark` overrides keep
+ * working) instead of baking in the light-mode values.
+ */
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-hover: hsl(var(--primary-hover));
+  --color-primary-muted: hsl(var(--primary-muted));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-hover: hsl(var(--secondary-hover));
+
+  --color-brand-pink: hsl(var(--brand-pink));
+  --color-brand-blue: hsl(var(--brand-blue));
+  --color-brand-green: hsl(var(--brand-green));
+  --color-brand-orange: hsl(var(--brand-orange));
+  --color-brand-yellow: hsl(var(--brand-yellow));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-component-main: hsl(var(--component-main));
+  --color-component-variant: hsl(var(--component-variant));
+  --color-component-sub: hsl(var(--component-sub));
+  --color-component-token: hsl(var(--component-token));
+  --color-component-instance: hsl(var(--component-instance));
+  --color-component-group: hsl(var(--component-group));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-canvas: hsl(var(--canvas));
+  --color-workspace: hsl(var(--workspace));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Subtle spring: a slight overshoot as the dock grows and settles. */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* Display face is overridable per surface via --app-font-display.
+     Marketing pages fall back to Boldonse; the app shell sets Unbounded. */
+  --font-display: var(--app-font-display, Boldonse), Inter, system-ui, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
+  /* Mono face is overridable per surface via --app-font-mono. */
+  --font-mono: var(--app-font-mono, "JetBrains Mono"), monospace;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
 
 @layer base {
   :root {
@@ -160,8 +261,8 @@
 /* In-app display typeface. Applied on <body> so portaled surfaces (dialogs,
    popovers, tooltips) inherit it along with the rest of the app. */
 .app-shell {
-  --font-display: 'Unbounded';
-  --font-mono: 'DM Mono';
+  --app-font-display: 'Unbounded';
+  --app-font-mono: 'DM Mono';
 }
 
 /* React Flow custom styles */
@@ -231,14 +332,6 @@
 
 .react-flow__connectionline {
   stroke: hsl(var(--primary));
-}
-
-/* Line clamp utility */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* Remove outer-stroke from React Flow background pattern - Using a border with rounded corners on the container instead*/
