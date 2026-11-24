@@ -887,10 +887,10 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 			</div>
 
 			<div ref={scrollRef} className="flex-1 overflow-auto px-3 pt-0.5 pb-24" onScroll={handleGridScroll}>
-				<div className="relative !min-w-full" style={{ width: layout.totalWidth }}>
+				<div className="relative min-w-full!" style={{ width: layout.totalWidth }}>
 					<div
 						ref={gridRef}
-						className={`relative ${reconnectDrag ? "touch-none cursor-grabbing [&_[data-token-chip]]:pointer-events-none" : ""}`}
+						className={`relative ${reconnectDrag ? "touch-none cursor-grabbing *:data-token-chip:pointer-events-none" : ""}`}
 						style={{ height: layout.gridHeight }}
 						role="group"
 						aria-label="Token map"
@@ -1016,7 +1016,7 @@ export const GridView = ({ nodes, edges, selectedNodeId, onNodeSelect, onSwitchT
 
 						{/* Explain why a hovered chip can't be used as the new parent. */}
 						{reconnectDrag?.hoverReason && (
-							<div className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md" style={{ left: reconnectDrag.pointerX + 12, top: reconnectDrag.pointerY + 12 }}>
+							<div className="pointer-events-none absolute z-50 max-w-60 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md" style={{ left: reconnectDrag.pointerX + 12, top: reconnectDrag.pointerY + 12 }}>
 								{reconnectDrag.hoverReason}
 							</div>
 						)}

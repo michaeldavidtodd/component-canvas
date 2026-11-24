@@ -1496,7 +1496,7 @@ export const ComponentLibraryPlanner = ({
 										fitViewOptions={FIT_VIEW_OPTIONS}
 										className="relative bg-canvas overflow-hidden"
 									>
-										<Background className="[&>*]:!stroke-border" gap={16} />
+										<Background className="*:stroke-border!" gap={16} />
 										<ConnectionRuleTooltip hover={connectionHover} />
 										{!isUIHidden && (
 											<div id="floating-ui" className="z-10 absolute left-4 top-4 flex flex-col gap-4">

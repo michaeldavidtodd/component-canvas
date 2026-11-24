@@ -50,7 +50,7 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & 
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> &
   VariantProps<typeof drawerContentVariants>
 >(({ className, variant, children, ...props }, ref) => (
   <DrawerPortal>
@@ -60,7 +60,7 @@ const DrawerContent = React.forwardRef<
       className={cn(drawerContentVariants({ variant }), className)}
       {...props}
     >
-      <div className={cn("mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted", variant === "dialog" && "md:hidden")} />
+      <div className={cn("mx-auto mt-4 h-2 w-25 rounded-full bg-muted", variant === "dialog" && "md:hidden")} />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>

@@ -149,7 +149,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 			<NodeResizer minWidth={160} minHeight={80} isVisible={selected && !isLocked} keepAspectRatio={false} />
 			{/* Top handle with add button */}
 			<div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("top")} onMouseLeave={handleMouseLeave}>
-				<Handle type="target" position={Position.Top} isConnectable={isConnectable} className={`!w-3 !h-3 !bg-border${isConnectable ? " hover:!bg-primary" : ""}`} />
+				<Handle type="target" position={Position.Top} isConnectable={isConnectable} className={`w-3! h-3! !bg-border${isConnectable ? " hover:bg-primary!" : ""}`} />
 				{!isLocked && hoveredSide === "top" && (
 					<div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("top")} onMouseLeave={handleMouseLeave}>
 						<button
@@ -187,7 +187,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 										data-component-type={layer.componentType}
 										data-current={isLast}
 									>
-										<span className="title-layer-label break-words">{layer.label}</span>
+										<span className="title-layer-label wrap-break-word">{layer.label}</span>
 										{!isLast && (
 											<span className="title-layer-separator text-muted-foreground/60" aria-hidden="true">
 												/
@@ -217,7 +217,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 				)}
 			</div>
 
-			{data.description && <p className="text-xs text-muted-foreground break-words">{data.description}</p>}
+			{data.description && <p className="text-xs text-muted-foreground wrap-break-word">{data.description}</p>}
 
 			{data.componentType === "token" && data.tokenType && (
 				<div className="mt-2 pt-1 border-t-2 border-muted-foreground/10 text-xs text-muted-foreground">
@@ -238,7 +238,7 @@ export const ComponentNode = memo(({ data, selected, id, selectable, isConnectab
 
 			{/* Bottom handle with add button */}
 			<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("bottom")} onMouseLeave={handleMouseLeave}>
-				<Handle type="source" position={Position.Bottom} isConnectable={isConnectable} className={`!w-3 !h-3 !bg-border${isConnectable ? " hover:!bg-primary" : ""}`} />
+				<Handle type="source" position={Position.Bottom} isConnectable={isConnectable} className={`w-3! h-3! !bg-border${isConnectable ? " hover:bg-primary!" : ""}`} />
 				{!isLocked && hoveredSide === "bottom" && (
 					<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-8 w-8 h-8 flex items-center justify-center" onMouseEnter={() => handleMouseEnter("bottom")} onMouseLeave={handleMouseLeave}>
 						<button

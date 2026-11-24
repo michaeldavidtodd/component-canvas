@@ -305,7 +305,7 @@
 }
 
 .react-flow__controls button {
-	@apply size-8 bg-card border-0 hover:bg-primary rounded-full outline outline-1 outline-border hover:text-primary-foreground;
+	@apply size-8 bg-card border-0 hover:bg-primary rounded-full outline-1 outline-border hover:text-primary-foreground;
 }
 
 /* Lock button gets a filled background while the canvas is locked. */

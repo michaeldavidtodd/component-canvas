@@ -452,7 +452,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 					<Label htmlFor="component-description" className="text-sm font-medium">
 						Description
 					</Label>
-					<Textarea id="component-description" value={selectedNode.data.description} onChange={(e) => handleDescriptionChange(e.target.value)} placeholder="Describe this component's purpose and usage" className="mt-1 min-h-[80px] resize-none" />
+					<Textarea id="component-description" value={selectedNode.data.description} onChange={(e) => handleDescriptionChange(e.target.value)} placeholder="Describe this component's purpose and usage" className="mt-1 min-h-20 resize-none" />
 				</Field>
 
 				{/* URL field for main components */}
