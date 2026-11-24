@@ -1,8 +1,9 @@
-import { AlertTriangle, CircleAlert, Info, X } from "lucide-react";
+import { X } from "lucide-react";
 
-import type { AuditFinding, AuditFix, AuditSeverity } from "@/lib/tokenAudit";
+import type { AuditFinding, AuditFix } from "@/lib/tokenAudit";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SEVERITY_META, SEVERITY_ORDER } from "@/components/findingMeta";
 import { cn } from "@/lib/utils";
 
 interface TokenHealthProps {
@@ -13,14 +14,6 @@ interface TokenHealthProps {
 	onApplyFix?: (fix: AuditFix) => void;
 	onClose: () => void;
 }
-
-const SEVERITY_META: Record<AuditSeverity, { label: string; icon: typeof AlertTriangle; className: string }> = {
-	error: { label: "Errors", icon: CircleAlert, className: "text-destructive" },
-	warning: { label: "Warnings", icon: AlertTriangle, className: "text-warning" },
-	info: { label: "Notes", icon: Info, className: "text-muted-foreground" },
-};
-
-const SEVERITY_ORDER: AuditSeverity[] = ["error", "warning", "info"];
 
 /**
  * Read-only review of the deterministic token audit. Findings are grouped by

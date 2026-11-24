@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronDown, Loader2, ShieldCheck, Sparkles, Square, X } from "lucide-react";
 
 import { Markdown } from "@/components/Markdown";
+import { SEVERITY_META, SEVERITY_ORDER } from "@/components/findingMeta";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -47,6 +48,7 @@ import {
 	QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Trace,
 	TraceCollapsible,
@@ -72,6 +74,7 @@ import type { Operation } from "@/lib/documentOperations";
 import { PROJECTED_NODE_FIELDS } from "@/lib/documentProjection";
 import type { AuditFinding } from "@/lib/tokenAudit";
 import type { ChatTurn, ReviewFix } from "@/lib/aiReviewStream";
+import { cn } from "@/lib/utils";
 import { streamReview } from "@/lib/aiReviewClient";
 
 interface AiReviewChatProps {
@@ -92,6 +95,8 @@ interface AiReviewChatProps {
 	 * fix, in order, so the thread knows which ones landed.
 	 */
 	onApplyFixes: (fixes: ReviewFix[]) => boolean[];
+	/** Point the canvas and the map at the node a finding refers to. */
+	onSelectNode?: (nodeId: string) => void;
 }
 
 const DISCLOSURE_KEY = "ai-review-disclosure-dismissed";
@@ -285,10 +290,19 @@ const AppliedFix = ({ entry }: { entry: FixEntry }) => (
 );
 
 /**
- * Every applied edit in the thread, as a standing summary. Selecting a row scrolls
- * the thread back to the trace it came from.
+ * The advisor's standing summary: the edits applied so far, and the audit findings
+ * the advisor is working from. Selecting an edit scrolls the thread back to the
+ * trace it came from; selecting a finding points the canvas at its node.
  */
-const AppliedEdits = ({ entries }: { entries: FixEntry[] }) => {
+const AdvisorSidebar = ({
+	entries,
+	findings,
+	onSelectNode,
+}: {
+	entries: FixEntry[];
+	findings: AuditFinding[];
+	onSelectNode?: (nodeId: string) => void;
+}) => {
 	const { scrollToMessage } = useMessageScroller();
 
 	const goTo = (entry: FixEntry) => {
@@ -300,40 +314,116 @@ const AppliedEdits = ({ entries }: { entries: FixEntry[] }) => {
 		});
 	};
 
+	const groups = SEVERITY_ORDER.map((severity) => ({
+		severity,
+		findings: findings.filter((finding) => finding.severity === severity),
+	})).filter((group) => group.findings.length > 0);
+
 	return (
-		<aside className="hidden w-72 shrink-0 flex-col border-s border-border lg:flex" aria-label="Applied edits">
-			<div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-				<p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Applied edits</p>
-				<span className="text-xs text-muted-foreground tabular-nums">{entries.length}</span>
-			</div>
-			<div className="min-h-0 flex-1 overflow-y-auto p-2">
-				{entries.length === 0 ? (
-					<p className="px-2 py-3 text-xs text-muted-foreground">Edits you apply from the thread collect here.</p>
-				) : (
-					<ul className="flex flex-col gap-0.5">
-						{entries.map((entry) => (
-							<li key={entry.id}>
-								<button
-									type="button"
-									onClick={() => goTo(entry)}
-									className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-								>
-									<Check className="mt-0.5 size-3.5 shrink-0 text-success" />
-									<span className="min-w-0 flex-1">
-										<span className="line-clamp-2 text-sm text-foreground">{entry.fix.description}</span>
-										<span className="mt-0.5 block text-xs text-muted-foreground">{operationSummary(entry.fix)}</span>
-									</span>
-								</button>
-							</li>
-						))}
-					</ul>
-				)}
-			</div>
+		<aside className="hidden w-72 shrink-0 flex-col border-s border-border lg:flex" aria-label="Advisor sidebar">
+			<Tabs defaultValue="edits" className="flex min-h-0 flex-1 flex-col">
+				<div className="border-b border-border p-2">
+					<TabsList className="grid h-9 w-full grid-cols-2">
+						<TabsTrigger value="edits" className="gap-1.5 text-xs">
+							Edits
+							<span className="text-muted-foreground tabular-nums">{entries.length}</span>
+						</TabsTrigger>
+						<TabsTrigger value="findings" className="gap-1.5 text-xs">
+							Findings
+							<span className="text-muted-foreground tabular-nums">{findings.length}</span>
+						</TabsTrigger>
+					</TabsList>
+				</div>
+
+				<TabsContent value="edits" className="mt-0 min-h-0 flex-1 overflow-y-auto p-2">
+					{entries.length === 0 ? (
+						<p className="px-2 py-3 text-xs text-muted-foreground">Edits you apply from the thread collect here.</p>
+					) : (
+						<ul className="flex flex-col gap-0.5">
+							{entries.map((entry) => (
+								<li key={entry.id}>
+									<button
+										type="button"
+										onClick={() => goTo(entry)}
+										className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										<Check className="mt-0.5 size-3.5 shrink-0 text-success" />
+										<span className="min-w-0 flex-1">
+											<span className="line-clamp-2 text-sm text-foreground">{entry.fix.description}</span>
+											<span className="mt-0.5 block text-xs text-muted-foreground">
+												{operationSummary(entry.fix)}
+											</span>
+										</span>
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
+				</TabsContent>
+
+				<TabsContent value="findings" className="mt-0 min-h-0 flex-1 overflow-y-auto p-2">
+					{groups.length === 0 ? (
+						<p className="px-2 py-3 text-xs text-muted-foreground">No token health findings.</p>
+					) : (
+						<div className="flex flex-col gap-3">
+							{groups.map(({ severity, findings: groupFindings }) => {
+								const meta = SEVERITY_META[severity];
+								const Icon = meta.icon;
+								return (
+									<div key={severity} className="flex flex-col gap-1">
+										<p className="flex items-center gap-1.5 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+											<Icon className={cn("size-3.5", meta.className)} />
+											{meta.label} · {groupFindings.length}
+										</p>
+										<ul className="flex flex-col gap-0.5">
+											{groupFindings.map((finding, index) => {
+												const nodes = `${finding.nodeIds.length} ${finding.nodeIds.length === 1 ? "node" : "nodes"}`;
+												const label = (
+													<>
+														<span className="line-clamp-2 text-sm text-foreground">{finding.message}</span>
+														<span className="mt-0.5 block text-xs text-muted-foreground">{nodes}</span>
+													</>
+												);
+												return (
+													<li key={`${finding.check}-${index}`}>
+														{onSelectNode ? (
+															<button
+																type="button"
+																onClick={() => {
+																	const nodeId = finding.nodeIds[0];
+																	if (nodeId) onSelectNode(nodeId);
+																}}
+																className="flex w-full flex-col rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+															>
+																{label}
+															</button>
+														) : (
+															<div className="flex w-full flex-col px-2 py-1.5">{label}</div>
+														)}
+													</li>
+												);
+											})}
+										</ul>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</TabsContent>
+			</Tabs>
 		</aside>
 	);
 };
 
-export const AiReviewChat = ({ open, onOpenChange, document: projection, findings, validateFix, onApplyFixes }: AiReviewChatProps) => {
+export const AiReviewChat = ({
+	open,
+	onOpenChange,
+	document: projection,
+	findings,
+	validateFix,
+	onApplyFixes,
+	onSelectNode,
+}: AiReviewChatProps) => {
 	const [input, setInput] = useState("");
 	const [turns, setTurns] = useState<ThreadTurn[]>([]);
 	const [streaming, setStreaming] = useState(false);
@@ -660,7 +750,9 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 							</form>
 						</div>
 
-						{(turns.length > 0 || streaming) && <AppliedEdits entries={appliedEdits} />}
+						{(turns.length > 0 || streaming) && (
+						<AdvisorSidebar entries={appliedEdits} findings={findings} onSelectNode={onSelectNode} />
+					)}
 					</div>
 				</MessageScrollerProvider>
 			</DialogContent>

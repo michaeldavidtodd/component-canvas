@@ -1588,6 +1588,7 @@ export const ComponentLibraryPlanner = ({
 					findings={tokenFindings}
 					validateFix={handleValidateFix}
 					onApplyFixes={handleApplyAiFixes}
+					onSelectNode={handleSelectNodeId}
 				/>
 			)}
 
