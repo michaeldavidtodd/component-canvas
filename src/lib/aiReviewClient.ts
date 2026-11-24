@@ -8,7 +8,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { AI_REVIEW_URL } from "@/lib/supabaseEndpoint";
-import { describeFailure, readReviewStream, type ChatTurn, type ReviewOutcome } from "@/lib/aiReviewStream";
+import { describeFailure, describeNetworkFailure, readReviewStream, type ChatTurn, type ReviewOutcome } from "@/lib/aiReviewStream";
 
 /** Options for a review request. */
 export interface StreamReviewOptions {
@@ -37,20 +37,28 @@ export const streamReview = async (options: StreamReviewOptions): Promise<Review
 	const token = data.session?.access_token;
 	if (!token) throw new Error("Sign in to ask the design-system advisor.");
 
-	const response = await fetch(AI_REVIEW_URL, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${token}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			model: options.model,
-			messages: options.messages,
-			document: options.document,
-			findings: options.findings,
-		}),
-		signal: options.signal,
-	});
+	let response: Response;
+	try {
+		response = await fetch(AI_REVIEW_URL, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				model: options.model,
+				messages: options.messages,
+				document: options.document,
+				findings: options.findings,
+			}),
+			signal: options.signal,
+		});
+	} catch (cause) {
+		// An abort is the caller's own doing; let it through so the UI can keep the
+		// partial answer. Anything else is a transport failure with no status to read.
+		if (options.signal?.aborted) throw cause;
+		throw new Error(describeNetworkFailure(cause));
+	}
 
 	if (!response.ok) {
 		throw new Error(describeFailure(response.status, await response.text()));

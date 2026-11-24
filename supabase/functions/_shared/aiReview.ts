@@ -18,8 +18,8 @@ export const RECOMMENDED_MODELS = [
 	"deepseek/deepseek-v4.1-flash-1017",
 ] as const;
 
-/** Used when the caller does not name a model. Strongest tool use in the list. */
-export const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
+/** Used when the caller does not name a model. */
+export const DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash-1017";
 
 /**
  * The operation kinds the agent may propose. Kept in sync with the `Operation`

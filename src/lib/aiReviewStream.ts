@@ -253,21 +253,39 @@ export const readReviewStream = async (body: ReadableStream<Uint8Array>, onText?
 
 
 /**
+ * Turn a fetch-level failure into a message a person can act on.
+ *
+ * A blocked request (CORS, offline, DNS) rejects the fetch itself, so there is no
+ * status or body to report. WebKit renders that as the bare "Load failed", which
+ * says nothing about the cause.
+ */
+export const describeNetworkFailure = (cause: unknown): string => {
+	const detail = cause instanceof Error ? cause.message : String(cause);
+	return `Couldn't reach the advisor service. This is usually a network problem or a CORS rejection: check that the ai-review function is deployed and that this app's origin is allowed. (${detail})`;
+};
+
+/**
  * Turn a failed response into a message a person can act on.
  *
  * A zero-data-retention-only request fails when no provider for the chosen model
  * offers ZDR, so that case is named explicitly rather than surfaced as a generic
- * HTTP error.
+ * HTTP error. A missing server secret is likewise named, since it is a setup
+ * problem the person can fix rather than a transient failure.
  */
 export const describeFailure = (status: number, body: string): string => {
 	try {
-		const parsed = JSON.parse(body) as { detail?: unknown; model?: unknown };
+		const parsed = JSON.parse(body) as { detail?: unknown; error?: unknown; model?: unknown };
 		const detail = typeof parsed.detail === "string" ? parsed.detail : "";
+		const error = typeof parsed.error === "string" ? parsed.error : "";
 		const model = typeof parsed.model === "string" ? parsed.model : "";
 		if (/no allowed providers|no provider|zero data retention|zdr/i.test(detail)) {
 			return `No zero-data-retention provider is available for ${model || "that model"}. Choose another model, or allow non-ZDR routing.`;
 		}
+		if (error === "OPENROUTER_API_KEY is not configured") {
+			return "The advisor isn't configured: the ai-review function has no OPENROUTER_API_KEY secret. Set it with `supabase secrets set OPENROUTER_API_KEY=…` and try again.";
+		}
 		if (detail) return `The advisor request failed (${status}). ${detail}`;
+		if (error) return `The advisor request failed (${status}). ${error}`;
 	} catch {
 		// Not JSON; fall through to the raw body.
 	}

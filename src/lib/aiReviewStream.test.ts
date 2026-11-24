@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	assembleToolCalls,
 	describeFailure,
+	describeNetworkFailure,
 	parseProposal,
 	readDelta,
 	readReviewStream,
@@ -184,7 +185,30 @@ describe("describeFailure", () => {
 		expect(message).toContain("zero-data-retention");
 	});
 
+	it("names the missing secret so the setup problem is obvious", () => {
+		const message = describeFailure(500, JSON.stringify({ error: "OPENROUTER_API_KEY is not configured" }));
+		expect(message).toContain("OPENROUTER_API_KEY");
+		expect(message).toContain("supabase secrets set");
+	});
+
+	it("surfaces a plain error field", () => {
+		expect(describeFailure(400, JSON.stringify({ error: "messages must be a non-empty array" }))).toContain("messages must be a non-empty array");
+	});
+
 	it("falls back to the raw body for a plain error", () => {
 		expect(describeFailure(500, "boom")).toContain("boom");
+	});
+});
+
+describe("describeNetworkFailure", () => {
+	it("keeps the underlying message and points at the likely causes", () => {
+		const message = describeNetworkFailure(new TypeError("Load failed"));
+		expect(message).toContain("Load failed");
+		expect(message).toContain("CORS");
+		expect(message).toContain("deployed");
+	});
+
+	it("handles a non-Error cause", () => {
+		expect(describeNetworkFailure("offline")).toContain("offline");
 	});
 });

@@ -65,6 +65,18 @@ The **View** menu also has a **Lock editing** toggle that applies to both views.
 
 Database schema lives in `supabase/migrations`. The Supabase client and generated types are in `src/integrations/supabase`. To point the app at your own Supabase project, update the project URL and publishable (anon) key in `src/integrations/supabase/client.ts` and apply the migrations in `supabase/migrations`.
 
+### AI advisor
+
+The design-system advisor (`Cmd+K`) calls the `ai-review` edge function, which proxies OpenRouter. The OpenRouter key is a Supabase secret and never reaches the client:
+
+```sh
+# With the project linked (`supabase link`), or pass --project-ref <ref>
+supabase secrets set OPENROUTER_API_KEY=sk-or-...
+supabase functions deploy ai-review
+```
+
+The function verifies the caller's JWT, so the user must be signed in, and it requests zero data retention from OpenRouter. If the secret is missing the function returns a 500 that names `OPENROUTER_API_KEY`.
+
 ## Project structure
 
 ```
