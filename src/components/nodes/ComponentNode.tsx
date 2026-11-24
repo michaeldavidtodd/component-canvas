@@ -9,7 +9,7 @@ import { openExternal } from "@/lib/openExternal";
 
 export const ComponentNode = memo(({ data, selected, id, selectable, isConnectable }: NodeProps<Node<ComponentNodeData>>) => {
 	const [hoveredSide, setHoveredSide] = useState<"top" | "bottom" | null>(null);
-	const timeoutRef = useRef<NodeJS.Timeout>();
+	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 	const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
 
 	// The canvas lock (Controls) clears `selectable`, so treat that as read-only.

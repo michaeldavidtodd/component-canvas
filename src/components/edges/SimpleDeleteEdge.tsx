@@ -11,7 +11,7 @@ import { X } from 'lucide-react';
 export default function SimpleDeleteEdge(props: EdgeProps) {
   const { setEdges } = useReactFlow();
   const [isHovered, setIsHovered] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [edgePath, labelX, labelY] = getBezierPath(props);
 
   // The canvas lock (Controls) clears `selectable`, so treat that as read-only.

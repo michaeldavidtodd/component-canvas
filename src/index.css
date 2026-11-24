@@ -348,3 +348,33 @@ h1, h2, h3 {
 label {
 	@apply text-muted-foreground;
 }
+
+/* Utilities used by the shadcn message-scroller. These are not part of
+   Tailwind core, and the registry item does not ship them. */
+@utility scroll-fade-b {
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--scroll-fade-size, 2rem)),
+    transparent
+  );
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
+@utility scrollbar-thumb-transparent {
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+}
+
+@utility scrollbar-track-transparent {
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}

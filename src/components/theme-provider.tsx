@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from "next-themes"
-import { type ThemeProviderProps } from "next-themes/dist/types"
+import { type ThemeProviderProps } from "next-themes"
 import type { User } from "@supabase/supabase-js"
 import { useAuth } from "@/hooks/useAuth"
 import { ThemeContext, type Theme } from "@/hooks/useTheme"
