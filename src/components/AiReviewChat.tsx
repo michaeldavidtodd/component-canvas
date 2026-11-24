@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, ChevronDown, Loader2, ShieldCheck, Sparkles, Square, X } from "lucide-react";
 
+import { Markdown } from "@/components/Markdown";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -52,7 +53,7 @@ import type { AuditFinding } from "@/lib/tokenAudit";
 import type { ChatTurn, ReviewFix } from "@/lib/aiReviewStream";
 import { streamReview } from "@/lib/aiReviewClient";
 
-interface AiReviewBarProps {
+interface AiReviewChatProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	/** The whitelisted projection that leaves the machine. */
@@ -235,7 +236,7 @@ const FixList = ({
 	</div>
 );
 
-export const AiReviewBar = ({ open, onOpenChange, document: projection, findings, validateFix, onApplyFix }: AiReviewBarProps) => {
+export const AiReviewChat = ({ open, onOpenChange, document: projection, findings, validateFix, onApplyFix }: AiReviewChatProps) => {
 	const [input, setInput] = useState("");
 	const [turns, setTurns] = useState<ChatTurn[]>([]);
 	const [streaming, setStreaming] = useState(false);
@@ -400,7 +401,9 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 													<Message align={isUser ? "end" : "start"}>
 														<MessageContent>
 															<Bubble variant={isUser ? "default" : "ghost"} align={isUser ? "end" : "start"}>
-																<BubbleContent className="whitespace-pre-wrap">{turn.content}</BubbleContent>
+																<BubbleContent className={isUser ? "whitespace-pre-wrap" : undefined}>
+																	{isUser ? turn.content : <Markdown>{turn.content}</Markdown>}
+																</BubbleContent>
 															</Bubble>
 															{isLatestAnswer && fixes.length > 0 && (
 																<FixList fixes={fixes} validateFix={validateFix} onApply={handleApply} />
@@ -421,13 +424,9 @@ export const AiReviewBar = ({ open, onOpenChange, document: projection, findings
 												<Message align="start">
 													<MessageContent>
 														<Bubble variant="ghost">
-															<BubbleContent className="whitespace-pre-wrap">
-																{liveText}
+															<BubbleContent>
 																{liveText ? (
-																	<span
-																		aria-hidden="true"
-																		className="ms-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse rounded-full bg-foreground/50"
-																	/>
+																	<Markdown streaming>{liveText}</Markdown>
 																) : (
 																	<span className="flex items-center gap-2 text-muted-foreground">
 																		<Loader2 className="size-3.5 animate-spin" />

@@ -13,7 +13,7 @@ import { CssImportDialog } from "./CssImportDialog";
 
 import { PropertiesPanel } from "./PropertiesPanel";
 import { TokenHealth } from "./TokenHealth";
-import { AiReviewBar } from "./AiReviewBar";
+import { AiReviewChat } from "./AiReviewChat";
 import { ConnectionLegend } from "./ConnectionLegend";
 import { VersionHistory } from "@/components/VersionHistory";
 import { VersionPreview } from "@/components/VersionPreview";
@@ -1549,7 +1549,7 @@ export const ComponentLibraryPlanner = ({
 			{/* Advisor command bar. Cmd+K opens it; the projection is only built while it is open,
 			    so it is null on the renders where the bar is closed. */}
 			{!isSharedView && (
-				<AiReviewBar
+				<AiReviewChat
 					open={showAiReview}
 					onOpenChange={setShowAiReview}
 					document={aiDocument}
