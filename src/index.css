@@ -161,7 +161,7 @@
 
     /* Borders and inputs */
     --border: 216 13% 88%;
-    --input: 216 13% 88%;
+    --input: 0 0% 100%;
     --ring: 258 100% 68%;
 
     /* Canvas and workspace */
@@ -235,7 +235,7 @@
     --info: 212.1 100% 65.9%;
 
     --border: 217.2 32.6% 10.5%;
-    --input: 217.2 32.6% 17.5%;
+    --input: 222.2 54% 10%;
     --ring: 258 100% 68%;
 
     /* Canvas and workspace for dark mode */

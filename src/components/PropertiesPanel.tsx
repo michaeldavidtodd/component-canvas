@@ -14,7 +14,7 @@ import { COMPONENT_TYPES, getComponentTypeMeta } from "@/lib/componentTypes";
 import { getAncestorChain, type TitleLayer } from "@/lib/nodeHierarchy";
 import { buildTokenLayout } from "@/lib/tokenLayout";
 import { getParentRule, isParentTypeAllowed, toggleParent, variantNeedsMainComponent } from "@/lib/parentRules";
-import { Card } from "./ui/card";
+import { Card, CardContent } from "./ui/card";
 import { Field } from "./ui/field";
 import { getDefaultTokenFormat, getTokenFormatOptions, isAliasToken, isColorToken, isValidTokenValue, TOKEN_KIND_OPTIONS, toCssColor } from "@/lib/tokenValues";
 
@@ -333,13 +333,13 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 	const DisplayParentIcon = displayParentMeta?.icon;
 
 	return (
-		<Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4 overflow-y-auto">
+		<Card className="flex-1 p-2 xl:p-6 flex flex-col gap-4">
 			<div>
 				<h3 className="text-lg font-semibold text-foreground mb-1">{draft ? "New component" : "Properties"}</h3>
 				<p className="text-sm text-muted-foreground">{draft ? "Configure the component before adding it" : "Configure the selected component"}</p>
 			</div>
 
-			<div className="flex flex-col gap-4">
+			<CardContent className="flex flex-col gap-4 p-4 overflow-auto border rounded-2xl">
 				{!usesAliasAsName && (
 					<Field>
 						<Label htmlFor="component-name">Component Name</Label>
@@ -520,7 +520,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 										onValueChange={(value) => {
 											if (value) handleTokenKindChange(value as TokenKind);
 										}}
-										className="mt-1 w-full rounded-full bg-background p-1"
+										className="w-[calc(100%-0.5rem)]! mx-1 mt-1 p-1 bg-background border rounded-full "
 									>
 										{TOKEN_KIND_OPTIONS.map((option) => (
 											<ToggleGroupItem key={option.value} value={option.value} size="sm" className="flex-1">
@@ -551,7 +551,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 								<div className="w-0.5 h-6 mx-auto bg-secondary" />
 								<Field>
 									<Label className="text-sm font-medium text-muted-foreground">Source</Label>
-									<div className="mt-1 space-y-1 rounded-md border border-border bg-muted/40 p-2 text-xs">
+									<div className="mt-1 space-y-1 rounded-xl border border-border bg-muted/40 p-2 text-xs">
 										<div className="flex items-center justify-between gap-2">
 											<span className="text-muted-foreground">File</span>
 											<span className="truncate font-mono">{selectedNode.data.tokenSource}</span>
@@ -613,7 +613,7 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 						)}
 					</div>
 				)}
-			</div>
+			</CardContent>
 
 			<div className="mt-auto pt-4 space-y-2">
 				{draft ? (
@@ -628,9 +628,9 @@ export const PropertiesPanel = ({ selectedNode, selectedOccurrenceId, nodes, edg
 						</Button>
 					</>
 				) : (
-					<Button variant="destructive" size="sm" onClick={onDeleteNode} className="w-full gap-2">
+					<Button variant="destructive" radius="full" onClick={onDeleteNode} className="w-full gap-2">
 						<Trash2 className="w-4 h-4" />
-						Delete Component
+						Delete Node
 					</Button>
 				)}
 			</div>

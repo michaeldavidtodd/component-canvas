@@ -1408,7 +1408,7 @@ export const ComponentLibraryPlanner = ({
 				<div className="relative flex flex-1 min-h-0">
 					{/* Aside */}
 					{!isSharedView && !isMobile && !isUIHidden &&
-						<aside className={cn("absolute z-10 top-0 right-4 h-[calc(100%-2rem)] w-100 flex shrink-0 flex-col gap-4 my-4 pb-4 min-h-0", showVersionHistory ? '' : '')}>
+						<aside className={cn("absolute empty:hidden z-10 top-0 right-4 h-[calc(100%-2rem)] w-100 flex shrink-0 flex-col gap-4 my-4 pb-4 min-h-0", showVersionHistory ? '' : '')}>
 							{showVersionHistory ? (
 								<VersionHistory
 									projectName={currentProject?.name}
@@ -1424,22 +1424,20 @@ export const ComponentLibraryPlanner = ({
 							) : showTokenHealth ? (
 								<TokenHealth findings={tokenFindings} onSelectNode={handleSelectNodeId} onApplyFix={handleApplyFix} onClose={handleCloseTokenHealth} />
 							) : (
-								<div className="flex-1 flex flex-col gap-4 pb-4">
-									<PropertiesPanel
-										selectedNode={selectedNode}
-										selectedOccurrenceId={selectedOccurrenceId ?? undefined}
-										nodes={nodes as Node<ComponentNodeData>[]}
-										edges={edges}
-										visibleTypes={visibleTypes}
-										onUpdateNode={updateNodeData}
-										onDeleteNode={deleteSelectedNode}
-										onSetParents={setNodeParents}
-										draft={!!draft}
-										draftParentIds={draft?.parentIds ?? []}
-										onSaveDraft={handleSaveDraft}
-										onCancelDraft={handleCancelDraft}
-									/>
-								</div>
+								<PropertiesPanel
+									selectedNode={selectedNode}
+									selectedOccurrenceId={selectedOccurrenceId ?? undefined}
+									nodes={nodes as Node<ComponentNodeData>[]}
+									edges={edges}
+									visibleTypes={visibleTypes}
+									onUpdateNode={updateNodeData}
+									onDeleteNode={deleteSelectedNode}
+									onSetParents={setNodeParents}
+									draft={!!draft}
+									draftParentIds={draft?.parentIds ?? []}
+									onSaveDraft={handleSaveDraft}
+									onCancelDraft={handleCancelDraft}
+								/>
 							)}
 						</aside>
 					}
