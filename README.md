@@ -4,26 +4,26 @@ Visualize and organize your Figma component relationships. Plan hierarchies, man
 
 ## Getting started
 
-Requires [Node.js](https://nodejs.org/) (or [Bun](https://bun.sh/)) and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requires [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) — [install Node with nvm](https://github.com/nvm-sh/nvm#installing-and-updating), then `corepack enable` to get the pinned pnpm version.
 
 ```sh
 # Install dependencies
-npm install
+pnpm install
 
 # Start the dev server at http://localhost:8080
-npm run dev
+pnpm dev
 
 # Production build into dist/
-npm run build
+pnpm build
 
 # Preview the production build
-npm run preview
+pnpm preview
 
 # Lint
-npm run lint
+pnpm lint
 
-# Run unit tests (or `npm run test:watch` while developing)
-npm run test
+# Run unit tests (or `pnpm test:watch` while developing)
+pnpm test
 ```
 
 ## Desktop app (Tauri)
@@ -32,10 +32,10 @@ The app also runs as a native desktop app via [Tauri v2](https://v2.tauri.app/),
 
 ```sh
 # Run the desktop app with hot reload
-npm run desktop:dev
+pnpm desktop:dev
 
 # Build a macOS .app and .dmg
-npm run desktop:build
+pnpm desktop:build
 ```
 
 The dev server starts on port 8080 and automatically falls back to the next free port if it's taken.
@@ -94,4 +94,4 @@ supabase/              Local Supabase config and migrations
 
 ## Deployment
 
-`npm run build` produces a static bundle in `dist/` that can be served by any static host (Netlify, Vercel, Cloudflare Pages, S3 + CDN, etc.). The app uses client-side routing, so configure the host to rewrite unknown paths to `index.html`.
+`pnpm build` produces a static bundle in `dist/` that can be served by any static host (Netlify, Vercel, Cloudflare Pages, S3 + CDN, etc.). The app uses client-side routing, so configure the host to rewrite unknown paths to `index.html`.

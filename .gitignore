@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# pnpm is the package manager; ignore lockfiles from the others
+package-lock.json
+bun.lock
+
 # TypeScript incremental build info
 *.tsbuildinfo
 
@@ -29,6 +33,5 @@ src-tauri/gen
 *.njsproj
 *.sln
 *.sw?
-package-lock.json
 supabase/.temp/cli-latest
 supabase/.temp/linked-project.json

@@ -86,7 +86,7 @@ if (process.platform === "darwin") {
 
 console.log(`Starting desktop dev server on port ${port}.`);
 
-const child = spawn(`npx tauri dev --config "${configPath}"`, {
+const child = spawn(`pnpm exec tauri dev --config "${configPath}"`, {
 	stdio: "inherit",
 	env: { ...process.env, TAURI_DEV_PORT: String(port) },
 	shell: true,

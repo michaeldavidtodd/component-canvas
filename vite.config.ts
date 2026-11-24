@@ -7,7 +7,7 @@ import path from "path";
 // Tauri sets this when developing against a physical device; unused on desktop.
 const host = process.env.TAURI_DEV_HOST;
 const isDebug = process.env.TAURI_ENV_DEBUG === "true";
-// The desktop wrapper picks a free port and passes it here. Plain `npm run dev`
+// The desktop wrapper picks a free port and passes it here. Plain `pnpm dev`
 // leaves it unset so Vite can fall back to the next free port on its own.
 const devPort = Number(process.env.TAURI_DEV_PORT) || 8080;
 const hasFixedDevPort = Boolean(process.env.TAURI_DEV_PORT);

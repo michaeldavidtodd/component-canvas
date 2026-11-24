@@ -1,0 +1,5 @@
+# The only dependencies allowed to run install scripts: Vite's esbuild and the
+# SWC binaries behind @vitejs/plugin-react-swc. Everything else stays blocked.
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
