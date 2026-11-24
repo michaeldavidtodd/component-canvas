@@ -13,7 +13,7 @@
  * can be applied. Stopping the response cancels the upstream generation.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronDown, Loader2, ShieldCheck, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Loader2, ShieldCheck, Sparkles, Square, X } from "lucide-react";
 
 import { Markdown } from "@/components/Markdown";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
@@ -28,6 +28,7 @@ import {
 	MessageScrollerItem,
 	MessageScrollerProvider,
 	MessageScrollerViewport,
+	useMessageScroller,
 } from "@/components/ui/message-scroller";
 import {
 	Questionnaire,
@@ -42,12 +43,32 @@ import {
 	QuestionnaireNext,
 	QuestionnairePrevious,
 	QuestionnaireProgress,
-	QuestionnaireSkip,
 	QuestionnaireSubmit,
 	QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	Trace,
+	TraceCollapsible,
+	TraceCollapsibleContent,
+	TraceCollapsibleTrigger,
+	TraceDescription,
+	TraceIcon,
+	TraceLine,
+	TraceTitle,
+} from "@/components/ui/trace";
 import { isEditableTarget, isModalOpen } from "@/hooks/useKeyboardShortcuts";
+import {
+	composeSubmission,
+	FOCUS_CHOICES,
+	FOCUS_PROMPT,
+	INTAKE_ITEMS,
+	RESPONSE_CHOICES,
+	RESPONSE_PROMPT,
+	type IntakeAnswer,
+	type IntakeSubmission,
+} from "@/lib/advisorIntake";
+import type { Operation } from "@/lib/documentOperations";
 import { PROJECTED_NODE_FIELDS } from "@/lib/documentProjection";
 import type { AuditFinding } from "@/lib/tokenAudit";
 import type { ChatTurn, ReviewFix } from "@/lib/aiReviewStream";
@@ -66,8 +87,11 @@ interface AiReviewChatProps {
 	 * edge function, so the same rules guard the UI and the advisor.
 	 */
 	validateFix: (fix: ReviewFix) => string[];
-	/** Apply a fix the user approved. */
-	onApplyFix: (fix: ReviewFix) => void;
+	/**
+	 * Apply fixes to the live document as one undoable change. Returns one flag per
+	 * fix, in order, so the thread knows which ones landed.
+	 */
+	onApplyFixes: (fixes: ReviewFix[]) => boolean[];
 }
 
 const DISCLOSURE_KEY = "ai-review-disclosure-dismissed";
@@ -80,96 +104,68 @@ const wasDisclosureDismissed = (): boolean => {
 	}
 };
 
-/** Openers the intake maps onto, chosen from what the audit can actually answer. */
-const INTAKE_QUESTIONS: Record<string, string> = {
-	triage: "What should I fix first?",
-	naming: "Are my token names consistent?",
-	cleanup: "Which tokens are unused or duplicated?",
-};
-
-/** Appended to the question so the first answer arrives in the shape asked for. */
-const RESPONSE_INSTRUCTIONS: Record<string, string> = {
-	explain: "Explain what is wrong for now; don't propose changes yet.",
-	fix: "Propose the changes as fixes I can apply.",
-};
-
-/** Item definitions the questionnaire validates and shortcuts against. */
-const INTAKE_ITEMS = [
-	{
-		name: "focus",
-		required: true,
-		choices: [{ value: "triage" }, { value: "naming" }, { value: "cleanup" }],
-	},
-	{ name: "response", choices: [{ value: "explain" }, { value: "fix" }] },
-] as const;
-
-/**
- * Turn the intake answers into the first message. The custom answer arrives under
- * the same name as the choices, so a value that is not a known choice wins.
- */
-const composeQuestion = (answers: FormData): string => {
-	const focus = answers.getAll("focus").map((value) => String(value).trim()).filter(Boolean);
-	const custom = focus.find((value) => !(value in INTAKE_QUESTIONS));
-	const question = custom ?? INTAKE_QUESTIONS[focus[0] ?? ""];
-	const instruction = RESPONSE_INSTRUCTIONS[String(answers.get("response") ?? "")];
-	return [question, instruction].filter(Boolean).join("\n\n");
-};
-
 /**
  * The guided start of a conversation. The advisor can answer these from the
  * findings, so the thread opens on a real question instead of a blank prompt.
  */
-const Intake = ({ onAsk }: { onAsk: (question: string) => void }) => (
+const Intake = ({ onSubmit }: { onSubmit: (submission: IntakeSubmission) => void }) => (
 	<Questionnaire
 		items={INTAKE_ITEMS}
 		shortcuts="letters"
 		onSubmit={(event) => {
 			event.preventDefault();
-			const question = composeQuestion(new FormData(event.currentTarget));
-			if (question) onAsk(question);
+			const submission = composeSubmission(new FormData(event.currentTarget));
+			if (submission.message) onSubmit(submission);
 		}}
 	>
 		<QuestionnaireProgress />
 		<QuestionnaireItem name="focus" required>
-			<QuestionnaireTitle>What should the advisor look at first?</QuestionnaireTitle>
+			<QuestionnaireTitle>{FOCUS_PROMPT}</QuestionnaireTitle>
 			<QuestionnaireChoices>
-				<QuestionnaireChoice value="triage">
-					<span className="font-medium">Triage the findings</span>
-					<QuestionnaireChoiceDescription>Rank what to fix first.</QuestionnaireChoiceDescription>
-				</QuestionnaireChoice>
-				<QuestionnaireChoice value="naming">
-					<span className="font-medium">Token naming</span>
-					<QuestionnaireChoiceDescription>Check names for consistency.</QuestionnaireChoiceDescription>
-				</QuestionnaireChoice>
-				<QuestionnaireChoice value="cleanup">
-					<span className="font-medium">Dead weight</span>
-					<QuestionnaireChoiceDescription>Find unused and duplicate tokens.</QuestionnaireChoiceDescription>
-				</QuestionnaireChoice>
+				{FOCUS_CHOICES.map((choice) => (
+					<QuestionnaireChoice key={choice.value} value={choice.value}>
+						<span className="font-medium">{choice.label}</span>
+						<QuestionnaireChoiceDescription>{choice.description}</QuestionnaireChoiceDescription>
+					</QuestionnaireChoice>
+				))}
 				<QuestionnaireInput aria-label="Ask something else" placeholder="Or ask something else…" />
 			</QuestionnaireChoices>
 			<QuestionnaireError />
 		</QuestionnaireItem>
-		<QuestionnaireItem name="response">
-			<QuestionnaireTitle>How should it answer?</QuestionnaireTitle>
-			<QuestionnaireDescription>Skip this to keep the first answer focused.</QuestionnaireDescription>
+		<QuestionnaireItem name="response" required>
+			<QuestionnaireTitle>{RESPONSE_PROMPT}</QuestionnaireTitle>
+			<QuestionnaireDescription>Choose the shape of the first answer.</QuestionnaireDescription>
 			<QuestionnaireChoices>
-				<QuestionnaireChoice value="explain">
-					<span className="font-medium">Explain only</span>
-					<QuestionnaireChoiceDescription>Tell me what is wrong.</QuestionnaireChoiceDescription>
-				</QuestionnaireChoice>
-				<QuestionnaireChoice value="fix">
-					<span className="font-medium">Propose fixes</span>
-					<QuestionnaireChoiceDescription>Return changes I can apply.</QuestionnaireChoiceDescription>
-				</QuestionnaireChoice>
+				{RESPONSE_CHOICES.map((choice) => (
+					<QuestionnaireChoice key={choice.value} value={choice.value}>
+						<span className="font-medium">{choice.label}</span>
+						<QuestionnaireChoiceDescription>{choice.description}</QuestionnaireChoiceDescription>
+					</QuestionnaireChoice>
+				))}
 			</QuestionnaireChoices>
 		</QuestionnaireItem>
 		<QuestionnaireActions>
 			<QuestionnairePrevious />
-			<QuestionnaireSkip />
 			<QuestionnaireNext />
 			<QuestionnaireSubmit>Ask</QuestionnaireSubmit>
 		</QuestionnaireActions>
 	</Questionnaire>
+);
+
+/**
+ * The questionnaire answers as they appear in the thread. The first turn is a form
+ * submission rather than typed text, so it shows what was picked instead of the
+ * prompt the model receives.
+ */
+const IntakeAnswerCard = ({ answers }: { answers: IntakeAnswer[] }) => (
+	<dl className="flex flex-col gap-2">
+		{answers.map((answer) => (
+			<div key={answer.question}>
+				<dt className="text-xs text-muted-foreground">{answer.question}</dt>
+				<dd className="text-sm text-foreground">{answer.answer}</dd>
+			</div>
+		))}
+	</dl>
 );
 
 /**
@@ -195,53 +191,154 @@ const Disclosure = ({ onDismiss }: { onDismiss: () => void }) => (
 	</Collapsible>
 );
 
-/** The fixes attached to one answer, each gated by the parent's validation. */
-const FixList = ({
-	fixes,
-	validateFix,
+/** A turn in the thread. `intake` marks the questionnaire answers behind it. */
+interface ThreadTurn extends ChatTurn {
+	intake?: IntakeAnswer[];
+}
+
+/** A fix as it moves through the thread: proposed, then applied. */
+interface FixEntry {
+	/** Stable for the session; also the anchor the edits sidebar links to. */
+	id: string;
+	turnIndex: number;
+	fix: ReviewFix;
+	status: "proposed" | "applied";
+}
+
+/** One line of scope, shared by the card, the trace, and the sidebar. */
+const operationSummary = (fix: ReviewFix): string => {
+	const edits = `${fix.operations.length} ${fix.operations.length === 1 ? "edit" : "edits"}`;
+	const nodes = fix.nodeIds.length > 0 ? ` · ${fix.nodeIds.length} ${fix.nodeIds.length === 1 ? "node" : "nodes"}` : "";
+	return `${edits}${nodes}`;
+};
+
+const formatValue = (value: unknown): string => {
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	if (value === null || value === undefined) return "—";
+	return JSON.stringify(value);
+};
+
+/** Describe one operation with the ids the advisor reported. */
+const describeOperation = (operation: Operation): string => {
+	switch (operation.op) {
+		case "deleteNode":
+			return `Delete ${operation.nodeId}`;
+		case "setParents":
+			return `Move ${operation.nodeId} under ${operation.parentIds.join(", ") || "no parent"}`;
+		case "updateNode": {
+			const fields = Object.entries(operation.data)
+				.map(([field, value]) => `${field} = ${formatValue(value)}`)
+				.join(", ");
+			return `Update ${operation.nodeId} · ${fields}`;
+		}
+	}
+};
+
+/** A fix the advisor proposed and the user has not applied yet. */
+const ProposedFix = ({
+	entry,
+	problems,
 	onApply,
 }: {
-	fixes: ReviewFix[];
-	validateFix: (fix: ReviewFix) => string[];
-	onApply: (index: number, fix: ReviewFix) => void;
+	entry: FixEntry;
+	problems: string[];
+	onApply: (entry: FixEntry) => void;
 }) => (
-	<div className="flex flex-col gap-2 pt-1">
-		<p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-			Proposed {fixes.length === 1 ? "fix" : "fixes"}
-		</p>
-		{fixes.map((fix, index) => {
-			const problems = validateFix(fix);
-			const operations = `${fix.operations.length} ${fix.operations.length === 1 ? "operation" : "operations"}`;
-			const nodes = fix.nodeIds.length > 0 ? ` · ${fix.nodeIds.length} ${fix.nodeIds.length === 1 ? "node" : "nodes"}` : "";
-			return (
-				<div key={index} className="rounded-lg border border-border bg-background px-3 py-2.5">
-					<p className="text-sm text-foreground">{fix.description}</p>
-					<p className="mt-0.5 text-xs text-muted-foreground">
-						{operations}
-						{nodes}
-					</p>
-					{problems.length > 0 && <p className="mt-1 text-xs text-destructive">{problems[0]}</p>}
-					<Button
-						size="sm"
-						variant="outline"
-						className="mt-2"
-						disabled={problems.length > 0}
-						onClick={() => onApply(index, fix)}
-					>
-						Apply
-					</Button>
-				</div>
-			);
-		})}
+	<div className="rounded-lg border border-border bg-background px-3 py-2.5">
+		<p className="text-sm text-foreground">{entry.fix.description}</p>
+		<p className="mt-0.5 text-xs text-muted-foreground">{operationSummary(entry.fix)}</p>
+		{problems.length > 0 && <p className="mt-1 text-xs text-destructive">{problems[0]}</p>}
+		<Button size="sm" variant="outline" className="mt-2" disabled={problems.length > 0} onClick={() => onApply(entry)}>
+			Apply
+		</Button>
 	</div>
 );
 
-export const AiReviewChat = ({ open, onOpenChange, document: projection, findings, validateFix, onApplyFix }: AiReviewChatProps) => {
+/**
+ * A fix that landed, kept where it was proposed so the thread shows what changed.
+ * The id is the anchor the edits sidebar scrolls back to.
+ */
+const AppliedFix = ({ entry }: { entry: FixEntry }) => (
+	<Trace id={`edit-${entry.id}`} className="mt-0.5">
+		<TraceCollapsible>
+			<TraceCollapsibleTrigger>
+				<TraceLine>
+					<TraceIcon>
+						<Check className="size-3.5 text-success" />
+					</TraceIcon>
+					<TraceTitle>{entry.fix.description}</TraceTitle>
+					<TraceDescription>{operationSummary(entry.fix)}</TraceDescription>
+				</TraceLine>
+			</TraceCollapsibleTrigger>
+			<TraceCollapsibleContent>
+				<div className="flex flex-col gap-1">
+					{entry.fix.operations.map((operation, index) => (
+						<TraceLine key={index} className="text-xs">
+							{describeOperation(operation)}
+						</TraceLine>
+					))}
+				</div>
+			</TraceCollapsibleContent>
+		</TraceCollapsible>
+	</Trace>
+);
+
+/**
+ * Every applied edit in the thread, as a standing summary. Selecting a row scrolls
+ * the thread back to the trace it came from.
+ */
+const AppliedEdits = ({ entries }: { entries: FixEntry[] }) => {
+	const { scrollToMessage } = useMessageScroller();
+
+	const goTo = (entry: FixEntry) => {
+		// Bring the turn into view first: its scroller item is content-visibility hidden
+		// until it is near the viewport, so its layout is not yet measurable.
+		scrollToMessage(`turn-${entry.turnIndex}`, { align: "start" });
+		requestAnimationFrame(() => {
+			document.getElementById(`edit-${entry.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+		});
+	};
+
+	return (
+		<aside className="hidden w-72 shrink-0 flex-col border-s border-border lg:flex" aria-label="Applied edits">
+			<div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+				<p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Applied edits</p>
+				<span className="text-xs text-muted-foreground tabular-nums">{entries.length}</span>
+			</div>
+			<div className="min-h-0 flex-1 overflow-y-auto p-2">
+				{entries.length === 0 ? (
+					<p className="px-2 py-3 text-xs text-muted-foreground">Edits you apply from the thread collect here.</p>
+				) : (
+					<ul className="flex flex-col gap-0.5">
+						{entries.map((entry) => (
+							<li key={entry.id}>
+								<button
+									type="button"
+									onClick={() => goTo(entry)}
+									className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<Check className="mt-0.5 size-3.5 shrink-0 text-success" />
+									<span className="min-w-0 flex-1">
+										<span className="line-clamp-2 text-sm text-foreground">{entry.fix.description}</span>
+										<span className="mt-0.5 block text-xs text-muted-foreground">{operationSummary(entry.fix)}</span>
+									</span>
+								</button>
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
+		</aside>
+	);
+};
+
+export const AiReviewChat = ({ open, onOpenChange, document: projection, findings, validateFix, onApplyFixes }: AiReviewChatProps) => {
 	const [input, setInput] = useState("");
-	const [turns, setTurns] = useState<ChatTurn[]>([]);
+	const [turns, setTurns] = useState<ThreadTurn[]>([]);
 	const [streaming, setStreaming] = useState(false);
 	const [liveText, setLiveText] = useState("");
-	const [fixes, setFixes] = useState<ReviewFix[]>([]);
+	const [fixes, setFixes] = useState<FixEntry[]>([]);
 	const [skipped, setSkipped] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [showDisclosure, setShowDisclosure] = useState(() => !wasDisclosureDismissed());
@@ -288,18 +385,20 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 		abortRef.current?.abort();
 	}, []);
 
-	/** Send one question. Starter prompts pass their text; the composer passes its value. */
-	const send = useCallback(async (raw: string) => {
+	/**
+	 * Send one question. The composer passes its text; the intake passes the answers
+	 * it recorded, which the thread shows in place of the prompt the model receives.
+	 */
+	const send = useCallback(async (raw: string, intake?: IntakeAnswer[]) => {
 		const trimmed = raw.trim();
 		if (!trimmed || streaming) return;
 
-		const nextTurns: ChatTurn[] = [...turns, { role: "user", content: trimmed }];
+		const nextTurns: ThreadTurn[] = [...turns, { role: "user", content: trimmed, intake }];
 		setTurns(nextTurns);
 		setInput("");
 		setStreaming(true);
 		setLiveText("");
 		liveTextRef.current = "";
-		setFixes([]);
 		setSkipped(0);
 		setError(null);
 
@@ -310,15 +409,27 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 			const outcome = await streamReview({
 				document: projection,
 				findings,
-				messages: nextTurns,
+				// The intake answers are for the thread only; the request carries the text.
+				messages: nextTurns.map(({ role, content }) => ({ role, content })),
 				signal: controller.signal,
 				onText: (chunk) => {
 					liveTextRef.current += chunk;
 					setLiveText(liveTextRef.current);
 				},
 			});
+			const answerTurn = nextTurns.length;
 			setTurns([...nextTurns, { role: "assistant", content: outcome.text }]);
-			setFixes(outcome.fixes);
+			if (outcome.fixes.length > 0) {
+				setFixes((current) => [
+					...current,
+					...outcome.fixes.map((fix, index) => ({
+						id: `fix-${answerTurn}-${index}`,
+						turnIndex: answerTurn,
+						fix,
+						status: "proposed" as const,
+					})),
+				]);
+			}
 			setSkipped(outcome.skipped);
 			setLiveText("");
 			liveTextRef.current = "";
@@ -339,12 +450,21 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 		}
 	}, [streaming, turns, projection, findings]);
 
-	const handleApply = useCallback(
-		(index: number, fix: ReviewFix) => {
-			onApplyFix(fix);
-			setFixes((current) => current.filter((_, position) => position !== index));
+	/**
+	 * Apply one fix or a whole group. The parent applies them to the live document in
+	 * a single update, so an "apply all" is one undo step.
+	 */
+	const handleApplyEntries = useCallback(
+		(entries: FixEntry[]) => {
+			if (entries.length === 0) return;
+			const accepted = onApplyFixes(entries.map((entry) => entry.fix));
+			const appliedIds = new Set(entries.filter((_, index) => accepted[index]).map((entry) => entry.id));
+			if (appliedIds.size === 0) return;
+			setFixes((current) =>
+				current.map((entry) => (appliedIds.has(entry.id) ? { ...entry, status: "applied" as const } : entry)),
+			);
 		},
-		[onApplyFix],
+		[onApplyFixes],
 	);
 
 	const dismissDisclosure = useCallback(() => {
@@ -356,6 +476,8 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 			// reappears next time.
 		}
 	}, []);
+
+	const appliedEdits = fixes.filter((entry) => entry.status === "applied");
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -378,126 +500,169 @@ export const AiReviewChat = ({ open, onOpenChange, document: projection, finding
 					</DialogClose>
 				</DialogHeader>
 
-				<div className="min-h-0 flex-1">
-					{turns.length === 0 && !streaming ? (
-						<div className="scroll-fade-b h-full overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
-							<div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
-								<div className="my-auto flex flex-col gap-4">
-									<Intake onAsk={(question) => void send(question)} />
-									{showDisclosure && <Disclosure onDismiss={dismissDisclosure} />}
-								</div>
+				<MessageScrollerProvider autoScroll>
+					<div className="flex min-h-0 flex-1">
+						<div className="flex min-w-0 flex-1 flex-col">
+							<div className="min-h-0 flex-1">
+								{turns.length === 0 && !streaming ? (
+									<div className="scroll-fade-b h-full overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
+										<div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
+											<div className="my-auto flex flex-col gap-4">
+												<Intake onSubmit={(submission) => void send(submission.message, submission.answers)} />
+												{showDisclosure && <Disclosure onDismiss={dismissDisclosure} />}
+											</div>
+										</div>
+									</div>
+								) : (
+									<MessageScroller>
+										<MessageScrollerViewport aria-label="Advisor conversation">
+											<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-5 px-4 py-6 sm:px-6">
+														{turns.map((turn, index) => {
+															const isUser = turn.role === "user";
+															const intake = turn.intake;
+															const isLatestAnswer = !isUser && index === turns.length - 1;
+															const body = isUser ? (
+																intake ? <IntakeAnswerCard answers={intake} /> : turn.content
+															) : (
+																<Markdown>{turn.content}</Markdown>
+															);
+															const turnFixes = fixes.filter((entry) => entry.turnIndex === index);
+															const proposed = turnFixes.filter((entry) => entry.status === "proposed");
+															const applicable = proposed.filter((entry) => validateFix(entry.fix).length === 0);
+															return (
+																<MessageScrollerItem key={`turn-${index}`} messageId={`turn-${index}`} scrollAnchor={isUser}>
+																	<Message align={isUser ? "end" : "start"}>
+																		<MessageContent>
+																			<Bubble variant={isUser ? (intake ? "muted" : "default") : "ghost"} align={isUser ? "end" : "start"}>
+																				<BubbleContent className={isUser && !intake ? "whitespace-pre-wrap" : undefined}>
+																					{body}
+																				</BubbleContent>
+																			</Bubble>
+																			{turnFixes.length > 0 && (
+																				<div className="flex flex-col gap-2 pt-1">
+																					{proposed.length > 0 && (
+																						<div className="flex items-center justify-between gap-2">
+																							<p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+																								Proposed {proposed.length === 1 ? "fix" : "fixes"}
+																							</p>
+																							<Button
+																								size="xs"
+																								variant="secondary"
+																								disabled={applicable.length === 0}
+																								onClick={() => handleApplyEntries(applicable)}
+																							>
+																								Apply all
+																							</Button>
+																						</div>
+																					)}
+																					{turnFixes.map((entry) =>
+																						entry.status === "applied" ? (
+																							<AppliedFix key={entry.id} entry={entry} />
+																						) : (
+																							<ProposedFix
+																								key={entry.id}
+																								entry={entry}
+																								problems={validateFix(entry.fix)}
+																								onApply={(target) => handleApplyEntries([target])}
+																							/>
+																						),
+																					)}
+																				</div>
+																			)}
+																			{isLatestAnswer && skipped > 0 && (
+																				<MessageFooter>
+																					{skipped} proposed {skipped === 1 ? "fix" : "fixes"} couldn't be read and were dropped.
+																				</MessageFooter>
+																			)}
+																		</MessageContent>
+																	</Message>
+																</MessageScrollerItem>
+															);
+														})}
+
+												{streaming && (
+													<MessageScrollerItem messageId="pending-answer">
+														<Message align="start">
+															<MessageContent>
+																<Bubble variant="ghost">
+																	<BubbleContent>
+																		{liveText ? (
+																			<Markdown streaming>{liveText}</Markdown>
+																		) : (
+																			<span className="flex items-center gap-2 text-muted-foreground">
+																				<Loader2 className="size-3.5 animate-spin" />
+																				Thinking…
+																			</span>
+																		)}
+																	</BubbleContent>
+																</Bubble>
+															</MessageContent>
+														</Message>
+													</MessageScrollerItem>
+												)}
+
+												{error && (
+													<MessageScrollerItem messageId="error">
+														<Message align="start">
+															<MessageContent>
+																<Bubble variant="destructive">
+																	<BubbleContent>{error}</BubbleContent>
+																</Bubble>
+															</MessageContent>
+														</Message>
+													</MessageScrollerItem>
+												)}
+											</MessageScrollerContent>
+										</MessageScrollerViewport>
+										<MessageScrollerButton />
+									</MessageScroller>
+								)}
 							</div>
-						</div>
-					) : (
-						<MessageScrollerProvider autoScroll>
-							<MessageScroller>
-								<MessageScrollerViewport aria-label="Advisor conversation">
-									<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-5 px-4 py-6 sm:px-6">
-										{turns.map((turn, index) => {
-											const isUser = turn.role === "user";
-											const isLatestAnswer = !isUser && index === turns.length - 1;
-											return (
-												<MessageScrollerItem key={`turn-${index}`} messageId={`turn-${index}`} scrollAnchor={isUser}>
-													<Message align={isUser ? "end" : "start"}>
-														<MessageContent>
-															<Bubble variant={isUser ? "default" : "ghost"} align={isUser ? "end" : "start"}>
-																<BubbleContent className={isUser ? "whitespace-pre-wrap" : undefined}>
-																	{isUser ? turn.content : <Markdown>{turn.content}</Markdown>}
-																</BubbleContent>
-															</Bubble>
-															{isLatestAnswer && fixes.length > 0 && (
-																<FixList fixes={fixes} validateFix={validateFix} onApply={handleApply} />
-															)}
-															{isLatestAnswer && skipped > 0 && (
-																<MessageFooter>
-																	{skipped} proposed {skipped === 1 ? "fix" : "fixes"} couldn't be read and were dropped.
-																</MessageFooter>
-															)}
-														</MessageContent>
-													</Message>
-												</MessageScrollerItem>
-											);
-										})}
 
-										{streaming && (
-											<MessageScrollerItem messageId="pending-answer">
-												<Message align="start">
-													<MessageContent>
-														<Bubble variant="ghost">
-															<BubbleContent>
-																{liveText ? (
-																	<Markdown streaming>{liveText}</Markdown>
-																) : (
-																	<span className="flex items-center gap-2 text-muted-foreground">
-																		<Loader2 className="size-3.5 animate-spin" />
-																		Thinking…
-																	</span>
-																)}
-															</BubbleContent>
-														</Bubble>
-													</MessageContent>
-												</Message>
-											</MessageScrollerItem>
-										)}
-
-										{error && (
-											<MessageScrollerItem messageId="error">
-												<Message align="start">
-													<MessageContent>
-														<Bubble variant="destructive">
-															<BubbleContent>{error}</BubbleContent>
-														</Bubble>
-													</MessageContent>
-												</Message>
-											</MessageScrollerItem>
-										)}
-									</MessageScrollerContent>
-								</MessageScrollerViewport>
-								<MessageScrollerButton />
-							</MessageScroller>
-						</MessageScrollerProvider>
-					)}
-				</div>
-
-				<form
-					className="shrink-0 border-t border-border px-4 py-3 sm:px-6"
-					onSubmit={(event) => {
-						event.preventDefault();
-						void send(input);
-					}}
-				>
-					<div className="mx-auto w-full max-w-3xl">
-						<div className="flex items-end gap-2 rounded-xl border border-border bg-card p-2 transition-[border-color,box-shadow] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/15">
-						<Textarea
-							ref={composerRef}
-							autoFocus
-							rows={1}
-							value={input}
-							placeholder="Ask about your token structure…"
-							onChange={(event) => setInput(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.nativeEvent.isComposing) return;
-								if (event.key === "Enter" && !event.shiftKey) {
+							<form
+								className="shrink-0 border-t border-border px-4 py-3 sm:px-6"
+								onSubmit={(event) => {
 									event.preventDefault();
 									void send(input);
-								}
-							}}
-							className="max-h-32 min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-sm shadow-none focus-visible:ring-0"
-						/>
-						{streaming ? (
-							<Button type="button" size="default" variant="outline" onClick={handleStop} className="gap-1.5">
-								<Square className="size-3" />
-								Stop
-							</Button>
-						) : (
-							<Button type="submit" size="icon" disabled={!input.trim()} aria-label="Send question">
-								<ArrowUp />
-							</Button>
-						)}
+								}}
+							>
+								<div className="mx-auto w-full max-w-3xl">
+									<div className="flex items-end gap-2 rounded-xl border border-border bg-card p-2 transition-[border-color,box-shadow] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/15">
+										<Textarea
+											ref={composerRef}
+											autoFocus
+											rows={1}
+											value={input}
+											placeholder="Ask about your token structure…"
+											onChange={(event) => setInput(event.target.value)}
+											onKeyDown={(event) => {
+												if (event.nativeEvent.isComposing) return;
+												if (event.key === "Enter" && !event.shiftKey) {
+													event.preventDefault();
+													void send(input);
+												}
+											}}
+											className="max-h-32 min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-sm shadow-none focus-visible:ring-0"
+										/>
+										{streaming ? (
+											<Button type="button" size="default" variant="outline" onClick={handleStop} className="gap-1.5">
+												<Square className="size-3" />
+												Stop
+											</Button>
+										) : (
+											<Button type="submit" size="icon" disabled={!input.trim()} aria-label="Send question">
+												<ArrowUp />
+											</Button>
+										)}
+									</div>
+									<p className="mt-1.5 px-1 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
+								</div>
+							</form>
+						</div>
+
+						{(turns.length > 0 || streaming) && <AppliedEdits entries={appliedEdits} />}
 					</div>
-						<p className="mt-1.5 px-1 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>
-					</div>
-				</form>
+				</MessageScrollerProvider>
 			</DialogContent>
 		</Dialog>
 	);

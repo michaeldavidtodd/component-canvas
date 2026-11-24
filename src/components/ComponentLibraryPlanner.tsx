@@ -1213,17 +1213,49 @@ export const ComponentLibraryPlanner = ({
 		);
 
 		// Advisor fixes go through the same engine and the same one-shot document
-		// update as the token health fixes, so undo treats them as a single step.
-		const handleApplyAiFix = useCallback(
-			(fix: ReviewFix) => {
-				const result = applyOperations(nodes as Node<ComponentNodeData>[], edges, fix.operations);
-				if (result.errors.length > 0) {
-					toast({ title: "Couldn't apply fix", description: result.errors[0].reason, variant: "destructive" });
-					return;
+		// update as the token health fixes, so applying a whole group is one undo
+		// step. Each fix is checked against the document the previous one produced,
+		// so a later fix can build on an earlier one and a conflicting one is skipped.
+		const handleApplyAiFixes = useCallback(
+			(fixes: ReviewFix[]): boolean[] => {
+				let nextNodes = nodes as Node<ComponentNodeData>[];
+				let nextEdges = edges;
+				const applied: boolean[] = [];
+				let firstError: string | null = null;
+
+				for (const fix of fixes) {
+					const result = applyOperations(nextNodes, nextEdges, fix.operations);
+					if (result.errors.length > 0) {
+						applied.push(false);
+						firstError ??= result.errors[0].reason;
+						continue;
+					}
+					nextNodes = result.nodes;
+					nextEdges = result.edges;
+					applied.push(true);
 				}
-				setNodes(result.nodes);
-				setEdges(result.edges);
-				toast({ title: "Fix applied", description: fix.description });
+
+				const count = applied.filter(Boolean).length;
+				if (count === 0) {
+					toast({ title: "Couldn't apply fix", description: firstError ?? "The document rejected the change.", variant: "destructive" });
+					return applied;
+				}
+
+				setNodes(nextNodes);
+				setEdges(nextEdges);
+				if (count === fixes.length) {
+					toast({
+						title: count === 1 ? "Fix applied" : `${count} fixes applied`,
+						description: count === 1 ? fixes[0].description : "All changes are one undo step.",
+					});
+				} else {
+					toast({
+						title: `${count} of ${fixes.length} fixes applied`,
+						description: firstError ?? undefined,
+						variant: "destructive",
+					});
+				}
+				return applied;
 			},
 			[nodes, edges, setNodes, setEdges, toast],
 		);
@@ -1555,7 +1587,7 @@ export const ComponentLibraryPlanner = ({
 					document={aiDocument}
 					findings={tokenFindings}
 					validateFix={handleValidateFix}
-					onApplyFix={handleApplyAiFix}
+					onApplyFixes={handleApplyAiFixes}
 				/>
 			)}
 
