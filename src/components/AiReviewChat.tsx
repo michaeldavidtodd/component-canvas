@@ -129,9 +129,9 @@ const Intake = ({ onSubmit }: { onSubmit: (submission: IntakeSubmission) => void
 			</QuestionnaireChoices>
 		</QuestionnaireItem>
 		<QuestionnaireActions>
-			<QuestionnairePrevious />
-			<QuestionnaireNext />
-			<QuestionnaireSubmit>Ask</QuestionnaireSubmit>
+			<QuestionnairePrevious radius="full" />
+			<QuestionnaireNext radius="full"/>
+			<QuestionnaireSubmit radius="full">Ask</QuestionnaireSubmit>
 		</QuestionnaireActions>
 	</Questionnaire>
 );
