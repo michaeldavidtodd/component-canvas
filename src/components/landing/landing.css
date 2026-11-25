@@ -95,7 +95,7 @@
 
 .lp-btn-fill {
 	background: var(--lp-cyan);
-	color: #05070f;
+	color: #05070f !important;
 }
 
 .lp-btn-fill:hover { background: #8fffff; }
@@ -180,7 +180,7 @@
 .lp-hero-copy > *:nth-child(2) { animation-delay: 0.08s; }
 
 .lp-dock {
-	position: absolute;
+	position: fixed;
 	z-index: 3;
 	left: 50%;
 	bottom: 34px;
@@ -660,10 +660,12 @@
 /* ---------- closing ---------- */
 
 .lp-close {
+	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 19vh 24px 13vh;
 	text-align: center;
 	position: relative;
+	z-index: 4;
 	overflow: hidden;
 }
 
@@ -724,6 +726,9 @@
 /* ---------- footer ---------- */
 
 .lp-footer {
+	position: relative;
+	z-index: 4;
+	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 34px 40px 44px;
 	display: flex;
