@@ -1,5 +1,6 @@
 /* Marketing landing surface, scoped under .lp. Dark by the surface's own
    choice: the first viewport is the product's map canvas at night. */
+@import "tailwindcss";
 
 .lp {
 	--lp-bg: #05070f;
@@ -7,6 +8,8 @@
 	--lp-dim: #9aa4b8;
 	--lp-faint: #7c86a0;
 	--lp-line: #1d2540;
+	--lp-chip: #0d1326;
+	--lp-chip-line: #26304e;
 	--lp-cyan: #66ffff;
 	--lp-main: #8d5cff;
 	--lp-variant: #29c2ff;
@@ -64,10 +67,18 @@
 	border-radius: 2px;
 }
 
-.lp-mark i:nth-child(1) { background: var(--lp-main); }
-.lp-mark i:nth-child(2) { background: var(--lp-variant); }
-.lp-mark i:nth-child(3) { background: var(--lp-token); }
-.lp-mark i:nth-child(4) { background: var(--lp-sub); }
+.lp-mark i:nth-child(1) {
+	background: var(--lp-main);
+}
+.lp-mark i:nth-child(2) {
+	background: var(--lp-variant);
+}
+.lp-mark i:nth-child(3) {
+	background: var(--lp-token);
+}
+.lp-mark i:nth-child(4) {
+	background: var(--lp-sub);
+}
 
 /* ---------- buttons ---------- */
 
@@ -84,22 +95,35 @@
 	border: 1px solid transparent;
 	cursor: pointer;
 	white-space: nowrap;
-	transition: transform 0.5s var(--lp-out), background-color 0.25s ease,
-		border-color 0.25s ease, color 0.25s ease;
+	transition:
+		transform 0.5s var(--lp-out),
+		background-color 0.25s ease,
+		border-color 0.25s ease,
+		color 0.25s ease;
 }
 
-.lp-btn:hover { transform: translateY(-1px); }
-.lp-btn:active { transform: translateY(0); }
+.lp-btn:hover {
+	transform: translateY(-1px);
+}
+.lp-btn:active {
+	transform: translateY(0);
+}
 
 .lp-btn-fill {
 	background: var(--lp-cyan);
-	color: #05070f;
+	color: #05070f !important;
 }
 
-.lp-btn-fill:hover { background: #8fffff; }
+.lp-btn-fill:hover {
+	background: #8fffff;
+}
 
-.lp-btn-ghost { color: #c6cedf; }
-.lp-btn-ghost:hover { color: var(--lp-ink); }
+.lp-btn-ghost {
+	color: #c6cedf;
+}
+.lp-btn-ghost:hover {
+	color: var(--lp-ink);
+}
 
 /* ---------- hero ---------- */
 
@@ -137,8 +161,12 @@
 	color: var(--lp-ink);
 }
 
-.lp-top .lp-mono { color: var(--lp-faint); }
-.lp-top a:hover { color: var(--lp-ink); }
+.lp-top .lp-mono {
+	color: var(--lp-faint);
+}
+.lp-top a:hover {
+	color: var(--lp-ink);
+}
 
 .lp-hero-copy {
 	position: absolute;
@@ -153,9 +181,11 @@
 	font-family: Boldonse, Inter, system-ui, sans-serif;
 	font-weight: 400;
 	font-size: clamp(42px, 4.9vw, 68px);
-	line-height: 1.55;
+	line-height: 1;
 	letter-spacing: -0.01em;
 	text-wrap: balance;
+	/*filter: drop-shadow(0 3px 5px pink);*/
+	text-shadow: 0 -2px var(--lp-bg), 2px -2px var(--lp-bg), -2px -2px var(--lp-bg);
 }
 
 .lp-sub {
@@ -163,22 +193,31 @@
 	font-size: 17px;
 	line-height: 1.6;
 	color: var(--lp-dim);
-	max-width: 46ch;
+	max-width: 42ch;
+	text-wrap: balance;
 }
 
 @keyframes lp-rise {
-	from { opacity: 0.35; transform: translateY(16px); }
-	to { opacity: 1; transform: none; }
+	from {
+		opacity: 0.35;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 .lp-hero-copy > * {
 	animation: lp-rise 0.8s var(--lp-out) both;
 }
 
-.lp-hero-copy > *:nth-child(2) { animation-delay: 0.08s; }
+.lp-hero-copy > *:nth-child(2) {
+	animation-delay: 0.08s;
+}
 
 .lp-dock {
-	position: absolute;
+	position: fixed;
 	z-index: 3;
 	left: 50%;
 	bottom: 34px;
@@ -211,8 +250,12 @@
 /* hero SVG pieces */
 
 @keyframes lp-draw {
-	from { stroke-dashoffset: 1; }
-	to { stroke-dashoffset: 0; }
+	from {
+		stroke-dashoffset: 1;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
 }
 
 .lp-edge {
@@ -223,24 +266,40 @@
 }
 
 @keyframes lp-pop {
-	from { opacity: 0.55; transform: scale(0.96); }
-	to { opacity: 1; transform: scale(1); }
+	from {
+		opacity: 0.55;
+		transform: scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @keyframes lp-float {
-	from { translate: 0 -4px; }
-	to { translate: 0 5px; }
+	from {
+		translate: 0 -4px;
+	}
+	to {
+		translate: 0 5px;
+	}
 }
 
 .lp-hnode {
 	transform-box: fill-box;
 	transform-origin: center;
-	animation: lp-pop 0.7s var(--lp-spring) both, lp-float 7s ease-in-out 1.2s infinite alternate;
+	animation:
+		lp-pop 0.7s var(--lp-spring) both,
+		lp-float 7s ease-in-out 1.2s infinite alternate;
 }
 
 @keyframes lp-pulse {
-	from { stroke-dashoffset: 1; }
-	to { stroke-dashoffset: -1; }
+	from {
+		stroke-dashoffset: 1;
+	}
+	to {
+		stroke-dashoffset: -1;
+	}
 }
 
 .lp-pulse {
@@ -319,9 +378,13 @@
 	border-top: 1px solid var(--lp-line);
 }
 
-.lp-chapter:first-child { border-top: 0; }
+.lp-chapter:first-child {
+	border-top: 0;
+}
 
-.lp-chapter-inner { max-width: 42ch; }
+.lp-chapter-inner {
+	max-width: 42ch;
+}
 
 .lp-chapter h3 {
 	font-family: Boldonse, Inter, system-ui, sans-serif;
@@ -358,7 +421,9 @@
 .lp-evo-map {
 	transform-box: fill-box;
 	transform-origin: center;
-	transition: transform 0.9s var(--lp-spring), opacity 0.55s ease;
+	transition:
+		transform 0.9s var(--lp-spring),
+		opacity 0.55s ease;
 }
 
 .lp-stage[data-state="3"] .lp-evo-map {
@@ -367,7 +432,9 @@
 }
 
 .lp-en {
-	transition: transform 0.9s var(--lp-spring), opacity 0.5s ease;
+	transition:
+		transform 0.9s var(--lp-spring),
+		opacity 0.5s ease;
 }
 
 /* Diagram vocabulary, mirroring the in-app node language */
@@ -455,7 +522,9 @@
 	fill: #f2f6fc;
 }
 
-.lp-colpill { fill: #232b42; }
+.lp-colpill {
+	fill: #232b42;
+}
 
 .lp-colpill-t {
 	font-family: Inter, system-ui, sans-serif;
@@ -481,9 +550,16 @@
 	stroke-dashoffset: 0;
 }
 
-.lp-ede-violet { stroke: #8d5cff; }
-.lp-ede-gold { stroke: #f5b800; }
-.lp-ede-grey { stroke: #9ba7bd; opacity: 0.5; }
+.lp-ede-violet {
+	stroke: #8d5cff;
+}
+.lp-ede-gold {
+	stroke: #f5b800;
+}
+.lp-ede-grey {
+	stroke: #9ba7bd;
+	opacity: 0.5;
+}
 
 .lp-stage[data-state="0"] .lp-ede-g0,
 .lp-stage[data-state="1"] .lp-ede-g1,
@@ -504,7 +580,9 @@
 	transition: opacity 0.5s ease 0.15s;
 }
 
-.lp-stage[data-state="1"] .lp-cols { opacity: 1; }
+.lp-stage[data-state="1"] .lp-cols {
+	opacity: 1;
+}
 
 /* The two anatomies: canvas card in map/trace/share, grid chip in structured. */
 
@@ -512,17 +590,25 @@
 	transition: opacity 0.4s ease;
 }
 
-.lp-anat-chip { opacity: 0; }
+.lp-anat-chip {
+	opacity: 0;
+}
 
-.lp-stage[data-state="1"] .lp-anat-card { opacity: 0; }
-.lp-stage[data-state="1"] .lp-anat-chip { opacity: 1; }
+.lp-stage[data-state="1"] .lp-anat-card {
+	opacity: 0;
+}
+.lp-stage[data-state="1"] .lp-anat-chip {
+	opacity: 1;
+}
 
 .lp-trace {
 	opacity: 0;
 	transition: opacity 0.4s ease;
 }
 
-.lp-stage[data-state="2"] .lp-trace { opacity: 1; }
+.lp-stage[data-state="2"] .lp-trace {
+	opacity: 1;
+}
 
 .lp-trace path {
 	fill: none;
@@ -561,7 +647,9 @@
 	padding: 20px;
 	opacity: 0;
 	transform: translateY(-50%) translateX(28px);
-	transition: opacity 0.6s ease, transform 0.8s var(--lp-spring);
+	transition:
+		opacity 0.6s ease,
+		transform 0.8s var(--lp-spring);
 	pointer-events: none;
 }
 
@@ -615,7 +703,9 @@
 	background: transparent;
 	color: #7c86a0;
 	cursor: pointer;
-	transition: color 0.25s ease, background-color 0.25s ease;
+	transition:
+		color 0.25s ease,
+		background-color 0.25s ease;
 }
 
 .lp-copy:hover {
@@ -672,7 +762,9 @@
 	border-top: 1px solid var(--lp-line);
 }
 
-.lp-row:last-child { border-bottom: 1px solid var(--lp-line); }
+.lp-row:last-child {
+	border-bottom: 1px solid var(--lp-line);
+}
 
 .lp-row h3 {
 	font-family: Boldonse, Inter, system-ui, sans-serif;
@@ -722,8 +814,13 @@
 }
 
 @keyframes lp-warn {
-	0%, 100% { opacity: 0.25; }
-	50% { opacity: 1; }
+	0%,
+	100% {
+		opacity: 0.25;
+	}
+	50% {
+		opacity: 1;
+	}
 }
 
 .lp-glyph[data-on="true"] .g-scan {
@@ -731,10 +828,20 @@
 }
 
 @keyframes lp-scan {
-	from { transform: translateX(-70px); opacity: 0; }
-	15% { opacity: 1; }
-	70% { opacity: 1; }
-	to { transform: translateX(240px); opacity: 0; }
+	from {
+		transform: translateX(-70px);
+		opacity: 0;
+	}
+	15% {
+		opacity: 1;
+	}
+	70% {
+		opacity: 1;
+	}
+	to {
+		transform: translateX(240px);
+		opacity: 0;
+	}
 }
 
 .lp-glyph[data-on="true"] .g-spark {
@@ -746,6 +853,8 @@
 /* ---------- closing ---------- */
 
 .lp-close {
+	z-index: 4;
+	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 19vh 24px 13vh;
 	text-align: center;
@@ -810,6 +919,9 @@
 /* ---------- footer ---------- */
 
 .lp-footer {
+	position: relative;
+	z-index: 4;
+	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 34px 40px 44px;
 	display: flex;
@@ -833,9 +945,16 @@
 /* ---------- responsive ---------- */
 
 @media (max-width: 1180px) {
-	.lp-hero-copy { left: 48px; }
-	.lp-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 200px; gap: 28px; }
-	.lp-glyph { width: 200px; }
+	.lp-hero-copy {
+		left: 48px;
+	}
+	.lp-row {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 200px;
+		gap: 28px;
+	}
+	.lp-glyph {
+		width: 200px;
+	}
 }
 
 @media (max-width: 1023px) {
@@ -844,8 +963,13 @@
 		gap: 30px;
 		padding: 10vh 0 4vh;
 	}
-	.lp-row { grid-template-columns: 1fr; gap: 22px; }
-	.lp-glyph { justify-self: start; }
+	.lp-row {
+		grid-template-columns: 1fr;
+		gap: 22px;
+	}
+	.lp-glyph {
+		justify-self: start;
+	}
 }
 
 @media (max-width: 1150px) {
@@ -854,7 +978,9 @@
 		flex-direction: column;
 		min-height: 100svh;
 	}
-	.lp-hero-map { display: none; }
+	.lp-hero-map {
+		display: none;
+	}
 	.lp-hero-map-mobile {
 		display: block;
 		flex: none;
@@ -883,17 +1009,38 @@
 		border-radius: 22px;
 		padding: 12px 16px;
 	}
-	.lp-dock-sep { display: none; }
+	.lp-dock-sep {
+		display: none;
+	}
 }
 
 @media (max-width: 720px) {
-	.lp-top { padding: 20px 22px; }
-	.lp-hero-copy { padding: 56px 22px 0; }
-	.lp-h1 { font-size: clamp(34px, 9.4vw, 42px); }
-	.lp-sub { margin-top: 16px; font-size: 16px; }
-	.lp-dock { padding: 10px 14px; row-gap: 6px; }
-	.lp-ledger, .lp-statement, .lp-close { padding-left: 22px; padding-right: 22px; }
-	.lp-footer { padding: 28px 22px 36px; }
+	.lp-top {
+		padding: 20px 22px;
+	}
+	.lp-hero-copy {
+		padding: 56px 22px 0;
+	}
+	.lp-h1 {
+		font-size: clamp(34px, 9.4vw, 42px);
+	}
+	.lp-sub {
+		margin-top: 16px;
+		fot-size: 16px;
+	}
+	.lp-dock {
+		padding: 10px 14px;
+		row-gap: 6px;
+	}
+	.lp-ledger,
+	.lp-statement,
+	.lp-close {
+		padding-left: 22px;
+		padding-right: 22px;
+	}
+	.lp-footer {
+		padding: 28px 22px 36px;
+	}
 
 	/* Chapter diagrams stay legible: fixed-width canvas inside a pan frame. */
 	.lp-stage {
@@ -924,7 +1071,9 @@
 		width: auto;
 		transform: translateY(16px);
 	}
-	.lp-stage[data-state="3"] .lp-share { transform: none; }
+	.lp-stage[data-state="3"] .lp-share {
+		transform: none;
+	}
 }
 
 /* ---------- reduced motion ---------- */

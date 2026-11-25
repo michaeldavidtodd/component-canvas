@@ -106,10 +106,7 @@ export function Hero({ signedIn, onGuest }: { signedIn: boolean; onGuest: () => 
 			</header>
 			<div className="lp-hero-copy">
 				<h1 className="lp-h1">Your whole component system, on one map.</h1>
-				<p className="lp-sub">
-					Plan hierarchies, variants, and token chains as one living diagram — modeled on
-					Figma's structure, ready to replicate in Figma or code.
-				</p>
+				<p className="lp-sub">Scaffold a new design system from scratch or audit existing tokens with CSS import. Get help and fix issues with the AI advisor.</p>
 			</div>
 			<MobileHeroMap />
 			<div className="lp-hero-note lp-mono" aria-hidden="true">The map is a demonstration — synthetic data</div>
