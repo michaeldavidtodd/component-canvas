@@ -7,8 +7,6 @@
 	--lp-dim: #9aa4b8;
 	--lp-faint: #7c86a0;
 	--lp-line: #1d2540;
-	--lp-chip: #0d1326;
-	--lp-chip-line: #26304e;
 	--lp-cyan: #66ffff;
 	--lp-main: #8d5cff;
 	--lp-variant: #29c2ff;
@@ -95,7 +93,7 @@
 
 .lp-btn-fill {
 	background: var(--lp-cyan);
-	color: #05070f !important;
+	color: #05070f;
 }
 
 .lp-btn-fill:hover { background: #8fffff; }
@@ -180,7 +178,7 @@
 .lp-hero-copy > *:nth-child(2) { animation-delay: 0.08s; }
 
 .lp-dock {
-	position: fixed;
+	position: absolute;
 	z-index: 3;
 	left: 50%;
 	bottom: 34px;
@@ -218,6 +216,7 @@
 }
 
 .lp-edge {
+	stroke-width: 2;
 	stroke-dasharray: 1;
 	stroke-dashoffset: 0;
 	animation: lp-draw 1s var(--lp-out) both;
@@ -245,6 +244,8 @@
 }
 
 .lp-pulse {
+	stroke: #ffd84d;
+	stroke-width: 2.5;
 	stroke-dasharray: 0.07 0.93;
 	stroke-dashoffset: 1;
 	animation: lp-pulse 4.2s linear 1.5s infinite;
@@ -362,29 +363,110 @@
 
 .lp-stage[data-state="3"] .lp-evo-map {
 	transform: translate(-80px, 8px) scale(0.94);
-	opacity: 0.4;
+	opacity: 0.28;
 }
 
 .lp-en {
 	transition: transform 0.9s var(--lp-spring), opacity 0.5s ease;
 }
 
-.lp-en-rect {
-	fill: var(--lp-chip);
-	stroke: var(--lp-chip-line);
+/* Diagram vocabulary, mirroring the in-app node language */
+
+.lp-ncard {
+	fill: #1e293b;
+	stroke: #2a3750;
+	stroke-width: 2;
 }
 
-.lp-en-kind {
-	font-family: "DM Mono", ui-monospace, monospace;
-	font-size: 15px;
-	letter-spacing: 1.2px;
+.lp-nkind {
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 500;
+	font-size: 13px;
 }
 
-.lp-en-name {
+.lp-nname {
 	font-family: Inter, system-ui, sans-serif;
 	font-weight: 600;
 	font-size: 19px;
-	fill: var(--lp-ink);
+	fill: #f2f6fc;
+}
+
+.lp-mono-name {
+	font-family: "DM Mono", ui-monospace, monospace;
+	font-weight: 500;
+	font-size: 18px;
+}
+
+.lp-ndiv {
+	stroke: #2a3750;
+	stroke-width: 1;
+	opacity: 0.7;
+}
+
+.lp-nmeta {
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 400;
+	font-size: 11.5px;
+	fill: #8b97ab;
+}
+
+.lp-nvalue {
+	font-family: "DM Mono", ui-monospace, monospace;
+	font-weight: 500;
+	font-size: 12px;
+	fill: #f2f6fc;
+}
+
+.lp-handle {
+	fill: #0b1220;
+	stroke: #2a3750;
+	stroke-width: 1.5;
+}
+
+.lp-cname {
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 500;
+	font-size: 13px;
+	fill: #f2f6fc;
+}
+
+.lp-cname.lp-mono-name {
+	font-family: "DM Mono", ui-monospace, monospace;
+	font-size: 13px;
+}
+
+.lp-cvalue {
+	font-family: "DM Mono", ui-monospace, monospace;
+	font-weight: 400;
+	font-size: 10.5px;
+	fill: #8b97ab;
+}
+
+.lp-grip circle {
+	fill: #55648a;
+	opacity: 0.55;
+}
+
+.lp-colhead {
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 500;
+	font-size: 12px;
+	letter-spacing: 0.02em;
+	fill: #f2f6fc;
+}
+
+.lp-colpill { fill: #232b42; }
+
+.lp-colpill-t {
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 500;
+	font-size: 10px;
+	fill: #8b97ab;
+}
+
+.lp-colrule {
+	stroke: #1d2540;
+	stroke-width: 1;
 }
 
 .lp-ede-g {
@@ -394,13 +476,14 @@
 
 .lp-ede {
 	fill: none;
-	stroke: #55648a;
-	stroke-width: 1.5;
+	stroke-width: 2;
 	stroke-dasharray: 1;
 	stroke-dashoffset: 0;
 }
 
-.lp-ede-gold { stroke: #a8852a; }
+.lp-ede-violet { stroke: #8d5cff; }
+.lp-ede-gold { stroke: #f5b800; }
+.lp-ede-grey { stroke: #9ba7bd; opacity: 0.5; }
 
 .lp-stage[data-state="0"] .lp-ede-g0,
 .lp-stage[data-state="1"] .lp-ede-g1,
@@ -423,17 +506,16 @@
 
 .lp-stage[data-state="1"] .lp-cols { opacity: 1; }
 
-.lp-cols text {
-	font-family: "DM Mono", ui-monospace, monospace;
-	font-size: 13px;
-	letter-spacing: 1.2px;
-	fill: var(--lp-faint);
+/* The two anatomies: canvas card in map/trace/share, grid chip in structured. */
+
+.lp-anat {
+	transition: opacity 0.4s ease;
 }
 
-.lp-cols line {
-	stroke: var(--lp-line);
-	stroke-width: 1;
-}
+.lp-anat-chip { opacity: 0; }
+
+.lp-stage[data-state="1"] .lp-anat-card { opacity: 0; }
+.lp-stage[data-state="1"] .lp-anat-chip { opacity: 1; }
 
 .lp-trace {
 	opacity: 0;
@@ -444,8 +526,8 @@
 
 .lp-trace path {
 	fill: none;
-	stroke: var(--lp-token);
-	stroke-width: 2;
+	stroke: #ffd84d;
+	stroke-width: 2.5;
 	stroke-dasharray: 0.08 0.92;
 	stroke-linecap: round;
 	animation: lp-pulse 2.6s linear infinite;
@@ -549,8 +631,12 @@
 	color: var(--lp-faint);
 }
 
-@media (max-width: 1023px) {
-	.lp-hero-note { display: none; }
+@media (max-width: 1150px) {
+	.lp-hero-note {
+		position: static;
+		text-align: center;
+		padding: 4px 22px 0;
+	}
 }
 
 /* ---------- benefits ledger ---------- */
@@ -660,12 +746,10 @@
 /* ---------- closing ---------- */
 
 .lp-close {
-	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 19vh 24px 13vh;
 	text-align: center;
 	position: relative;
-	z-index: 4;
 	overflow: hidden;
 }
 
@@ -726,9 +810,6 @@
 /* ---------- footer ---------- */
 
 .lp-footer {
-	position: relative;
-	z-index: 4;
-	background: var(--lp-bg);
 	border-top: 1px solid var(--lp-line);
 	padding: 34px 40px 44px;
 	display: flex;
@@ -767,7 +848,7 @@
 	.lp-glyph { justify-self: start; }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1150px) {
 	.lp-hero {
 		display: flex;
 		flex-direction: column;
@@ -780,7 +861,7 @@
 		width: 100%;
 		max-width: 560px;
 		margin: 0 auto;
-		aspect-ratio: 400 / 340;
+		aspect-ratio: 400 / 352;
 		height: auto;
 		max-height: 280px;
 	}

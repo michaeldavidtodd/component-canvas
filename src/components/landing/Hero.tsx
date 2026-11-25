@@ -1,80 +1,35 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { NodeCard, SYSTEM_NODES, type MapNodeDef } from './map';
 
-/* First viewport: the map assembles itself around the headline.
-   Synthetic demonstration system (a fictional Button component). */
+/* First viewport: the map assembles itself around the headline, drawn in the
+   app's own node language. Synthetic demonstration system. */
 
-interface HNode {
-	x: number; y: number; w: number;
-	kind: string; name: string; color: string;
-	delay: number; float: number;
-}
+const byId = Object.fromEntries(SYSTEM_NODES.map((n) => [n.id, n])) as Record<string, MapNodeDef>;
 
-const NODES: HNode[] = [
-	{ x: 760, y: 380, w: 150, kind: 'MAIN', name: 'Button', color: '#8D5CFF', delay: 0.05, float: 7 },
-	{ x: 990, y: 250, w: 168, kind: 'VARIANT', name: 'size / sm', color: '#29C2FF', delay: 0.1, float: 8 },
-	{ x: 990, y: 400, w: 184, kind: 'VARIANT', name: 'state / hover', color: '#29C2FF', delay: 0.16, float: 6.4 },
-	{ x: 990, y: 550, w: 168, kind: 'SUB', name: 'Leading icon', color: '#00E67A', delay: 0.22, float: 7.6 },
-	{ x: 470, y: 130, w: 176, kind: 'INSTANCE', name: 'Navbar button', color: '#FF955C', delay: 0.28, float: 6.8 },
-	{ x: 520, y: 700, w: 196, kind: 'TOKEN · LITERAL', name: 'color.brand.500', color: '#F5B800', delay: 0.34, float: 7.2 },
-	{ x: 790, y: 730, w: 200, kind: 'ALIAS', name: 'button.background', color: '#F5B800', delay: 0.4, float: 6.2 },
-	{ x: 1090, y: 680, w: 160, kind: 'USAGE', name: 'Button / bg', color: '#F5B800', delay: 0.45, float: 7.8 },
-	{ x: 1230, y: 80, w: 140, kind: 'MAIN', name: 'Input', color: '#8D5CFF', delay: 0.5, float: 7.4 },
+interface HPlacement { id: string; x: number; y: number; delay: number; float: number }
+
+const PLACEMENTS: HPlacement[] = [
+	{ id: 'btn', x: 800, y: 300, delay: 0.05, float: 7 },
+	{ id: 'btn-sm', x: 1060, y: 170, delay: 0.1, float: 8 },
+	{ id: 'btn-hover', x: 1060, y: 320, delay: 0.16, float: 6.4 },
+	{ id: 'btn-icon', x: 1060, y: 470, delay: 0.22, float: 7.6 },
+	{ id: 'inst-nav', x: 520, y: 90, delay: 0.28, float: 6.8 },
+	{ id: 'tok-500', x: 600, y: 660, delay: 0.34, float: 7.2 },
+	{ id: 'tok-alias', x: 870, y: 700, delay: 0.4, float: 6.2 },
+	{ id: 'tok-usage', x: 1140, y: 630, delay: 0.46, float: 7.8 },
 ];
 
-const EDGE_LIST = [
-	{ d: 'M 910 396 C 950 396 950 278 990 278', d0: 0.1 },
-	{ d: 'M 910 408 L 990 428', d0: 0.16, hot: true },
-	{ d: 'M 910 420 C 955 420 950 578 990 578', d0: 0.22 },
-	{ d: 'M 760 392 C 680 370 660 180 646 158', d0: 0.28 },
-	{ d: 'M 716 728 C 745 728 755 758 790 758', d0: 0.34, gold: true },
-	{ d: 'M 990 758 C 1040 758 1050 708 1090 708', d0: 0.4, gold: true },
-	{ d: 'M 1170 680 C 1130 600 960 470 912 430', d0: 0.46, gold: true },
-];
+const INPUT_NODE: MapNodeDef = { id: 'inp', kind: 'main', kindLabel: 'Main Component', name: 'Input', meta: 'Form field', w: 160, chipW: 160 };
 
-/* Portrait arrangement for narrow viewports: same system, re-laid. */
-function MobileHeroMap() {
-	const nodes = [
-		{ x: 130, y: 110, w: 150, kind: 'MAIN', name: 'Button', color: '#8D5CFF', delay: 0.05 },
-		{ x: 216, y: 40, w: 168, kind: 'VARIANT', name: 'size / sm', color: '#29C2FF', delay: 0.12 },
-		{ x: 216, y: 190, w: 170, kind: 'VARIANT', name: 'state / hover', color: '#29C2FF', delay: 0.18 },
-		{ x: 24, y: 190, w: 140, kind: 'SUB', name: 'Leading icon', color: '#00E67A', delay: 0.24 },
-		{ x: 24, y: 20, w: 176, kind: 'INSTANCE', name: 'Navbar button', color: '#FF955C', delay: 0.3 },
-		{ x: 24, y: 270, w: 168, kind: 'TOKEN · LITERAL', name: 'color.brand.500', color: '#F5B800', delay: 0.36 },
-		{ x: 216, y: 270, w: 160, kind: 'ALIAS', name: 'button.background', color: '#F5B800', delay: 0.42 },
-	];
-	const edges: { d: string; d0: number; gold?: boolean }[] = [
-		{ d: 'M 280 124 C 302 104 240 68 216 68', d0: 0.1 },
-		{ d: 'M 280 152 C 306 172 244 218 216 218', d0: 0.16 },
-		{ d: 'M 130 166 C 96 176 92 190 94 190', d0: 0.22 },
-		{ d: 'M 190 110 C 150 96 120 84 112 76', d0: 0.28 },
-		{ d: 'M 192 298 L 216 298', d0: 0.34, gold: true },
-		{ d: 'M 296 270 C 296 236 256 190 232 168', d0: 0.4, gold: true },
-	];
-	return (
-		<svg className="lp-hero-map-mobile" viewBox="0 0 400 340" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-			<defs>
-				<marker id="lp-amh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-					<path d="M0 0L8 4L0 8z" fill="#46557c" />
-				</marker>
-			</defs>
-			{edges.map((e, i) => (
-				<path key={i} pathLength={1} d={e.d} className="lp-edge" fill="none"
-					stroke={e.gold ? '#a8852a' : '#46557c'} strokeWidth="1.5"
-					style={{ animationDelay: `${e.d0}s` }} />
-			))}
-			{nodes.map((n) => (
-				<g key={n.name} className="lp-hnode" style={{ animationDelay: `${n.delay}s, 1.2s` }}>
-					<rect x={n.x} y={n.y} width={n.w} height={56} rx={10} fill="#0D1326" stroke="#26304E" />
-					<circle cx={n.x + 17} cy={n.y + 28} r={5} fill={n.color} />
-					<text x={n.x + 32} y={n.y + 24} fontFamily="DM Mono, ui-monospace, monospace"
-						fontSize="10" letterSpacing="1.5" fill={n.color}>{n.kind}</text>
-					<text x={n.x + 32} y={n.y + 41} fontFamily="Inter, system-ui, sans-serif"
-						fontWeight="600" fontSize="14" fill="#EDF1F8">{n.name}</text>
-				</g>
-			))}
-		</svg>
-	);
-}
+const HERO_EDGES: { d: string; k: 'violet' | 'gold' | 'grey'; d0: number; hot?: boolean }[] = [
+	{ d: 'M 895 392 C 895 470 1152 60 1152 168', k: 'violet', d0: 0.1 },
+	{ d: 'M 895 392 C 895 450 1158 220 1158 318', k: 'violet', d0: 0.16 },
+	{ d: 'M 895 392 C 895 460 1155 380 1155 468', k: 'violet', d0: 0.22 },
+	{ d: 'M 618 182 C 618 260 895 220 895 298', k: 'grey', d0: 0.28 },
+	{ d: 'M 705 752 C 705 800 977 640 977 698', k: 'gold', d0: 0.34 },
+	{ d: 'M 977 792 C 977 850 1238 540 1238 628', k: 'gold', d0: 0.4, hot: true },
+	{ d: 'M 895 392 C 895 480 1238 540 1238 628', k: 'violet', d0: 0.46 },
+];
 
 export function HeroMap() {
 	return (
@@ -83,27 +38,52 @@ export function HeroMap() {
 				<pattern id="lp-dots" width="36" height="36" patternUnits="userSpaceOnUse">
 					<circle cx="1.5" cy="1.5" r="1.5" fill="#131a2e" />
 				</pattern>
-				<marker id="lp-ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-					<path d="M0 0L8 4L0 8z" fill="#46557c" />
-				</marker>
 			</defs>
 			<rect width="1440" height="900" fill="url(#lp-dots)" />
-			{EDGE_LIST.map((e, i) => (
-				<path key={i} pathLength={1} d={e.d} className="lp-edge" fill="none"
-					stroke={e.gold ? '#a8852a' : '#46557c'} strokeWidth="1.5" markerEnd={e.gold ? undefined : 'url(#lp-ah)'}
+			{HERO_EDGES.map((e, i) => (
+				<path key={i} pathLength={1} d={e.d} className={`lp-edge lp-ede-${e.k}`} fill="none"
 					style={{ animationDelay: `${e.d0}s` }} />
 			))}
-			<path pathLength={1} d="M 910 408 L 990 428" className="lp-pulse" fill="none"
-				stroke="#29C2FF" strokeWidth="2" strokeLinecap="round" />
-			{NODES.map((n) => (
-				<g key={n.name} className="lp-hnode"
-					style={{ animationDelay: `${n.delay}s, 1.2s`, animationDuration: `0.7s, ${n.float}s` } as React.CSSProperties}>
-					<rect x={n.x} y={n.y} width={n.w} height={56} rx={10} fill="#0D1326" stroke="#26304E" />
-					<circle cx={n.x + 17} cy={n.y + 28} r={5} fill={n.color} />
-					<text x={n.x + 32} y={n.y + 24} fontFamily="DM Mono, ui-monospace, monospace"
-						fontSize="10" letterSpacing="1.5" fill={n.color}>{n.kind}</text>
-					<text x={n.x + 32} y={n.y + 41} fontFamily="Inter, system-ui, sans-serif"
-						fontWeight="600" fontSize="14" fill="#EDF1F8">{n.name}</text>
+			<path pathLength={1} d="M 1084 742 C 1110 730 1120 680 1140 668" className="lp-pulse" fill="none" />
+			{PLACEMENTS.map((p) => (
+				<g key={p.id} className="lp-hnode"
+					style={{ animationDelay: `${p.delay}s, 1.2s`, animationDuration: `0.7s, ${p.float}s` } as React.CSSProperties}>
+					<NodeCard node={byId[p.id]} x={p.x} y={p.y} />
+				</g>
+			))}
+			<g className="lp-hnode" style={{ animationDelay: '0.52s, 1.2s', animationDuration: '0.7s, 7.4s' } as React.CSSProperties}>
+				<NodeCard node={INPUT_NODE} x={1180} y={60} />
+			</g>
+		</svg>
+	);
+}
+
+/* Portrait arrangement for narrow viewports: same system, re-laid. */
+function MobileHeroMap() {
+	const placements: { id: string; x: number; y: number; w: number; delay: number }[] = [
+		{ id: 'btn', x: 16, y: 16, w: 184, delay: 0.05 },
+		{ id: 'btn-sm', x: 208, y: 16, w: 184, delay: 0.12 },
+		{ id: 'btn-hover', x: 16, y: 136, w: 184, delay: 0.18 },
+		{ id: 'btn-icon', x: 208, y: 136, w: 184, delay: 0.24 },
+		{ id: 'tok-500', x: 16, y: 256, w: 184, delay: 0.3 },
+		{ id: 'tok-alias', x: 208, y: 256, w: 184, delay: 0.36 },
+	];
+	const edges = [
+		{ d: 'M 200 62 L 208 62', k: 'violet' as const, d0: 0.1 },
+		{ d: 'M 106 108 L 108 136', k: 'violet' as const, d0: 0.16 },
+		{ d: 'M 200 178 L 208 178', k: 'grey' as const, d0: 0.22 },
+		{ d: 'M 200 298 L 208 298', k: 'gold' as const, d0: 0.28 },
+		{ d: 'M 300 256 C 300 200 190 140 110 110', k: 'gold' as const, d0: 0.34 },
+	];
+	return (
+		<svg className="lp-hero-map-mobile" viewBox="0 0 400 352" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+			{edges.map((e, i) => (
+				<path key={i} pathLength={1} d={e.d} className={`lp-edge lp-ede-${e.k}`} fill="none"
+					style={{ animationDelay: `${e.d0}s` }} />
+			))}
+			{placements.map((p) => (
+				<g key={p.id} className="lp-hnode" style={{ animationDelay: `${p.delay}s, 1.2s` }}>
+					<NodeCard node={byId[p.id]} x={p.x} y={p.y} w={p.w} />
 				</g>
 			))}
 		</svg>
@@ -131,8 +111,8 @@ export function Hero({ signedIn, onGuest }: { signedIn: boolean; onGuest: () => 
 					Figma's structure, ready to replicate in Figma or code.
 				</p>
 			</div>
-			<div className="lp-hero-note lp-mono" aria-hidden="true">The map is a demonstration — synthetic data</div>
 			<MobileHeroMap />
+			<div className="lp-hero-note lp-mono" aria-hidden="true">The map is a demonstration — synthetic data</div>
 			<div className="lp-dock">
 				<span className="lp-hint">Free · open sign-up</span>
 				{signedIn
