@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,17 +12,22 @@ import { UserCheck } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, signUp, switchToAnonymous } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  // Marketing CTAs land here with ?mode=signup&email=... preselected.
+  const defaultTab = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
+  const prefillEmail = searchParams.get('email') ?? '';
+
   const [signInForm, setSignInForm] = useState({
-    email: '',
+    email: prefillEmail,
     password: ''
   });
 
   const [signUpForm, setSignUpForm] = useState({
-    email: '',
+    email: prefillEmail,
     password: '',
     username: ''
   });
@@ -91,18 +96,22 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Component Canvas</h1>
-          <p className="text-muted-foreground mt-2">Sign in to save your work</p>
+          <p className="text-muted-foreground mt-2">
+            {defaultTab === 'signup' ? 'Sign-up is open and free' : 'Sign in to save your work'}
+          </p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Authentication</CardTitle>
             <CardDescription>
-              Sign in to save your component library plans
+              {defaultTab === 'signup'
+                ? 'Create your account to save component library plans'
+                : 'Sign in to save your component library plans'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
