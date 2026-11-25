@@ -3,7 +3,7 @@
 
 /* Figma-inspired design system for component library planning tool */
 
-/* Dark mode is driven by a `.dark` class on <html> (next-themes). */
+/* Dark mode is driven by a `.dark` class on <html> (see theme-provider.tsx). */
 @custom-variant dark (&:is(.dark *));
 
 /*
